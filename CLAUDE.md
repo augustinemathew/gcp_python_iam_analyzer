@@ -23,7 +23,8 @@ Runtime must be fast. All expensive work (SDK introspection, Gemini inference) h
 Generates static artifacts checked into the repo:
 - `service_registry.json` — 62 services, modules, IAM prefixes
 - `iam_permissions.json` — method→permission mappings
-- `method_db.json` — pre-built method signature database (TODO)
+- `method_db.json` — pre-built method signature database
+- `iam_role_permissions.json` — 12,879 valid IAM permissions (ground truth)
 
 ## Key Conventions
 
@@ -105,5 +106,5 @@ Google-flavored:
 ## Dependencies
 
 - Python 3.12+, tree-sitter, aiofiles, pytest, ruff
-- Build pipeline: google-genai SDK (`gemini-3-flash-preview`)
+- Build pipeline: google-genai SDK (`gemini-3-flash-preview`), anthropic SDK (Claude for gap-filling)
 - 62 GCP service packages installed for introspection

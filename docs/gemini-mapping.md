@@ -1,6 +1,6 @@
-# Gemini Mapping Engine
+# LLM Mapping Engine
 
-Maps Python SDK methods to IAM permissions using Gemini with constrained output.
+Maps Python SDK methods to IAM permissions using Gemini (initial pass) and Claude (gap-filling).
 
 ## Experiment Results
 
@@ -73,12 +73,17 @@ Return ONLY valid JSON.
 - Grouped by service to share permission context
 - Save to disk after each batch (resumable)
 
+## Claude Gap-Filling (`fill_mapping_gaps.py`)
+
+Gemini Flash is unreliable for JSON mode — 504 timeouts and malformed output caused 53 errors in one production run. Claude Sonnet fills remaining gaps with zero errors across 251 batches.
+
+All LLM requests/responses are logged to `data/llm_logs/` for replay and auditing.
+
 ## Validation
 
-After Gemini returns mappings:
+After LLM returns mappings:
 1. **Permission string validation**: every permission must exist in `iam_role_permissions.json`
 2. **Coverage check**: flag methods with empty permissions that aren't `local_helper`
-3. **Cross-reference**: compare against curated ground truth from `iam_perms.py`
 
 ## Build Artifacts
 

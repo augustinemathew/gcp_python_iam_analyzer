@@ -7,40 +7,30 @@ Subcommand-based interface for scanning code and inspecting mappings.
 ```
 gcp-sdk-detector scan <files/dirs>       # scan Python files for GCP SDK calls
 gcp-sdk-detector scan --json             # JSON output
+gcp-sdk-detector scan --compact          # one-line-per-finding output
 gcp-sdk-detector scan --show-all         # include local helpers
-
-gcp-sdk-detector methods                 # list all SDK methods grouped by service
-gcp-sdk-detector methods --service bq    # filter by service_id prefix
-gcp-sdk-detector methods --json          # JSON output
 
 gcp-sdk-detector permissions             # list all permission mappings
 gcp-sdk-detector permissions --service storage  # filter by service
-gcp-sdk-detector permissions --unmapped  # show methods with no mapping
+gcp-sdk-detector permissions --json      # JSON output
 
 gcp-sdk-detector services                # show service registry
-
-gcp-sdk-detector packages                # list installed GCP SDK packages
+gcp-sdk-detector services --json         # JSON output
 ```
 
 ## `scan`
 
-Default mode. Reads Python files (or recurses directories), parses with tree-sitter, matches GCP SDK calls, resolves IAM permissions. Uses `AsyncGCPCallScanner` for multi-file I/O. Reports findings grouped by file with a permission summary at the end.
+Default mode. Reads Python files (or recurses directories), parses with tree-sitter, matches GCP SDK calls, resolves IAM permissions. Uses `GCPCallScanner` with async file I/O. Reports findings grouped by file with a permission summary at the end.
 
-## `methods`
-
-Dumps the method signature database grouped by service. Shows class name, method name, arg range, and resolved IAM permissions (or "unmapped" / "no API call"). Replaces legacy `--dump-db`.
+Only files containing `google.cloud` imports are analyzed — no imports means no findings.
 
 ## `permissions`
 
-Reads `iam_permissions.json` directly. Shows dotted key, permission list, conditional permissions, local helper flag, notes. `--unmapped` cross-references against the method DB to find gaps.
+Reads `iam_permissions.json` directly. Shows dotted key, permission list, conditional permissions, local helper flag, notes. Filter by service with `--service`.
 
 ## `services`
 
-Displays `service_registry.json`: service_id, display_name, pip package, IAM prefix, module paths. Replaces legacy `--list-packages`.
-
-## `packages`
-
-Lists discovered installed `google-cloud-*` pip packages with their service_id and module paths.
+Displays `service_registry.json`: service_id, display_name, pip package, IAM prefix, module paths.
 
 ## Output Format
 
@@ -51,11 +41,16 @@ JSON output (via `--json`) follows the schema:
   "file": "app.py",
   "line": 42,
   "method": "query",
-  "service_id": "bigquery",
-  "service": "BigQuery",
-  "class": "Client",
+  "service_id": ["bigquery"],
+  "service": ["BigQuery"],
+  "class": ["Client"],
   "permissions": ["bigquery.jobs.create"],
   "conditional": [],
   "status": "mapped"
 }
 ```
+
+Output statuses:
+- `mapped` — method has known IAM permissions
+- `unmapped` — method recognized but permissions not yet mapped
+- `no_api_call` — local helper (path builder, constructor), no permissions needed

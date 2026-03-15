@@ -1,94 +1,92 @@
 # Build Pipeline
 
-Generates `iam_permissions.json` — the static mapping from SDK methods to IAM permissions. Runs offline at build time. Runtime requires zero network calls.
+Generates static JSON artifacts for the runtime scanner. Runs offline at build time. Runtime requires zero network calls.
 
 ## Pipeline Steps
 
 ```
-pip install google-cloud-*          # prerequisites
+pip install google-cloud-*          # prerequisites (62 packages)
                 │
                 ▼
 build_service_registry.py           # → service_registry.json (modules, default metadata)
                 │
                 ▼
-fix_registry_metadata.py            # Gemini fixes iam_prefix + display_name
+fix_registry_metadata.py            # Gemini corrects iam_prefix + display_name
                 │
                 ▼
-build_method_inventory.py           # → method_inventory.json
-                │
-     ┌──────────┼──────────┐
-     ▼                     ▼
-fetch_discovery_docs.py    fetch_iam_reference.py     (async, concurrent)
-     │                     │
-     ▼                     ▼
-discovery_docs/            iam_reference/
-{service_id}.json          {service_id}.json
-     │                     │
-     └──────────┬──────────┘
-                ▼
-build_permission_mapping.py         # calls Gemini 3.0
+build_method_db.py                  # → method_db.json (SDK introspection, 2,688 methods)
                 │
                 ▼
-        iam_permissions.json        # final static mapping
+gcloud iam roles list               # → iam_role_permissions.json (12,879 permissions)
                 │
                 ▼
-        validate_mapping.py         # cross-check, coverage report
+build_permission_mapping.py         # → iam_permissions.json (Gemini, initial pass)
+                │
+                ▼
+fill_mapping_gaps.py                # fills gaps using Claude (reliable, 0 errors)
 ```
 
-## Step 1: SDK Introspection (`build_method_inventory.py`)
+## Step 1: Service Registry (`build_service_registry.py`)
 
-Scans all installed `google-cloud-*` packages and produces a method inventory:
+Discovers all installed `google-cloud-*` pip packages and builds a registry of 62 services with module paths and default metadata.
 
-```python
-def build_method_inventory() -> list[MethodEntry]:
-    """
-    For each installed google-cloud-* pip package:
-    1. Discover importable modules via importlib.metadata file records
-    2. Find all classes containing "Client" in the name
-    3. Introspect public methods with inspect.signature()
-    4. Record (service_id, class_name, method_name, min_args,
-       max_args, docstring_snippet)
-    """
+Output: `service_registry.json`
+
+## Step 2: Fix Registry Metadata (`fix_registry_metadata.py`)
+
+Uses Gemini to correct `iam_prefix` and `display_name` for each service. Many services have `service_id != iam_prefix` (e.g. `kms` → `cloudkms`, `firestore` → `datastore`).
+
+```bash
+GEMINI_API_KEY=... python -m build.fix_registry_metadata
 ```
 
-Output: `data/method_inventory.json`
+## Step 3: Method DB (`build_method_db.py`)
 
-## Step 2: Fetch Discovery Documents (`fetch_discovery_docs.py`)
+Introspects all installed SDK packages. For each Client class, records every public method's signature (min/max args, var kwargs, class name, service_id).
 
-Pulls API metadata from the Google APIs Discovery Service using async HTTP (`aiohttp`):
+Output: `method_db.json` (2.8MB, 2,688 methods, 14,101 signatures)
 
-```
-GET https://discovery.googleapis.com/discovery/v1/apis
-GET https://{service}.googleapis.com/$discovery/rest?version={version}
-```
+This is the step that takes 13.4s (importing 63 packages). The output is pre-built so the runtime scanner loads it in ~39ms.
 
-Each discovery document contains:
-- `resources`: nested REST resources with their methods
-- Each method has `id`, `httpMethod`, `path`, `scopes`, `parameters`, `description`
+## Step 4: IAM Ground Truth (`gcloud iam roles list`)
 
-The `id` field (e.g. `bigquery.datasets.get`) provides a strong correlation signal for mapping SDK methods → REST methods → IAM permissions.
+Extracts all valid IAM permission strings from GCP. Used for:
+- Filtering prompts (give LLM only relevant permissions)
+- Post-processing validation (strip hallucinated permissions)
 
-Output: `data/discovery_docs/{service_id}.json`
+Output: `iam_role_permissions.json` (12,879 permissions)
 
-## Step 3: Fetch IAM Permission Tables (`fetch_iam_reference.py`)
+## Step 5: Permission Mapping (`build_permission_mapping.py`)
 
-For each service, fetch the IAM reference page (async):
+Sends batches of 15 methods to Gemini with filtered valid permissions for the service. Gemini maps each method to required and conditional IAM permissions.
 
-```
-https://docs.cloud.google.com/iam/docs/roles-permissions/{service_id}
+```bash
+GEMINI_API_KEY=... python -m build.build_permission_mapping --resume
+GEMINI_API_KEY=... python -m build.build_permission_mapping --service compute --merge
 ```
 
-Lists every valid IAM permission string for the service.
+Saves after each batch (resumable). Post-processing strips permissions not in `iam_role_permissions.json`.
 
-Output: `data/iam_reference/{service_id}.json`
+Output: `iam_permissions.json`
 
-## Step 4: Gemini Mapping Engine (`build_permission_mapping.py`)
+## Step 6: Fill Gaps (`fill_mapping_gaps.py`)
 
-See [docs/gemini-mapping.md](gemini-mapping.md) for prompt design, batching, and validation.
+Uses Claude to fill any methods that Gemini failed to map (timeouts, JSON errors). Claude is more reliable for structured output — 251 batches with 0 errors in production.
+
+All LLM requests/responses are logged to `data/llm_logs/` for replay and auditing.
+
+Output: merged into `iam_permissions.json`
+
+## LLM Reliability
+
+| LLM | Reliability | Speed | Notes |
+|---|---|---|---|
+| Gemini Flash | Unreliable (504 timeouts, 53 errors in one run) | 8s/batch | Good for initial pass |
+| Claude Sonnet | Reliable (0 errors in 251 batches) | Fast | Primary for gap-filling |
 
 ## Incremental Updates
 
 When a new SDK version adds methods:
-1. Re-run `build_method_inventory.py` → diff against existing inventory
-2. Only send new/changed methods to Gemini
+1. Re-run `build_method_db.py` → diff against existing
+2. Only send new/changed methods through the mapping pipeline
 3. Merge results into existing `iam_permissions.json`
