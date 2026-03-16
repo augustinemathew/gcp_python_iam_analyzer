@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from build_pipeline.stages.s05_fetch_iam_roles import (
     derive_permission_index,
     get_default_project,

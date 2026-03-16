@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from build_pipeline.stages.s04_method_context import build_method_context
 
 PROJECT_ROOT = Path(__file__).parent.parent

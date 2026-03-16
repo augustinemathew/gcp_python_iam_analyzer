@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+
 from build_pipeline.stages.s07_validate import load_permission_index
 
 

@@ -9,9 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from build_pipeline.extractors.docstrings import extract_docstring
+
 from build_pipeline.extractors.gapic import (
     RestEndpoint,
+    extract_docstring,
     extract_rest_endpoints,
     find_rest_base_files,
 )

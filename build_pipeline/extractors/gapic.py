@@ -159,3 +159,30 @@ def _camel_to_snake(name: str) -> str:
     # Handle consecutive uppercase: IAM → iam, not i_a_m
     s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", s)
     return s.lower()
+
+
+# ── Docstring extraction (works for all client types) ───────────────────────
+
+
+def extract_docstring(cls: type, method_name: str) -> str:
+    """Get the description portion of a method's docstring.
+
+    Returns first paragraph before 'Args:' or '.. code-block::'.
+    Strips proto reference markup [Name][google.cloud.kms.v1.X] → Name.
+    """
+    import inspect
+
+    method = getattr(cls, method_name, None)
+    if method is None:
+        return ""
+
+    doc = inspect.getdoc(method)
+    if not doc:
+        return ""
+
+    for marker in ("Args:", ".. code-block::", "Returns:", "Raises:", "Example:"):
+        doc = doc.split(marker)[0]
+
+    desc = doc.split("\n\n")[0].strip()
+    desc = re.sub(r"\[([^\]]+)\]\[[^\]]+\]", r"\1", desc)
+    return " ".join(desc.split())
