@@ -16,7 +16,7 @@ Most LLM benchmarks test single-turn reasoning. This project tests what matters 
 
 ### Phase 1: Gemini as primary (v1 pipeline)
 
-The initial pipeline used Gemini Flash for all 62 services (~4,000 methods):
+The initial pipeline used Gemini Flash for all 62 services (v1 era, ~4,000 methods):
 
 **Prompt:** Method name + arg count + filtered permission list (~170 permissions). No REST URI context.
 
@@ -197,5 +197,5 @@ All claims in this document are based on empirical data from this project:
 | v1 Claude gap-fill logs | `data/llm_logs/` | 251 batches, 0 errors |
 | v2 Claude full run logs | `data/llm_logs/` | 370+ batches, 0 errors |
 | v1 vs v2 quality analysis | `docs/v2-quality-analysis.md` | 158 cases adjudicated |
-| Prompt strategy experiments | `docs/build-pipeline-v2.md` §4 | Configs A-D tested on KMS + Compute |
+| Prompt strategy experiments | `docs/build-pipeline.md` §4 | Configs A-D tested on KMS + Compute |
 | IAM catalog ground truth | `data/iam_roles.json` | 2,073 roles, 12,879 permissions |
