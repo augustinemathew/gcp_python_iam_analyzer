@@ -289,28 +289,38 @@ def _print_search_results(
     print(f"  {'─' * col1}  {'─' * col2}  {'─' * 30}")
 
     for key, perms, cond in rows:
-        # Truncate raw text to column width
-        key_trunc = key[:col1]
-        perm_trunc = perms[:col2]
-
-        # Color the method key
-        display_key = _color_method_key(key_trunc, fmt)
-
-        # Color permissions
-        if perm_trunc.startswith("("):
-            display_perms = fmt.dim(perm_trunc)
-        else:
-            display_perms = fmt.green(_highlight_match(perm_trunc, pattern, fmt))
-
-        display_cond = fmt.yellow(cond) if cond else ""
-
-        # Pad based on raw (uncolored) text length
-        key_pad = " " * max(0, col1 - len(key_trunc))
-        perm_pad = " " * max(0, col2 - len(perm_trunc))
-
-        print(f"  {display_key}{key_pad}  {display_perms}{perm_pad}  {display_cond}")
+        _print_search_row(key, perms, cond, pattern, col1, col2, fmt)
 
     print(f"\n  {fmt.bold(str(len(rows)))} result(s) for {fmt.yellow(repr(pattern))}")
+
+
+def _print_search_row(
+    key: str,
+    perms: str,
+    cond: str,
+    pattern: str,
+    col1: int,
+    col2: int,
+    fmt: Formatter,
+) -> None:
+    """Print one search result row, wrapping long values with indented continuation."""
+    display_key = _color_method_key(key, fmt)
+    display_perms = fmt.dim(perms) if perms.startswith("(") else fmt.green(_highlight_match(perms, pattern, fmt))
+    display_cond = fmt.yellow(cond) if cond else ""
+
+    if len(key) <= col1 and len(perms) <= col2:
+        # Fits on one line
+        key_pad = " " * (col1 - len(key))
+        perm_pad = " " * (col2 - len(perms))
+        print(f"  {display_key}{key_pad}  {display_perms}{perm_pad}  {display_cond}")
+    else:
+        # Wrap: first line has method, second has permissions indented
+        print(f"  {display_key}")
+        indent = "    ↳ "
+        if (perms and not perms.startswith("(")) or perms:
+            print(f"{indent}{display_perms}")
+        if cond:
+            print(f"{indent}{fmt.yellow('⚠')} {display_cond}")
 
 
 def _color_method_key(key: str, fmt: Formatter) -> str:
