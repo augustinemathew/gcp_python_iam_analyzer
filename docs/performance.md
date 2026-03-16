@@ -19,7 +19,7 @@ Per-file:
   Non-GCP files: avg 0.00ms  ("google.cloud" string check exits immediately)
 ```
 
-**SDK introspection is the bottleneck.** It imports 63 packages and calls `inspect.signature()` on 14K methods. The actual scanning is sub-millisecond per file.
+**SDK introspection is the bottleneck.** It imports 130+ packages and calls `inspect.signature()` on ~13K methods. The actual scanning is sub-millisecond per file.
 
 ## Fix: Pre-built Method DB
 

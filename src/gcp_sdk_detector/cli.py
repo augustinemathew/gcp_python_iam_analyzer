@@ -14,7 +14,7 @@ from gcp_sdk_detector.models import Finding
 from gcp_sdk_detector.registry import ServiceRegistry
 from gcp_sdk_detector.resolver import StaticPermissionResolver
 from gcp_sdk_detector.scanner import GCPCallScanner
-from gcp_sdk_detector.terminal_output import print_progress, print_scan_results
+from gcp_sdk_detector.terminal_output import Formatter, print_progress, print_scan_results
 
 # Default paths (relative to where the CLI is run)
 _DEFAULT_REGISTRY = Path(__file__).parent.parent.parent / "service_registry.json"
@@ -198,11 +198,15 @@ def cmd_search(args: argparse.Namespace) -> int:
     entries = resolver.all_entries()
 
     pattern = args.pattern
+    fmt = Formatter()
 
-    # Match against method keys (e.g. "*.encrypt", "kms.*", "*role*")
+    # Match against method keys and permission strings
     matched = {}
     for key, result in entries.items():
-        if fnmatch.fnmatch(key, pattern) or fnmatch.fnmatch(key.lower(), pattern.lower()) or any(fnmatch.fnmatch(p, pattern) or fnmatch.fnmatch(p.lower(), pattern.lower()) for p in result.permissions):
+        if fnmatch.fnmatch(key, pattern) or fnmatch.fnmatch(key.lower(), pattern.lower()) or any(
+            fnmatch.fnmatch(p, pattern) or fnmatch.fnmatch(p.lower(), pattern.lower())
+            for p in result.permissions
+        ):
             matched[key] = result
 
     if not matched:
@@ -220,33 +224,94 @@ def cmd_search(args: argparse.Namespace) -> int:
             }
         print(json.dumps(data, indent=2))
     else:
-        # Build table rows (skip local helpers unless --show-all)
-        rows = []
-        for key in sorted(matched):
-            result = matched[key]
-            if result.is_local_helper and not args.show_all:
-                continue
-            perms = ", ".join(result.permissions) if result.permissions else "(local helper)" if result.is_local_helper else "(none)"
-            cond = ", ".join(result.conditional_permissions) if result.conditional_permissions else ""
-            rows.append((key, perms, cond, result.notes))
-
-        if not rows:
-            print(f"No matches for '{pattern}'")
-            return 0
-
-        # Calculate column widths
-        max_key = min(max(len(r[0]) for r in rows), 55)
-        max_perm = min(max(len(r[1]) for r in rows), 50)
-
-        print(f"\n  {'Method':<{max_key}}  {'Permissions':<{max_perm}}  Conditional")
-        print(f"  {'─' * max_key}  {'─' * max_perm}  {'─' * 30}")
-        for key, perms, cond, _notes in rows:
-            key_s = key[:max_key]
-            perm_s = perms[:max_perm]
-            print(f"  {key_s:<{max_key}}  {perm_s:<{max_perm}}  {cond}")
-        print(f"\n  {len(rows)} result(s) for '{pattern}'")
+        _print_search_results(matched, pattern, fmt, show_all=args.show_all)
 
     return 0
+
+
+def _highlight_match(text: str, pattern: str, fmt: Formatter) -> str:
+    """Highlight the matching portion of text based on the glob pattern.
+
+    Extracts the non-wildcard core of the pattern and highlights it
+    in the text. E.g. pattern '*encrypt*' highlights 'encrypt'.
+    """
+    # Extract the non-wildcard core
+    core = pattern.strip("*").strip("?")
+    if not core:
+        return text
+
+    # Case-insensitive search for the core in the text
+    lower = text.lower()
+    idx = lower.find(core.lower())
+    if idx == -1:
+        return text
+
+    before = text[:idx]
+    match = text[idx : idx + len(core)]
+    after = text[idx + len(core) :]
+    return f"{before}{fmt.bold(fmt.yellow(match))}{after}"
+
+
+def _print_search_results(
+    matched: dict,
+    pattern: str,
+    fmt: Formatter,
+    show_all: bool = False,
+) -> None:
+    """Pretty-print search results as a colored table with highlighted matches."""
+    # Build rows
+    rows: list[tuple[str, str, str]] = []
+    for key in sorted(matched):
+        result = matched[key]
+        if result.is_local_helper and not show_all:
+            continue
+        perms = ", ".join(result.permissions) if result.permissions else "(none)"
+        if result.is_local_helper:
+            perms = "(local helper)"
+        cond = ", ".join(result.conditional_permissions) if result.conditional_permissions else ""
+        rows.append((key, perms, cond))
+
+    if not rows:
+        print(f"No matches for '{pattern}'")
+        return
+
+    # Column widths (from raw text, before color codes)
+    col1 = min(max(len(r[0]) for r in rows), 52)
+    col2 = min(max(len(r[1]) for r in rows), 50)
+
+    # Header
+    print()
+    print(f"  {fmt.bold('Method'):<{col1 + 8}}  {fmt.bold('Permissions'):<{col2 + 8}}  {fmt.bold('Conditional')}")
+    print(f"  {'─' * col1}  {'─' * col2}  {'─' * 30}")
+
+    # Rows with highlighting
+    for key, perms, cond in rows:
+        # Color the method key: dim service, cyan class, bold method
+        parts = key.split(".")
+        if len(parts) >= 3:
+            svc, cls, method = parts[0], parts[1], ".".join(parts[2:])
+            display_key = f"{fmt.dim(svc + '.')}{cls}.{fmt.bold(method)}"
+        else:
+            display_key = key
+
+        # Highlight the match in permissions
+        display_perms = _highlight_match(perms, pattern, fmt)
+        if perms.startswith("("):
+            display_perms = fmt.dim(perms)
+        else:
+            display_perms = fmt.green(_highlight_match(perms, pattern, fmt))
+
+        display_cond = ""
+        if cond:
+            display_cond = fmt.yellow(_highlight_match(cond, pattern, fmt))
+
+        # Pad using raw text length (color codes don't take terminal width)
+        key_pad = " " * max(0, col1 - len(key))
+        perm_pad = " " * max(0, col2 - len(perms))
+
+        print(f"  {display_key}{key_pad}  {display_perms}{perm_pad}  {display_cond}")
+
+    print(f"\n  {fmt.bold(str(len(rows)))} result(s) for {fmt.yellow(repr(pattern))}")
 
 
 # ── main ─────────────────────────────────────────────────────────────────

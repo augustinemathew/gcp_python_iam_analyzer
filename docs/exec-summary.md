@@ -15,7 +15,7 @@ Statically analyzes Python source code to detect GCP SDK method calls and resolv
 | SDK methods mapped to permissions | ~12,000 |
 | IAM roles in catalog | 2,073 |
 | Valid IAM permissions tracked | 12,879 |
-| GCP services covered | 119 |
+| GCP services covered | 122 |
 
 ## How the build pipeline works
 
@@ -75,12 +75,11 @@ Traditional (v1):                        Config D+ (v2):
 | Component | Lines of code |
 |---|---|
 | Runtime scanner (`src/`) | 1,468 |
-| Build pipeline v1 (`build/`) | 861 |
-| Build pipeline v2 (`build_pipeline/`) | 2,528 |
+| Build pipeline (`build_pipeline/`) | 2,528 |
 | Tests | 3,619 |
-| **Total** | **8,476** |
-| Test count | 264 passing |
+| **Total** | **7,615** |
+| Test count | 281 passing |
 
 ## Cost
 
-Full pipeline run (all 119 services): **~$8 in LLM API costs**, ~50 minutes.
+Full pipeline run (all 122 services): **~$6 in LLM API costs**, ~50 minutes.

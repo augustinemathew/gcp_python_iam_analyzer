@@ -30,19 +30,16 @@ The `service_id` is derived mechanically from the pip package name. But the IAM 
 
 ### Solution: Gemini-assisted validation
 
-`build/fix_registry_metadata.py` uses Gemini to validate and correct `iam_prefix` and `display_name` for all services:
+Stage s02 of the build pipeline uses Gemini to validate and correct `iam_prefix` and `display_name` for all services:
 
 ```bash
-# Dry run — show what would change
-GEMINI_API_KEY=... python -m build.fix_registry_metadata --dry-run
-
-# Apply corrections
-GEMINI_API_KEY=... python -m build.fix_registry_metadata
+# Run metadata correction stage
+python -m build_pipeline run --stage s02
 ```
 
 This should be run after adding new services to the registry.
 
-## Known Services (62)
+## Known Services (123)
 
 See `service_registry.json` for the full authoritative list. Key services:
 
@@ -89,16 +86,16 @@ The registry is the single source of truth. Multiple components derive their beh
 ## Adding a new service
 
 1. Install the pip package: `pip install google-cloud-<name>`
-2. Run `python -m build.build_service_registry` — auto-discovers modules
-3. Run `GEMINI_API_KEY=... python -m build.fix_registry_metadata` — fixes IAM prefix and display name
-4. Run `GEMINI_API_KEY=... python -m build.build_permission_mapping --service <id> --merge` — generates permission mappings
+2. Run `python -m build_pipeline run --stage s01` — auto-discovers modules
+3. Run `python -m build_pipeline run --stage s02` — fixes IAM prefix and display name
+4. Run `python -m build_pipeline run --stage s06` — generates permission mappings
 5. Commit `service_registry.json` and `iam_permissions.json`
 
 No code changes needed. The scanner automatically picks up the new service.
 
 ## Generation
 
-`build/build_service_registry.py` discovers installed `google-cloud-*` packages and populates:
+Stage s01 (`build_pipeline/stages/s01_service_registry.py`) discovers installed `google-cloud-*` packages and populates:
 - `service_id` — derived from pip package name
 - `modules` — discovered from package file records
 - `display_name` and `iam_prefix` — defaults that need Gemini correction

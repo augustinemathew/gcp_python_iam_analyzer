@@ -13,7 +13,7 @@ Developers using GCP client libraries need to know which IAM permissions their c
 
 A two-phase system:
 
-**Build time (offline, ~$6, ~50 min):** Analyze 8.8M lines of GCP SDK source code, extract REST URIs and docstrings, then use Claude to map 12,961 methods to IAM permissions. Output: `iam_permissions.json`.
+**Build time (offline, ~$6, ~50 min):** Analyze 8.8M lines of GCP SDK source code, extract REST URIs and docstrings, then use Claude to map 13,193 methods to IAM permissions. Output: `iam_permissions.json`.
 
 **Run time (<50ms):** Load the pre-built JSON, parse the user's Python source with tree-sitter, match GCP SDK calls, resolve permissions via O(1) lookup. Zero network calls, zero LLM inference.
 
@@ -25,12 +25,12 @@ RUN TIME
   (~39ms)                                                                          (O(1) lookup)
 
 BUILD TIME (build_pipeline/)
-  s01: Discover 130 installed SDK packages → service_registry.json
+  s01: Discover 123 installed SDK packages → service_registry.json
   s02: Fix iam_prefix via Gemini → service_registry.json
-  s03: Introspect SDK classes → method_db.json (12,961 methods)
+  s03: Introspect SDK classes → method_db.json (4,745 methods, 23,994 signatures)
   s04: Extract REST URIs + docstrings → method_context.json (tree-sitter + regex)
   s05: Download IAM role catalog → data/iam_roles.json (2,073 roles, 12,879 permissions)
-  s06: LLM mapping (Config D+) → iam_permissions.json (12,961 entries, 119 services)
+  s06: LLM mapping (Config D+) → iam_permissions.json (13,193 entries, 122 services)
   s07: Embedding-based validation
 ```
 
@@ -53,15 +53,15 @@ class PermissionResult:
 
 The scanner must not import GCP SDK packages at runtime.
 
-Measured: SDK introspection takes 13.4s (importing 130 packages). File scanning takes <1ms/file. All expensive work is pre-built as static JSON loaded at startup in ~39ms.
+Measured: SDK introspection takes 13.4s (importing 123 packages). File scanning takes <1ms/file. All expensive work is pre-built as static JSON loaded at startup in ~39ms.
 
 ## 6. Static Artifacts
 
 | File | Size | Contents |
 |---|---|---|
-| `service_registry.json` | 33KB | 120 services, modules, IAM prefixes |
-| `method_db.json` | 4.7MB | 12,961 methods, 23,530 signatures |
-| `iam_permissions.json` | 3MB | 12,961 method→permission mappings, 119 services |
+| `service_registry.json` | 33KB | 123 services, modules, IAM prefixes |
+| `method_db.json` | 4.7MB | 4,745 unique methods, 23,994 signatures |
+| `iam_permissions.json` | 3MB | 13,193 method→permission mappings, 122 services |
 | `data/iam_roles.json` | 6.4MB | 2,073 IAM roles, 12,879 valid permissions (ground truth) |
 | `iam_role_permissions.json` | 532KB | Flat permission index (derived from iam_roles.json) |
 
@@ -87,7 +87,7 @@ build_pipeline/
 ├── llm/                 # prompt.py (Config D+), claude.py, logger.py
 └── search/              # embedding_search.py, resource_filter.py
 
-tests/                   # 277 tests (mirrors src/ + build_pipeline/)
+tests/                   # 281 tests (mirrors src/ + build_pipeline/)
 docs/                    # Design docs, case study, quality analysis
 ```
 
@@ -108,6 +108,6 @@ docs/                    # Design docs, case study, quality analysis
 
 Tested against [GoogleCloudPlatform/python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples):
 - 3,642 Python files scanned
-- 2,375 GCP SDK calls detected
+- 2,501 GCP SDK calls detected
 - **100% mapped to permissions** (0 unmapped)
-- 463 unique permissions identified across 73 services
+- 516 unique permissions identified across 73 services
