@@ -34322,6 +34322,806 @@
     "local_helper": false,
     "notes": "Updates node pool version and/or image type"
   },
+  "contentwarehouse.DocumentLinkServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.create_document_link": {
+    "permissions": [
+      "contentwarehouse.links.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentLinkServiceClient.delete_document_link": {
+    "permissions": [
+      "contentwarehouse.links.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentLinkServiceClient.document_link_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.list_linked_sources": {
+    "permissions": [
+      "contentwarehouse.links.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentLinkServiceClient.list_linked_targets": {
+    "permissions": [
+      "contentwarehouse.links.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_document_link_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentLinkServiceClient.parse_document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.create_document_schema": {
+    "permissions": [
+      "contentwarehouse.documentSchemas.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.delete_document_schema": {
+    "permissions": [
+      "contentwarehouse.documentSchemas.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.document_schema_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.get_document_schema": {
+    "permissions": [
+      "contentwarehouse.documentSchemas.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.list_document_schemas": {
+    "permissions": [
+      "contentwarehouse.documentSchemas.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_document_schema_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.parse_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentSchemaServiceClient.update_document_schema": {
+    "permissions": [
+      "contentwarehouse.documentSchemas.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.create_document": {
+    "permissions": [
+      "contentwarehouse.documents.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.delete_document": {
+    "permissions": [
+      "contentwarehouse.documents.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.document_schema_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.fetch_acl": {
+    "permissions": [
+      "contentwarehouse.documents.getIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.get_document": {
+    "permissions": [
+      "contentwarehouse.documents.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.DocumentServiceClient.location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.lock_document": {
+    "permissions": [
+      "contentwarehouse.documents.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_document_schema_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.parse_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.DocumentServiceClient.search_documents": {
+    "permissions": [
+      "contentwarehouse.documents.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.set_acl": {
+    "permissions": [
+      "contentwarehouse.documents.setIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.DocumentServiceClient.update_document": {
+    "permissions": [
+      "contentwarehouse.documents.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.PipelineServiceClient.cloud_function_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.PipelineServiceClient.location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_cloud_function_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.parse_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.PipelineServiceClient.run_pipeline": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.RuleSetServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.create_rule_set": {
+    "permissions": [
+      "contentwarehouse.ruleSets.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.RuleSetServiceClient.delete_rule_set": {
+    "permissions": [
+      "contentwarehouse.ruleSets.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.RuleSetServiceClient.document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.RuleSetServiceClient.get_rule_set": {
+    "permissions": [
+      "contentwarehouse.ruleSets.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.RuleSetServiceClient.list_rule_sets": {
+    "permissions": [
+      "contentwarehouse.ruleSets.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.RuleSetServiceClient.location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_document_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.parse_rule_set_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.rule_set_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.RuleSetServiceClient.update_rule_set": {
+    "permissions": [
+      "contentwarehouse.ruleSets.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.SynonymSetServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.create_synonym_set": {
+    "permissions": [
+      "contentwarehouse.synonymSets.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.SynonymSetServiceClient.delete_synonym_set": {
+    "permissions": [
+      "contentwarehouse.synonymSets.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.SynonymSetServiceClient.get_operation": {
+    "permissions": [
+      "contentwarehouse.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "contentwarehouse.SynonymSetServiceClient.get_synonym_set": {
+    "permissions": [
+      "contentwarehouse.synonymSets.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.SynonymSetServiceClient.list_synonym_sets": {
+    "permissions": [
+      "contentwarehouse.synonymSets.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "contentwarehouse.SynonymSetServiceClient.location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.parse_synonym_set_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.synonym_set_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "contentwarehouse.SynonymSetServiceClient.update_synonym_set": {
+    "permissions": [
+      "contentwarehouse.synonymSets.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
   "datacatalog.DataCatalogClient.cancel_operation": {
     "permissions": [
       "datacatalog.operations.cancel"
@@ -62444,6 +63244,610 @@
     "local_helper": false,
     "notes": "Requires permission to validate trust state on the domain"
   },
+  "managedkafka.ManagedKafkaClient.acl_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.add_acl_entry": {
+    "permissions": [
+      "managedkafka.acls.updateEntries"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates ACL entries incrementally, using the specific updateEntries permission"
+  },
+  "managedkafka.ManagedKafkaClient.ca_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.cancel_operation": {
+    "permissions": [
+      "managedkafka.operations.cancel"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: cancel long-running operation"
+  },
+  "managedkafka.ManagedKafkaClient.cluster_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.consumer_group_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.create_acl": {
+    "permissions": [
+      "managedkafka.acls.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new ACL resource"
+  },
+  "managedkafka.ManagedKafkaClient.create_cluster": {
+    "permissions": [
+      "managedkafka.clusters.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new cluster resource"
+  },
+  "managedkafka.ManagedKafkaClient.create_topic": {
+    "permissions": [
+      "managedkafka.topics.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new topic resource"
+  },
+  "managedkafka.ManagedKafkaClient.crypto_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.delete_acl": {
+    "permissions": [
+      "managedkafka.acls.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an ACL resource"
+  },
+  "managedkafka.ManagedKafkaClient.delete_cluster": {
+    "permissions": [
+      "managedkafka.clusters.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a cluster resource"
+  },
+  "managedkafka.ManagedKafkaClient.delete_consumer_group": {
+    "permissions": [
+      "managedkafka.consumerGroups.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a consumer group resource"
+  },
+  "managedkafka.ManagedKafkaClient.delete_operation": {
+    "permissions": [
+      "managedkafka.operations.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: delete long-running operation"
+  },
+  "managedkafka.ManagedKafkaClient.delete_topic": {
+    "permissions": [
+      "managedkafka.topics.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a topic resource"
+  },
+  "managedkafka.ManagedKafkaClient.get_acl": {
+    "permissions": [
+      "managedkafka.acls.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves ACL properties"
+  },
+  "managedkafka.ManagedKafkaClient.get_cluster": {
+    "permissions": [
+      "managedkafka.clusters.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves cluster properties"
+  },
+  "managedkafka.ManagedKafkaClient.get_consumer_group": {
+    "permissions": [
+      "managedkafka.consumerGroups.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission on the specific consumer group resource"
+  },
+  "managedkafka.ManagedKafkaClient.get_location": {
+    "permissions": [
+      "managedkafka.locations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get location metadata"
+  },
+  "managedkafka.ManagedKafkaClient.get_operation": {
+    "permissions": [
+      "managedkafka.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "managedkafka.ManagedKafkaClient.get_topic": {
+    "permissions": [
+      "managedkafka.topics.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission on the specific topic resource"
+  },
+  "managedkafka.ManagedKafkaClient.list_acls": {
+    "permissions": [
+      "managedkafka.acls.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on ACLs within the cluster"
+  },
+  "managedkafka.ManagedKafkaClient.list_clusters": {
+    "permissions": [
+      "managedkafka.clusters.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on clusters within the location"
+  },
+  "managedkafka.ManagedKafkaClient.list_consumer_groups": {
+    "permissions": [
+      "managedkafka.consumerGroups.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on consumer groups within the cluster"
+  },
+  "managedkafka.ManagedKafkaClient.list_locations": {
+    "permissions": [
+      "managedkafka.locations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list available locations"
+  },
+  "managedkafka.ManagedKafkaClient.list_operations": {
+    "permissions": [
+      "managedkafka.operations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list long-running operations"
+  },
+  "managedkafka.ManagedKafkaClient.list_topics": {
+    "permissions": [
+      "managedkafka.topics.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on topics within the cluster"
+  },
+  "managedkafka.ManagedKafkaClient.parse_acl_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_ca_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_cluster_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_consumer_group_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_crypto_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.parse_topic_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.remove_acl_entry": {
+    "permissions": [
+      "managedkafka.acls.updateEntries"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires updateEntries permission to modify ACL entries"
+  },
+  "managedkafka.ManagedKafkaClient.topic_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaClient.update_acl": {
+    "permissions": [
+      "managedkafka.acls.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires update permission on the specific ACL resource"
+  },
+  "managedkafka.ManagedKafkaClient.update_cluster": {
+    "permissions": [
+      "managedkafka.clusters.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates properties of a Kafka cluster"
+  },
+  "managedkafka.ManagedKafkaClient.update_consumer_group": {
+    "permissions": [
+      "managedkafka.consumerGroups.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates properties of a consumer group"
+  },
+  "managedkafka.ManagedKafkaClient.update_topic": {
+    "permissions": [
+      "managedkafka.topics.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates properties of a topic"
+  },
+  "managedkafka.ManagedKafkaConnectClient.cancel_operation": {
+    "permissions": [
+      "managedkafka.operations.cancel"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: cancel long-running operation"
+  },
+  "managedkafka.ManagedKafkaConnectClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.connect_cluster_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.connector_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.create_connect_cluster": {
+    "permissions": [
+      "managedkafka.connectClusters.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new Connect cluster resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.create_connector": {
+    "permissions": [
+      "managedkafka.connectors.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.delete_connect_cluster": {
+    "permissions": [
+      "managedkafka.connectClusters.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a Connect cluster resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.delete_connector": {
+    "permissions": [
+      "managedkafka.connectors.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.delete_operation": {
+    "permissions": [
+      "managedkafka.operations.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: delete long-running operation"
+  },
+  "managedkafka.ManagedKafkaConnectClient.get_connect_cluster": {
+    "permissions": [
+      "managedkafka.connectClusters.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves Connect cluster properties"
+  },
+  "managedkafka.ManagedKafkaConnectClient.get_connector": {
+    "permissions": [
+      "managedkafka.connectors.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission on the specific connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.get_location": {
+    "permissions": [
+      "managedkafka.locations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get location metadata"
+  },
+  "managedkafka.ManagedKafkaConnectClient.get_operation": {
+    "permissions": [
+      "managedkafka.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "managedkafka.ManagedKafkaConnectClient.list_connect_clusters": {
+    "permissions": [
+      "managedkafka.connectClusters.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on connect clusters within the location"
+  },
+  "managedkafka.ManagedKafkaConnectClient.list_connectors": {
+    "permissions": [
+      "managedkafka.connectors.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission on connectors within the connect cluster"
+  },
+  "managedkafka.ManagedKafkaConnectClient.list_locations": {
+    "permissions": [
+      "managedkafka.locations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list available locations"
+  },
+  "managedkafka.ManagedKafkaConnectClient.list_operations": {
+    "permissions": [
+      "managedkafka.operations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list long-running operations"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_connect_cluster_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_connector_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.parse_secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.pause_connector": {
+    "permissions": [
+      "managedkafka.connectors.pause"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires pause permission on the specific connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.restart_connector": {
+    "permissions": [
+      "managedkafka.connectors.restart"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires restart permission on the specific connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.resume_connector": {
+    "permissions": [
+      "managedkafka.connectors.resume"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires resume permission on the specific connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "managedkafka.ManagedKafkaConnectClient.stop_connector": {
+    "permissions": [
+      "managedkafka.connectors.stop"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires stop permission on the specific connector resource"
+  },
+  "managedkafka.ManagedKafkaConnectClient.update_connect_cluster": {
+    "permissions": [
+      "managedkafka.connectClusters.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates properties of a Kafka Connect cluster"
+  },
+  "managedkafka.ManagedKafkaConnectClient.update_connector": {
+    "permissions": [
+      "managedkafka.connectors.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates properties of a connector"
+  },
   "memcache.CloudMemcacheClient.apply_parameters": {
     "permissions": [
       "memcache.instances.applyParameters"
@@ -63239,6 +64643,178 @@
     "conditional": [],
     "local_helper": false,
     "notes": "Validates an import job, uses update permission for job modification operations"
+  },
+  "modelarmor.ModelArmorClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.create_template": {
+    "permissions": [
+      "modelarmor.templates.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new template resource"
+  },
+  "modelarmor.ModelArmorClient.delete_template": {
+    "permissions": [
+      "modelarmor.templates.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing template resource"
+  },
+  "modelarmor.ModelArmorClient.floor_setting_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.get_floor_setting": {
+    "permissions": [
+      "modelarmor.floorSettings.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves floor setting details"
+  },
+  "modelarmor.ModelArmorClient.get_location": {
+    "permissions": [
+      "modelarmor.locations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get location metadata"
+  },
+  "modelarmor.ModelArmorClient.get_template": {
+    "permissions": [
+      "modelarmor.templates.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves template details"
+  },
+  "modelarmor.ModelArmorClient.list_locations": {
+    "permissions": [
+      "modelarmor.locations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list available locations"
+  },
+  "modelarmor.ModelArmorClient.list_templates": {
+    "permissions": [
+      "modelarmor.templates.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists templates in a location"
+  },
+  "modelarmor.ModelArmorClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_floor_setting_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.parse_template_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.sanitize_model_response": {
+    "permissions": [
+      "modelarmor.templates.useToSanitizeModelResponse"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Uses template to sanitize model responses"
+  },
+  "modelarmor.ModelArmorClient.sanitize_user_prompt": {
+    "permissions": [
+      "modelarmor.templates.useToSanitizeUserPrompt"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Uses template to sanitize user prompts"
+  },
+  "modelarmor.ModelArmorClient.template_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "modelarmor.ModelArmorClient.update_floor_setting": {
+    "permissions": [
+      "modelarmor.floorSettings.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates floor setting parameters"
+  },
+  "modelarmor.ModelArmorClient.update_template": {
+    "permissions": [
+      "modelarmor.templates.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates template parameters"
   },
   "monitoring.AlertPolicyServiceClient.alert_policy_condition_path": {
     "permissions": [],

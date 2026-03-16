@@ -331,6 +331,17 @@
       "google.cloud.container_v1"
     ]
   },
+  "contentwarehouse": {
+    "pip_package": "google-cloud-contentwarehouse",
+    "display_name": "contentwarehouse",
+    "iam_prefix": "contentwarehouse",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.contentwarehouse",
+      "google.cloud.contentwarehouse_v1"
+    ]
+  },
   "datacatalog": {
     "pip_package": "google-cloud-datacatalog",
     "display_name": "datacatalog",
@@ -730,6 +741,17 @@
       "google.cloud.managedidentities_v1"
     ]
   },
+  "managedkafka": {
+    "pip_package": "google-cloud-managedkafka",
+    "display_name": "managedkafka",
+    "iam_prefix": "managedkafka",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.managedkafka",
+      "google.cloud.managedkafka_v1"
+    ]
+  },
   "memcache": {
     "pip_package": "google-cloud-memcache",
     "display_name": "memcache",
@@ -750,6 +772,17 @@
     "modules": [
       "google.cloud.migrationcenter",
       "google.cloud.migrationcenter_v1"
+    ]
+  },
+  "modelarmor": {
+    "pip_package": "google-cloud-modelarmor",
+    "display_name": "modelarmor",
+    "iam_prefix": "modelarmor",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.modelarmor",
+      "google.cloud.modelarmor_v1"
     ]
   },
   "monitoring": {
