@@ -1,7 +1,7 @@
 # GCP SDK IAM Permission Detector — Design Document
 
-**Status:** Implemented (P0–P4 complete)
-**Last Updated:** 2026-03-15
+**Status:** Complete
+**Last Updated:** 2026-03-16
 
 ---
 
@@ -9,101 +9,61 @@
 
 Developers using GCP client libraries need to know which IAM permissions their code requires. Today this requires manually cross-referencing SDK method names against scattered GCP documentation. There is no unified, machine-readable mapping from Python SDK method to IAM permission(s).
 
-## 2. Goals
+## 2. Solution
 
-- Automatically discover all installed `google-cloud-*` Python SDK packages
-- For every public method on every Client class, produce a static mapping to IAM permission(s)
-- Use **Gemini** and **Claude** to generate mappings at build time
-- Ship as a flat lookup file (`iam_permissions.json`) — zero network calls, zero LLM inference at runtime
-- Provide a clean `PermissionResolver` interface decoupling detection from mapping source
+A two-phase system:
+
+**Build time (offline, ~$6, ~50 min):** Analyze 8.8M lines of GCP SDK source code, extract REST URIs and docstrings, then use Claude to map 12,961 methods to IAM permissions. Output: `iam_permissions.json`.
+
+**Run time (<50ms):** Load the pre-built JSON, parse the user's Python source with tree-sitter, match GCP SDK calls, resolve permissions via O(1) lookup. Zero network calls, zero LLM inference.
 
 ## 3. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      BUILD TIME (offline)                          │
-│                                                                     │
-│  build_service_registry.py ──▶ service_registry.json               │
-│           │                                                         │
-│  fix_registry_metadata.py ──▶ corrects iam_prefix (Gemini)         │
-│           │                                                         │
-│  build_method_db.py ──▶ method_db.json (SDK introspection)         │
-│           │                                                         │
-│  gcloud iam roles list ──▶ iam_role_permissions.json               │
-│           │                                                         │
-│  build_permission_mapping.py ──▶ iam_permissions.json (Gemini)     │
-│           │                                                         │
-│  fill_mapping_gaps.py ──▶ fills gaps (Claude, with logging)        │
-└─────────────────────────────────────────────────────────────────────┘
+RUN TIME
+  Load JSON files → "google.cloud" in source? → tree-sitter parse → match calls → resolve permissions
+  (~39ms)                                                                          (O(1) lookup)
 
-┌─────────────────────────────────────────────────────────────────────┐
-│                      RUN TIME (analysis)                           │
-│                                                                     │
-│  Load 4 JSON files ──▶ tree-sitter parse ──▶ resolve permissions   │
-│  (~39ms)                                      (O(1) lookup)        │
-│                                                                     │
-│  Output: method, line, file, service_id, IAM permissions           │
-└─────────────────────────────────────────────────────────────────────┘
+BUILD TIME (build_pipeline/)
+  s01: Discover 130 installed SDK packages → service_registry.json
+  s02: Fix iam_prefix via Gemini → service_registry.json
+  s03: Introspect SDK classes → method_db.json (12,961 methods)
+  s04: Extract REST URIs + docstrings → method_context.json (tree-sitter + regex)
+  s05: Download IAM role catalog → data/iam_roles.json (2,073 roles, 12,879 permissions)
+  s06: LLM mapping (Config D+) → iam_permissions.json (12,961 entries, 119 services)
+  s07: Embedding-based validation
 ```
 
 ## 4. Key Interfaces
 
-### PermissionResolver
-
 ```python
 class PermissionResolver(ABC):
-    @abstractmethod
-    def resolve(self, service_id: str, class_name: str, method_name: str) -> PermissionResult | None: ...
+    def resolve(self, service_id, class_name, method_name) -> PermissionResult | None: ...
 
 @dataclass(frozen=True)
 class PermissionResult:
     permissions: list[str]              # e.g. ["bigquery.jobs.create"]
     conditional_permissions: list[str]  # e.g. ["storage.objects.delete"]
     is_local_helper: bool               # True for path builders, constructors
-    notes: str = ""
 ```
 
-`StaticPermissionResolver` loads `iam_permissions.json` for O(1) lookups. Key format: `{service_id}.{class_name}.{method_name}`, with `*` wildcard for class.
+`StaticPermissionResolver` loads `iam_permissions.json` for O(1) lookups.
 
-### MethodSig
+## 5. Runtime Performance
 
-```python
-@dataclass(frozen=True)
-class MethodSig:
-    min_args: int
-    max_args: int
-    has_var_kwargs: bool
-    class_name: str
-    service_id: str      # e.g. "bigquery"
-    display_name: str    # e.g. "BigQuery"
-```
+The scanner must not import GCP SDK packages at runtime.
 
-Matching: method name in `MethodDB` (dict lookup), then arg count within `[min_args, max_args]`.
+Measured: SDK introspection takes 13.4s (importing 130 packages). File scanning takes <1ms/file. All expensive work is pre-built as static JSON loaded at startup in ~39ms.
 
-## 5. Runtime Performance Constraint
+## 6. Static Artifacts
 
-**The scanner must not import GCP SDK packages at runtime.**
-
-Measured: `build_method_db()` imports 63 packages and introspects 14K signatures — takes 13.4 seconds. Actual file scanning takes 17ms for 25 files. Startup is 99.7% of wall time.
-
-The fix: `method_db.json` is a pre-built build artifact, loaded at runtime like `iam_permissions.json`. The runtime path is:
-
-```
-Load 3 JSON files (~1ms) → scan files (~0.05ms/file)
-```
-
-Build-time introspection stays in `introspect.py` but is only called by build scripts, never by the scanner or CLI.
-
-## 6. Static Build Artifacts
-
-Four JSON files checked into the repo. All generated by build scripts, loaded at runtime:
-
-| File | Size | Generated by | Contents |
-|---|---|---|---|
-| `service_registry.json` | 21KB | `build_service_registry.py` + `fix_registry_metadata.py` | 62 services, modules, IAM prefixes |
-| `method_db.json` | 2.8MB | `build_method_db.py` | 2,688 methods, 14,101 signatures |
-| `iam_permissions.json` | 1.7MB | `build_permission_mapping.py` + `fill_mapping_gaps.py` | 8,235 method→permission mappings |
-| `iam_role_permissions.json` | 532KB | `gcloud iam roles list` | 12,879 valid IAM permissions (ground truth) |
+| File | Size | Contents |
+|---|---|---|
+| `service_registry.json` | 33KB | 120 services, modules, IAM prefixes |
+| `method_db.json` | 4.7MB | 12,961 methods, 23,530 signatures |
+| `iam_permissions.json` | 3MB | 12,961 method→permission mappings, 119 services |
+| `data/iam_roles.json` | 6.4MB | 2,073 IAM roles, 12,879 valid permissions (ground truth) |
+| `iam_role_permissions.json` | 532KB | Flat permission index (derived from iam_roles.json) |
 
 ## 7. File Layout
 
@@ -111,82 +71,43 @@ Four JSON files checked into the repo. All generated by build scripts, loaded at
 src/gcp_sdk_detector/
 ├── models.py            # PermissionResult, MethodSig, Finding, ScanResult, ServiceEntry
 ├── resolver.py          # PermissionResolver ABC + StaticPermissionResolver
-├── scanner.py           # GCPCallScanner (async file I/O, sync parse)
+├── scanner.py           # GCPCallScanner (tree-sitter AST, async file I/O)
 ├── registry.py          # ServiceRegistry (loads service_registry.json)
-├── loader.py            # load_method_db() — deserializes method_db.json → MethodDB
+├── loader.py            # load_method_db() — deserializes method_db.json
 ├── introspect.py        # discover_gcp_packages(), build_method_db() — BUILD TIME ONLY
-├── cli.py               # CLI dispatcher (scan, services, permissions subcommands)
-└── terminal_output.py   # Pretty terminal output: colors, progress, source context
+├── cli.py               # CLI dispatcher (scan, services, permissions)
+└── terminal_output.py   # Colors, progress, source context display
 
-build/
-├── build_service_registry.py   # Step 1: discover installed google-cloud-* packages
-├── fix_registry_metadata.py    # Step 2: Gemini corrects iam_prefix + display_name
-├── build_method_db.py          # Step 3: SDK introspection → method_db.json
-├── build_permission_mapping.py # Step 5: Gemini maps methods → permissions
-└── fill_mapping_gaps.py        # Step 6: Claude fills remaining gaps
+build_pipeline/
+├── __main__.py          # CLI: python -m build_pipeline [--stage s04]
+├── pipeline.py          # Stage ABC, PipelineContext
+├── stats.py             # python -m build_pipeline.stats
+├── stages/s01-s07       # Pipeline stages
+├── extractors/          # gapic.py (rest_base.py), handwritten.py (tree-sitter), docstrings.py
+├── llm/                 # prompt.py (Config D+), claude.py, logger.py
+└── search/              # embedding_search.py, resource_filter.py
 
-docs/                    # Component documentation
-tests/                   # pytest (mirrors src/ structure)
+tests/                   # 277 tests (mirrors src/ + build_pipeline/)
+docs/                    # Design docs, case study, quality analysis
 ```
 
-## 8. Component Documentation
+## 8. Documentation
 
-| Component | Doc | Source |
-|---|---|---|
-| Scanner + import detection | [docs/scanner.md](docs/scanner.md) | `scanner.py` |
-| Service registry & naming | [docs/service-registry.md](docs/service-registry.md) | `registry.py` |
-| CLI subcommands | [docs/cli.md](docs/cli.md) | `cli.py` |
-| Build pipeline | [docs/build-pipeline.md](docs/build-pipeline.md) | `build/` |
-| Gemini mapping engine | [docs/gemini-mapping.md](docs/gemini-mapping.md) | `build/build_permission_mapping.py` |
-| Performance | [docs/performance.md](docs/performance.md) | `scanner.py` |
-| Permission search for prompts | [docs/permission-search.md](docs/permission-search.md) | `build/` |
+| Doc | What |
+|---|---|
+| [build-pipeline.md](docs/build-pipeline.md) | Build pipeline design, experiments, decisions |
+| [case-study-gemini-vs-claude.md](docs/case-study-gemini-vs-claude.md) | LLM comparison for structured output |
+| [v2-quality-analysis.md](docs/v2-quality-analysis.md) | v1 vs v2 accuracy analysis |
+| [exec-summary.md](docs/exec-summary.md) | Executive summary with scale stats |
+| [scanner.md](docs/scanner.md) | Runtime scanner architecture |
+| [cli.md](docs/cli.md) | CLI subcommands reference |
+| [service-registry.md](docs/service-registry.md) | Service naming and iam_prefix |
+| [performance.md](docs/performance.md) | Runtime performance measurements |
 
-## 9. Migration (Complete)
+## 9. Validated Results
 
-Legacy files (`gcp_code_infer.py`, `iam_perms.py`, `build/convert_legacy_perms.py`) have been deleted. All functionality is now in `src/gcp_sdk_detector/` with static JSON data files.
-
-## 10. Open Questions
-
-1. ~~**Async client duplication**~~ **RESOLVED**: AsyncClient skipped during build. Same methods, same permissions. Halves the method DB.
-2. ~~**Runtime startup**~~ **RESOLVED**: Measured 13.4s startup (SDK introspection) vs 17ms scan. Pre-build `method_db.json` at build time, load at runtime. See §5.
-3. **Version pinning**: pin discovery docs to specific versions to avoid mapping drift?
-4. **Coverage threshold**: 100% of non-private methods mapped or marked `local_helper`?
-4. ~~**False positive mitigation**: file-level check for GCP imports before reporting?~~ **RESOLVED**: Scanner requires GCP imports. No imports = no findings. Uses tree-sitter AST to extract imports, with fast `"google.cloud" in source` early exit.
-
-### Build Pipeline
-
-5. ~~**Resumability**~~ **RESOLVED**: `build_permission_mapping.py` saves after each batch and supports `--resume`. `fill_mapping_gaps.py` checkpoints per batch.
-6. **Observability**: Build scripts print progress to stderr but lack ETAs. Could add `[service 3/62]` format.
-7. ~~**Validation feedback loop**~~ **RESOLVED**: Post-processing strips hallucinated permissions against `iam_role_permissions.json`. Claude produces zero hallucinations when given filtered permission lists.
-8. **LLM reliability**: Gemini Flash is unreliable for JSON mode (504 timeouts, 53 errors in one run). Claude Sonnet is fast and reliable (251 batches, 0 errors). Claude is the primary LLM for gap-filling.
-
-### Registry
-
-9. **`service_id` != `iam_prefix` gotcha**: Documented in [docs/service-registry.md](docs/service-registry.md). Fixed via `fix_registry_metadata.py` (Gemini). Could add CI validation.
-10. **New service discovery**: When a user installs a new `google-cloud-*` package not in the registry, the scanner silently ignores it. Should we warn? Auto-add with defaults?
-
-### Permission Search
-
-11. **Hybrid search for prompt construction**: Embedding-based semantic search finds 5/6 cross-service permissions correctly. Design winner: resource filter + embedding search. `data/permission_embeddings.json` (519MB, gitignored) is pre-computed for future integration into build pipeline prompt construction.
-
-### Testing
-
-12. **Real-world repo testing**: Test against actual GCP codebases (e.g. `GoogleCloudPlatform/python-docs-samples`) to validate precision and recall. Should be `@pytest.mark.slow` integration tests.
-
-## 11. Milestones
-
-All phases follow **TDD**: write failing tests first, then implement, then refactor.
-
-| Phase | Deliverable | Tests |
-|---|---|---|
-| P0 | Repo bootstrap | smoke tests |
-| P1 | Data models + `PermissionResolver` + `StaticPermissionResolver` | test_models, test_resolver |
-| P2 | Service registry + SDK introspection | test_registry, test_introspect |
-| P3 | Scanner: import-aware, tree-sitter AST, async file I/O | test_scanner, test_scanner_real |
-| P4 | CLI subcommands | test_cli |
-| P5 | Build pipeline fetchers (async HTTP) | test_fetch |
-| P6 | Gemini mapping engine | test_mapping |
-| P7 | Validation + ground truth regression suite | test_known_mappings |
-| P8 | Performance benchmarks + E2E | test_perf, test_e2e |
-
-P0-P4 complete (167 tests). Gemini mapping running for 62 services.
+Tested against [GoogleCloudPlatform/python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples):
+- 3,642 Python files scanned
+- 2,375 GCP SDK calls detected
+- **100% mapped to permissions** (0 unmapped)
+- 463 unique permissions identified across 73 services
