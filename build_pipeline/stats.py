@@ -2,7 +2,6 @@
 
 Two modes:
 1. Standalone analyzer: `python -m build_pipeline.stats` reads artifacts from disk
-2. Execution tracker: PipelineStats collects counters during pipeline runs
 """
 
 from __future__ import annotations
@@ -10,8 +9,6 @@ from __future__ import annotations
 import importlib.metadata
 import json
 import re
-import time
-from dataclasses import dataclass, field
 from pathlib import Path
 
 # ── Per-artifact analyzers ──────────────────────────────────────────────────
@@ -340,40 +337,6 @@ def print_report(report: dict) -> None:
         ])
 
     print("\n" + "=" * 65)
-
-
-# ── Phase tracker (for pipeline execution) ──────────────────────────────────
-
-
-@dataclass
-class PipelineStats:
-    """Accumulated statistics during pipeline execution."""
-
-    start_time: float = field(default_factory=time.time)
-    phase_times: dict[str, float] = field(default_factory=dict)
-
-    def elapsed(self) -> float:
-        return time.time() - self.start_time
-
-    def start_phase(self, name: str) -> None:
-        self.phase_times[f"{name}_start"] = time.time()
-
-    def end_phase(self, name: str) -> None:
-        start = self.phase_times.get(f"{name}_start", time.time())
-        self.phase_times[name] = time.time() - start
-
-    def save(self, path: Path) -> None:
-        data = {
-            "elapsed_seconds": round(self.elapsed(), 1),
-            "phase_times": {
-                k: round(v, 1) for k, v in self.phase_times.items()
-                if not k.endswith("_start")
-            },
-        }
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────

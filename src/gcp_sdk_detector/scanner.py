@@ -106,12 +106,6 @@ def _count_positional_args(call_node: Node, src: bytes) -> int:
     return count
 
 
-def _extract_dotted_name(node: Node, src: bytes) -> str:
-    """Extract a dotted name from a tree-sitter node (e.g. 'google.cloud.storage')."""
-    if node.type == "dotted_name":
-        return _text(node, src)
-    return _text(node, src)
-
 
 def detect_gcp_imports(
     source: str,

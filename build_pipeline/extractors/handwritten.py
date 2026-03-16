@@ -120,19 +120,6 @@ def extract_storage(source: str | Path) -> dict[str, HandwrittenMethodContext]:
     return results
 
 
-def extract_dns(source: str | Path) -> dict[str, HandwrittenMethodContext]:
-    """Extract api_request(method=, path=) patterns from DNS client."""
-    content = _read_source(source)
-    if not content:
-        return {}
-
-    parser = Parser(PY)
-    tree = parser.parse(content.encode())
-
-    results: dict[str, HandwrittenMethodContext] = {}
-    _walk_for_call_api(tree.root_node, results, target="api_request")
-    return results
-
 
 def _walk_for_call_api(
     node: Node,

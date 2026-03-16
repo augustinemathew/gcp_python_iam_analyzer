@@ -17,7 +17,6 @@ _CYAN = "\033[36m"
 _GREEN = "\033[32m"
 _YELLOW = "\033[33m"
 _WHITE = "\033[37m"
-_BLUE = "\033[34m"
 
 
 def _supports_color() -> bool:
@@ -49,9 +48,6 @@ class Formatter:
 
     def yellow(self, text: str) -> str:
         return self._c(_YELLOW, text)
-
-    def blue(self, text: str) -> str:
-        return self._c(_BLUE, text)
 
 
 def _highlight_method_in_line(line: str, method_name: str, fmt: Formatter) -> str:
