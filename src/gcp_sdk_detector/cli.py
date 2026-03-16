@@ -275,43 +275,53 @@ def _print_search_results(
         print(f"No matches for '{pattern}'")
         return
 
-    # Column widths (from raw text, before color codes)
-    col1 = min(max(len(r[0]) for r in rows), 52)
-    col2 = min(max(len(r[1]) for r in rows), 50)
+    # Fixed column widths
+    col1 = 50
+    col2 = 48
 
     # Header
     print()
-    print(f"  {fmt.bold('Method'):<{col1 + 8}}  {fmt.bold('Permissions'):<{col2 + 8}}  {fmt.bold('Conditional')}")
+    print(
+        f"  {fmt.bold('Method')}{' ' * (col1 - 6)}  "
+        f"{fmt.bold('Permissions')}{' ' * (col2 - 11)}  "
+        f"{fmt.bold('Conditional')}"
+    )
     print(f"  {'─' * col1}  {'─' * col2}  {'─' * 30}")
 
-    # Rows with highlighting
     for key, perms, cond in rows:
-        # Color the method key: dim service, cyan class, bold method
-        parts = key.split(".")
-        if len(parts) >= 3:
-            svc, cls, method = parts[0], parts[1], ".".join(parts[2:])
-            display_key = f"{fmt.dim(svc + '.')}{cls}.{fmt.bold(method)}"
+        # Truncate raw text to column width
+        key_trunc = key[:col1]
+        perm_trunc = perms[:col2]
+
+        # Color the method key
+        display_key = _color_method_key(key_trunc, fmt)
+
+        # Color permissions
+        if perm_trunc.startswith("("):
+            display_perms = fmt.dim(perm_trunc)
         else:
-            display_key = key
+            display_perms = fmt.green(_highlight_match(perm_trunc, pattern, fmt))
 
-        # Highlight the match in permissions
-        display_perms = _highlight_match(perms, pattern, fmt)
-        if perms.startswith("("):
-            display_perms = fmt.dim(perms)
-        else:
-            display_perms = fmt.green(_highlight_match(perms, pattern, fmt))
+        display_cond = fmt.yellow(cond) if cond else ""
 
-        display_cond = ""
-        if cond:
-            display_cond = fmt.yellow(_highlight_match(cond, pattern, fmt))
-
-        # Pad using raw text length (color codes don't take terminal width)
-        key_pad = " " * max(0, col1 - len(key))
-        perm_pad = " " * max(0, col2 - len(perms))
+        # Pad based on raw (uncolored) text length
+        key_pad = " " * max(0, col1 - len(key_trunc))
+        perm_pad = " " * max(0, col2 - len(perm_trunc))
 
         print(f"  {display_key}{key_pad}  {display_perms}{perm_pad}  {display_cond}")
 
     print(f"\n  {fmt.bold(str(len(rows)))} result(s) for {fmt.yellow(repr(pattern))}")
+
+
+def _color_method_key(key: str, fmt: Formatter) -> str:
+    """Color a method key: dim service, normal class, bold method."""
+    parts = key.split(".")
+    if len(parts) >= 3:
+        svc = parts[0]
+        cls = parts[1]
+        method = ".".join(parts[2:])
+        return f"{fmt.dim(svc + '.')}{cls}.{fmt.bold(method)}"
+    return key
 
 
 # ── main ─────────────────────────────────────────────────────────────────
