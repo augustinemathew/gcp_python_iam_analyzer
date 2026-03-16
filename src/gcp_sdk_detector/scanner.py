@@ -17,49 +17,32 @@ import aiofiles
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
-from gcp_sdk_detector.models import GCP_IMPORT_MARKERS, Finding, MethodDB, MethodSig, ScanResult
+from gcp_sdk_detector.models import Finding, MethodDB, MethodSig, ScanResult
 from gcp_sdk_detector.registry import ServiceRegistry
 from gcp_sdk_detector.resolver import PermissionResolver
 
 # Fast string check — if this isn't in the file, skip parsing entirely
-# Uses GCP_IMPORT_MARKERS from models.py
 
 
 def build_module_to_service(registry: ServiceRegistry) -> dict[str, str]:
     """Derive module_name → service_id mapping from the service registry.
 
     Each service entry has a `modules` list like ["google.cloud.storage",
-    "google.ai.generativelanguage_v1"]. We strip "google." and map the
-    remainder to service_id. Also maps just the leaf for simple imports.
+    "google.pubsub_v1"]. We strip "google." and map the remainder to
+    service_id. Also maps the leaf for simple imports.
     """
     mapping: dict[str, str] = {}
     for service_id, entry in registry.all_entries().items():
         for mod_path in entry.modules:
-            # google.cloud.storage → cloud.storage
-            # google.ai.generativelanguage_v1 → ai.generativelanguage_v1
             after_google = mod_path.removeprefix("google.")
             mapping[after_google] = service_id
 
-            # Also strip the namespace for backward compat:
-            # cloud.storage → storage, security.privateca_v1 → security.privateca_v1
+            # Also map the leaf: cloud.storage → storage
             parts = after_google.split(".", 1)
             if len(parts) == 2:
                 mapping[parts[1]] = service_id
     return mapping
 
-
-def _derive_module_map_from_db(db: MethodDB) -> dict[str, str]:
-    """Fallback: derive module→service_id from MethodDB service_ids.
-
-    Maps each service_id to itself (e.g. "storage" → "storage").
-    Less precise than the registry (no versioned modules like kms_v1),
-    but works for tests that don't pass a registry.
-    """
-    mapping: dict[str, str] = {}
-    for sigs in db.values():
-        for sig in sigs:
-            mapping[sig.service_id] = sig.service_id
-    return mapping
 
 
 def _text(node: Node, src: bytes) -> str:
@@ -122,21 +105,12 @@ def detect_gcp_imports(
 ) -> set[str]:
     """Extract GCP service_ids imported in the source file.
 
-    Two-phase approach:
-    1. Fast string check: if "google.cloud" not in source, return empty (skip parse)
-    2. Walk tree-sitter AST import nodes for correct extraction
+    Uses module_to_service as the single source of truth — if an import
+    resolves to a service_id in the mapping, it's a GCP service import.
 
-    Args:
-        source: Python source code.
-        module_to_service: mapping from module name to service_id.
-        tree: pre-parsed tree-sitter tree (optional, avoids double parse).
-        src_bytes: pre-encoded source bytes (optional).
-
-    Returns:
-        Set of service_ids imported in the file. Empty = no GCP imports.
+    Returns set of service_ids. Empty = no GCP imports.
     """
-    # Fast early exit — no GCP imports anywhere in the file
-    if not any(m in source for m in GCP_IMPORT_MARKERS):
+    if "google." not in source:
         return set()
 
     if src_bytes is None:
@@ -175,8 +149,12 @@ def _handle_import_from(
     module_to_service: dict[str, str],
     service_ids: set[str],
 ) -> None:
-    """Handle 'from X import Y' statements."""
-    # Find the module path (dotted_name after 'from')
+    """Handle 'from X import Y' statements.
+
+    Two patterns:
+      from google.cloud import storage      → look up imported names in module_to_service
+      from google.cloud.storage import Client → resolve the module path directly
+    """
     module_node = None
     for child in node.children:
         if child.type == "dotted_name":
@@ -187,30 +165,31 @@ def _handle_import_from(
         return
 
     module_path = _text(module_node, src)
+    if not module_path.startswith("google."):
+        return
 
-    # Check if this is a GCP namespace import: from google.cloud import X, from google.ai import X
-    if any(module_path == marker for marker in GCP_IMPORT_MARKERS):
-        # from google.cloud import storage — imported names are module names
-        for child in node.children:
-            if child.type == "dotted_name" and child != module_node:
-                name = _text(child, src)
-                sid = module_to_service.get(name)
-                if sid:
-                    service_ids.add(sid)
-            elif child.type == "aliased_import":
-                for sub in child.children:
-                    if sub.type == "dotted_name":
-                        name = _text(sub, src)
-                        sid = module_to_service.get(name)
-                        if sid:
-                            service_ids.add(sid)
-                        break
+    # First try resolving the full module path (from google.cloud.storage import Client)
+    sid = _resolve_import_to_service(module_path, module_to_service)
+    if sid:
+        service_ids.add(sid)
+        return
 
-    elif any(module_path.startswith(marker + ".") for marker in GCP_IMPORT_MARKERS):
-        # from google.cloud.storage import Client
-        sid = _resolve_import_to_service(module_path, module_to_service)
-        if sid:
-            service_ids.add(sid)
+    # If the module path itself didn't resolve, try the imported names
+    # (from google.cloud import storage, bigquery)
+    for child in node.children:
+        if child.type == "dotted_name" and child != module_node:
+            name = _text(child, src)
+            sid = module_to_service.get(name)
+            if sid:
+                service_ids.add(sid)
+        elif child.type == "aliased_import":
+            for sub in child.children:
+                if sub.type == "dotted_name":
+                    name = _text(sub, src)
+                    sid = module_to_service.get(name)
+                    if sid:
+                        service_ids.add(sid)
+                    break
 
 
 def _resolve_import_to_service(
@@ -292,24 +271,21 @@ class GCPCallScanner:
         self._language = Language(tspython.language())
         self._parser = Parser(self._language)
 
-        if registry is not None:
-            self._module_to_service = build_module_to_service(registry)
-        else:
-            # Fallback: derive from MethodDB service_ids (less precise but works
-            # for tests that don't pass a registry)
-            self._module_to_service = _derive_module_map_from_db(db)
+        if registry is None:
+            raise ValueError("registry is required — it drives import detection")
+        self._module_to_service = build_module_to_service(registry)
 
     def scan_source(self, source: str, filename: str = "<stdin>") -> ScanResult:
         """Parse source and scan for GCP SDK calls. Sync.
 
-        Two-phase: fast "google.cloud" string check for early exit,
+        Two-phase: fast string check for early exit,
         then single tree-sitter parse shared between import detection
         and call scanning.
         """
         result = ScanResult(file=filename)
 
-        # Fast early exit — no GCP imports anywhere in the file
-        if not any(m in source for m in GCP_IMPORT_MARKERS):
+        # Fast early exit — no google.* imports anywhere in the file
+        if "google." not in source:
             return result
 
         # Single parse, shared between import detection and call walk

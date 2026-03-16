@@ -144,7 +144,6 @@ def _count_params(func_node: ast.FunctionDef) -> tuple[int, int, bool]:
 
 
 # Namespaces under google.* that contain GCP services with IAM permissions.
-# Must stay in sync with GCP_IMPORT_MARKERS in models.py.
 _GCP_NAMESPACES = frozenset({
     "cloud",        # 95%+ of GCP services
     "pubsub",       # google-cloud-pubsub → google.pubsub_v1

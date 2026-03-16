@@ -148,18 +148,18 @@ def simple_resolver(data_dir: Path) -> StaticPermissionResolver:
 
 
 class TestMethodNameExtraction:
-    def test_simple_method_call(self, simple_db, simple_resolver):
+    def test_simple_method_call(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("SELECT 1")'), "test.py")
         assert len(result.findings) == 1
         assert result.findings[0].method_name == "query"
 
-    def test_chained_attribute_call(self, simple_db, simple_resolver):
+    def test_chained_attribute_call(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
             _src('sc.bucket("b").blob("f").upload_from_filename("/tmp/x")'),
             "test.py",
@@ -167,24 +167,24 @@ class TestMethodNameExtraction:
         method_names = [f.method_name for f in result.findings]
         assert "upload_from_filename" in method_names
 
-    def test_bare_function_matches(self, simple_db, simple_resolver):
+    def test_bare_function_matches(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('query("SELECT 1")'), "test.py")
         assert len(result.findings) == 1
 
-    def test_unknown_method_no_match(self, simple_db, simple_resolver):
+    def test_unknown_method_no_match(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.unknown_method(arg)"), "test.py")
         assert len(result.findings) == 0
 
-    def test_deeply_nested_chain(self, simple_db, simple_resolver):
+    def test_deeply_nested_chain(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('a.b.c.d.query("sql")'), "test.py")
         assert len(result.findings) == 1
         assert result.findings[0].method_name == "query"
@@ -194,21 +194,21 @@ class TestMethodNameExtraction:
 
 
 class TestArgCounting:
-    def test_single_positional(self, simple_db, simple_resolver):
+    def test_single_positional(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert result.findings[0].arg_count == 1
 
-    def test_two_positional(self, simple_db, simple_resolver):
+    def test_two_positional(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", 30)'), "test.py")
         assert result.findings[0].arg_count == 2
 
-    def test_zero_positional_all_keyword(self, simple_db, simple_resolver):
+    def test_zero_positional_all_keyword(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         db = _make_db(
@@ -224,7 +224,7 @@ class TestArgCounting:
                 ],
             }
         )
-        scanner = GCPCallScanner(db, simple_resolver)
+        scanner = GCPCallScanner(db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
             _src('publisher.create_topic(request={"name": "t"})', _PS),
             "test.py",
@@ -233,35 +233,35 @@ class TestArgCounting:
         # keyword arg counts toward total (satisfies the parameter)
         assert result.findings[0].arg_count == 1
 
-    def test_mixed_positional_and_keyword(self, simple_db, simple_resolver):
+    def test_mixed_positional_and_keyword(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", timeout=30)'), "test.py")
         # 1 positional + 1 keyword = 2 total args
         assert result.findings[0].arg_count == 2
 
-    def test_kwargs_splat_ignored(self, simple_db, simple_resolver):
+    def test_kwargs_splat_ignored(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", **opts)'), "test.py")
         # 1 positional, **opts ignored (splat can match any number)
         assert result.findings[0].arg_count == 1
 
-    def test_args_splat_counts_zero(self, simple_db, simple_resolver):
+    def test_args_splat_counts_zero(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         db = _make_db({"close": [_sig(min_args=0, max_args=1)]})
-        scanner = GCPCallScanner(db, simple_resolver)
+        scanner = GCPCallScanner(db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.close(*args)"), "test.py")
         assert result.findings[0].arg_count == 0
 
-    def test_no_args(self, simple_db, simple_resolver):
+    def test_no_args(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         db = _make_db({"close": [_sig(min_args=0, max_args=0)]})
-        scanner = GCPCallScanner(db, simple_resolver)
+        scanner = GCPCallScanner(db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.close()"), "test.py")
         assert len(result.findings) == 1
         assert result.findings[0].arg_count == 0
@@ -271,31 +271,31 @@ class TestArgCounting:
 
 
 class TestSignatureMatching:
-    def test_exact_match(self, simple_db, simple_resolver):
+    def test_exact_match(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert len(result.findings) == 1
 
-    def test_too_many_args_no_match(self, simple_db, simple_resolver):
+    def test_too_many_args_no_match(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("a", "b", "c")'), "test.py")
         assert len(result.findings) == 0
 
-    def test_too_few_args_no_match(self, simple_db, simple_resolver):
+    def test_too_few_args_no_match(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.get_bucket()"), "test.py")
         assert len(result.findings) == 0
 
-    def test_var_kwargs_permissive(self, simple_db, simple_resolver):
+    def test_var_kwargs_permissive(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
             _src('publisher.publish(topic, data, ordering_key="k")'),
             "test.py",
@@ -304,10 +304,10 @@ class TestSignatureMatching:
         # 2 positional + 1 keyword = 3 total (matched because has_var_kwargs=True)
         assert result.findings[0].arg_count == 3
 
-    def test_var_kwargs_extra_positional(self, simple_db, simple_resolver):
+    def test_var_kwargs_extra_positional(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
             _src("publisher.publish(topic, data, e1, e2)"),
             "test.py",
@@ -315,24 +315,24 @@ class TestSignatureMatching:
         assert len(result.findings) == 1
         assert result.findings[0].arg_count == 4
 
-    def test_var_kwargs_too_few(self, simple_db, simple_resolver):
+    def test_var_kwargs_too_few(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("publisher.publish(topic_only)"), "test.py")
         assert len(result.findings) == 0
 
-    def test_range_match_at_min(self, simple_db, simple_resolver):
+    def test_range_match_at_min(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert len(result.findings) == 1
 
-    def test_range_match_at_max(self, simple_db, simple_resolver):
+    def test_range_match_at_max(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", 30)'), "test.py")
         assert len(result.findings) == 1
 
@@ -341,7 +341,7 @@ class TestSignatureMatching:
 
 
 class TestCrossServiceAmbiguity:
-    def test_filters_by_imports(self, data_dir):
+    def test_filters_by_imports(self, data_dir, test_registry):
         """get_iam_policy in storage+bigquery+kms; only imported ones match."""
         from gcp_sdk_detector.scanner import GCPCallScanner
 
@@ -374,14 +374,14 @@ class TestCrossServiceAmbiguity:
                 },
             },
         )
-        scanner = GCPCallScanner(db, resolver)
+        scanner = GCPCallScanner(db, resolver, registry=test_registry)
         # Import only storage and bigquery — kms should be filtered out
         source = _src('client.get_iam_policy("resource")', _GCS + _BQ)
         result = scanner.scan_source(source, "test.py")
         service_ids = {m.service_id for m in result.findings[0].matched}
         assert service_ids == {"storage", "bigquery"}
 
-    def test_class_specific_resolution(self, data_dir):
+    def test_class_specific_resolution(self, data_dir, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         db = _make_db(
@@ -414,7 +414,7 @@ class TestCrossServiceAmbiguity:
                 "pubsub.SubscriberClient.pull": {"permissions": ["pubsub.subscriptions.consume"]},
             },
         )
-        scanner = GCPCallScanner(db, resolver)
+        scanner = GCPCallScanner(db, resolver, registry=test_registry)
         r1 = scanner.scan_source(_src("publisher.publish(topic, data)", _PS), "test.py")
         assert r1.findings[0].permissions == ["pubsub.topics.publish"]
         r2 = scanner.scan_source(_src("subscriber.pull(subscription)", _PS), "test.py")
@@ -425,42 +425,42 @@ class TestCrossServiceAmbiguity:
 
 
 class TestPermissionResolution:
-    def test_mapped(self, simple_db, simple_resolver):
+    def test_mapped(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert result.findings[0].status == "mapped"
         assert result.findings[0].permissions == ["bigquery.jobs.create"]
 
-    def test_conditional(self, simple_db, simple_resolver):
+    def test_conditional(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('blob.upload_from_filename("/tmp/x")'), "test.py")
         assert result.findings[0].permissions == ["storage.objects.create"]
         assert result.findings[0].conditional_permissions == ["storage.objects.delete"]
 
-    def test_local_helper(self, simple_db, simple_resolver):
+    def test_local_helper(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.dataset("analytics")'), "test.py")
         assert result.findings[0].status == "no_api_call"
 
-    def test_unmapped(self, data_dir):
+    def test_unmapped(self, data_dir, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         db = _make_db({"new_method": [_sig(min_args=1, max_args=1)]})
         resolver = _make_resolver(data_dir, {})
-        scanner = GCPCallScanner(db, resolver)
+        scanner = GCPCallScanner(db, resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.new_method(arg)"), "test.py")
         assert result.findings[0].status == "unmapped"
 
-    def test_wildcard_class(self, simple_db, simple_resolver):
+    def test_wildcard_class(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('blob.upload_from_filename("p")'), "test.py")
         assert result.findings[0].status == "mapped"
 
@@ -469,10 +469,10 @@ class TestPermissionResolution:
 
 
 class TestRealWorldPatterns:
-    def test_demo_source(self, simple_db, simple_resolver):
+    def test_demo_source(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = textwrap.dedent("""\
             from google.cloud import storage, bigquery
             bq = bigquery.Client()
@@ -485,10 +485,10 @@ class TestRealWorldPatterns:
         assert "query" in methods
         assert "get_bucket" in methods
 
-    def test_path_builder_and_api_call(self, simple_db, simple_resolver):
+    def test_path_builder_and_api_call(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(
             textwrap.dedent("""\
             path = publisher.topic_path("proj", "topic")
@@ -501,10 +501,10 @@ class TestRealWorldPatterns:
         assert statuses["topic_path"] == "no_api_call"
         assert statuses["publish"] == "mapped"
 
-    def test_multiline_call(self, simple_db, simple_resolver):
+    def test_multiline_call(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(
             textwrap.dedent("""\
             result = client.query(
@@ -516,33 +516,33 @@ class TestRealWorldPatterns:
         assert len(result.findings) == 1
         assert result.findings[0].arg_count == 1
 
-    def test_empty_source(self, simple_db, simple_resolver):
+    def test_empty_source(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source("", "empty.py")
         assert result.findings == []
 
-    def test_syntax_error_source(self, simple_db, simple_resolver):
+    def test_syntax_error_source(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source("def broken(:\n  pass\n", "broken.py")
         assert result.findings == []
 
-    def test_call_text_truncated(self, simple_db, simple_resolver):
+    def test_call_text_truncated(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         long_arg = '"' + "x" * 200 + '"'
         result = scanner.scan_source(_src(f"client.query({long_arg})"), "test.py")
         assert len(result.findings) == 1
         assert len(result.findings[0].call_text) <= 120
 
-    def test_line_and_col_tracking(self, simple_db, simple_resolver):
+    def test_line_and_col_tracking(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         # 3 import lines + comment + assignment + query call
         source = _src("# comment\nx = 1\nresult = client.query('sql')\n")
         result = scanner.scan_source(source, "test.py")
@@ -554,19 +554,19 @@ class TestRealWorldPatterns:
 
 
 class TestScanResultAggregation:
-    def test_all_permissions_aggregated(self, simple_db, simple_resolver):
+    def test_all_permissions_aggregated(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src('client.query("sql")\nclient.get_bucket("b")\n')
         result = scanner.scan_source(source, "test.py")
         assert "bigquery.jobs.create" in result.all_permissions
         assert "storage.buckets.get" in result.all_permissions
 
-    def test_services_aggregated(self, simple_db, simple_resolver):
+    def test_services_aggregated(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src('client.query("sql")\nclient.get_bucket("b")\n')
         result = scanner.scan_source(source, "test.py")
         assert "BigQuery" in result.services
@@ -577,10 +577,10 @@ class TestScanResultAggregation:
 
 
 class TestAsyncScanning:
-    async def test_scan_files(self, simple_db, simple_resolver, tmp_path):
+    async def test_scan_files(self, simple_db, simple_resolver, test_registry, tmp_path):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         f1 = tmp_path / "a.py"
         f1.write_text(_src('client.query("sql")'))
         f2 = tmp_path / "b.py"
@@ -593,17 +593,17 @@ class TestAsyncScanning:
         assert len(results[1].findings) == 1
         assert len(results[2].findings) == 0
 
-    async def test_scan_files_empty_list(self, simple_db, simple_resolver):
+    async def test_scan_files_empty_list(self, simple_db, simple_resolver, test_registry):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         results = await scanner.scan_files([])
         assert results == []
 
-    async def test_scan_files_missing_file(self, simple_db, simple_resolver, tmp_path):
+    async def test_scan_files_missing_file(self, simple_db, simple_resolver, test_registry, tmp_path):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         with pytest.raises((FileNotFoundError, OSError)):
             await scanner.scan_files([tmp_path / "nonexistent.py"])
 
@@ -685,19 +685,19 @@ class TestImportDetection:
 
 
 class TestImportAwareFiltering:
-    def test_no_gcp_imports_no_findings(self, simple_db, simple_resolver):
+    def test_no_gcp_imports_no_findings(self, simple_db, simple_resolver, test_registry):
         """No GCP imports → no findings, even if method name matches."""
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source('client.query("SELECT 1")', "test.py")
         assert len(result.findings) == 0
 
-    def test_pandas_query_no_findings(self, simple_db, simple_resolver):
+    def test_pandas_query_no_findings(self, simple_db, simple_resolver, test_registry):
         """pandas .query() produces no findings — no GCP imports."""
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = textwrap.dedent("""\
             import pandas as pd
             df = pd.read_csv("data.csv")
@@ -706,7 +706,7 @@ class TestImportAwareFiltering:
         result = scanner.scan_source(source, "test.py")
         assert len(result.findings) == 0
 
-    def test_filters_to_imported_service(self, data_dir):
+    def test_filters_to_imported_service(self, data_dir, test_registry):
         """query() resolves to bigquery only when bigquery is imported."""
         from gcp_sdk_detector.scanner import GCPCallScanner
 
@@ -731,18 +731,18 @@ class TestImportAwareFiltering:
                 "spanner.SpannerClient.query": {"permissions": ["spanner.databases.read"]},
             },
         )
-        scanner = GCPCallScanner(db, resolver)
+        scanner = GCPCallScanner(db, resolver, registry=test_registry)
         source = _src('client.query("SELECT 1")', _BQ)
         result = scanner.scan_source(source, "test.py")
         assert len(result.findings) == 1
         assert {m.service_id for m in result.findings[0].matched} == {"bigquery"}
         assert result.findings[0].permissions == ["bigquery.jobs.create"]
 
-    def test_comments_and_strings_not_scanned(self, simple_db, simple_resolver):
+    def test_comments_and_strings_not_scanned(self, simple_db, simple_resolver, test_registry):
         """Comments and string literals don't produce findings."""
         from gcp_sdk_detector.scanner import GCPCallScanner
 
-        scanner = GCPCallScanner(simple_db, simple_resolver)
+        scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(
             textwrap.dedent("""\
             # client.query("SELECT 1")
