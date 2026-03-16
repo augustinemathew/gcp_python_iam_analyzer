@@ -1,24 +1,49 @@
 # GCP SDK IAM Permission Detector
 
-Statically analyzes Python source code to detect GCP SDK method calls and tells you exactly which IAM permissions your code requires.
+Statically analyzes Python source code to detect GCP SDK method calls and tells you exactly which IAM permissions your code requires — before deployment.
 
 ```
-$ gcp-sdk-detector scan app.py
+$ gcp-sdk-detector scan encrypt_symmetric.py create_secret.py grant_access_to_dataset.py
 
-app.py
-    12  client.create_key_ring(request={"parent": parent, "key_ring_id": id})
-        → cloudkms.keyRings.create
-
-    18  client.encrypt(request={"name": key_name, "plaintext": data})
+encrypt_symmetric.py
+    56  encrypt_response = client.encrypt(
         → cloudkms.cryptoKeyVersions.useToEncrypt
 
+create_secret.py
+    61  response = client.create_secret(
+        → secretmanager.secrets.create
+
+grant_access_to_dataset.py
+    51  dataset = client.get_dataset(dataset_id)
+        → bigquery.datasets.get
+    77  dataset = client.update_dataset(
+        → bigquery.datasets.update
+        ⚠ conditional: bigquery.datasets.get
+
 ──────────────────────────────────────────────────
-1 file(s), 2 finding(s)
+3 file(s), 4 finding(s)
+Services: bigquery, kms, secretmanager
 
 Required permissions:
-  • cloudkms.keyRings.create
+  • bigquery.datasets.get
+  • bigquery.datasets.update
   • cloudkms.cryptoKeyVersions.useToEncrypt
+  • secretmanager.secrets.create
 ```
+
+For each GCP SDK call: the file, line number, code snippet, and the IAM permission required. The summary lists all unique permissions — that's the minimum IAM role needed to run the code.
+
+## Scale
+
+Tested against [GoogleCloudPlatform/python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples) (3,642 Python files):
+
+| Metric | Count |
+|---|---|
+| GCP SDK calls detected | 2,375 |
+| Mapped to permissions | 2,363 (**99%**) |
+| Unique permissions found | 463 |
+| Services detected | 73 |
+| Time | <30s |
 
 ## Install
 
@@ -33,14 +58,16 @@ pip install -e .
 gcp-sdk-detector scan app.py
 gcp-sdk-detector scan src/
 
+# Scan a cloned repo
+git clone --depth 1 https://github.com/GoogleCloudPlatform/python-docs-samples /tmp/samples
+gcp-sdk-detector scan /tmp/samples/kms/
+gcp-sdk-detector scan /tmp/samples/
+
 # JSON output (for CI/tooling)
 gcp-sdk-detector scan --json app.py
 
 # Compact one-line-per-finding (like ruff/mypy)
 gcp-sdk-detector scan --compact src/
-
-# Include local helpers (path builders, constructors)
-gcp-sdk-detector scan --show-all app.py
 
 # List all 119 mapped GCP services
 gcp-sdk-detector services
@@ -65,40 +92,24 @@ Runtime: <50ms per file. Zero network calls. All data is pre-built JSON.
 
 | File | What |
 |---|---|
-| `iam_permissions_v2.json` | 12,960 method → permission mappings across 119 services |
+| `iam_permissions.json` | 12,960 method → permission mappings across 119 services |
 | `method_db.json` | 12,961 SDK method signatures for call matching |
 | `service_registry.json` | 120 GCP services with module paths and IAM prefixes |
 | `data/iam_roles.json` | 2,073 IAM roles with 12,879 valid permissions (ground truth) |
-
-## Example: scan a real repo
-
-```bash
-git clone --depth 1 https://github.com/GoogleCloudPlatform/python-docs-samples /tmp/samples
-gcp-sdk-detector scan /tmp/samples/kms/
-```
-
-Output shows every GCP SDK call with its file, line number, code snippet, and the IAM permission required. The summary lists all unique permissions — that's the minimum IAM role needed to run the code.
 
 ## Build pipeline
 
 The permission mappings are pre-built and checked into the repo. You only need to re-run the build pipeline if SDK versions change or you want to add new services.
 
+The build pipeline analyzes 8.8 million lines of GCP SDK source code, extracts 52,841 REST API endpoints, and uses Claude Sonnet to map methods to permissions. Full run: ~50 min, ~$6 in API costs.
+
 ```bash
-# Install SDK packages
-pip install -e ".[dev]"
-
-# Run the full pipeline (~50 min, ~$6 in Claude API costs)
-python -m build_pipeline
-
-# Or run individual stages
-python -m build_pipeline --stage s04    # extract REST URIs from SDK source
-python -m build_pipeline --stage s06    # map permissions with LLM
-
-# Pipeline stats
-python -m build_pipeline.stats
+python -m build_pipeline              # run all stages
+python -m build_pipeline --stage s04  # extract REST URIs from SDK source
+python -m build_pipeline.stats        # pipeline stats
 ```
 
-See `docs/build-pipeline.md` for the full design and how it works.
+See `docs/build-pipeline.md` for the full design, experiments, and decisions.
 
 ## Development
 
@@ -108,14 +119,3 @@ make test     # 277 tests
 make lint     # ruff check
 make fmt      # ruff format
 ```
-
-## Project docs
-
-| Doc | What |
-|---|---|
-| `docs/build-pipeline.md` | Build pipeline design, experiments, and decisions |
-| `docs/case-study-gemini-vs-claude.md` | LLM comparison for structured output pipelines |
-| `docs/v2-quality-analysis.md` | v1 vs v2 accuracy analysis |
-| `docs/exec-summary.md` | Executive summary with scale stats |
-| `docs/scanner.md` | Runtime scanner architecture |
-| `docs/cli.md` | CLI subcommands reference |
