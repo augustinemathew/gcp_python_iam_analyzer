@@ -39,7 +39,7 @@ python -m build_pipeline run --stage s02
 
 This should be run after adding new services to the registry.
 
-## Known Services (123)
+## Known Services (129)
 
 See `service_registry.json` for the full authoritative list. Key services:
 

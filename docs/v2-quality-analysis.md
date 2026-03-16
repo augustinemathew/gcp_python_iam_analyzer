@@ -180,7 +180,7 @@ Config D+ is strictly better: more permissions, more valid, fewer gaps.
 | File | Purpose |
 |---|---|
 | `build_pipeline/stages/s06_permission_mapping.py` | v2 mapping with Config D+ + cross-service auto-resolve |
-| `build_pipeline/llm/prompt.py` | Config D+ and v1 fallback prompt builders |
+| `build_pipeline/stages/s06_permission_mapping.py` | Config D+ and v1 fallback prompt builders |
 | `build_pipeline/stats.py` | Artifact analyzer — `python -m build_pipeline.stats` |
 | `docs/exec-summary.md` | Executive summary with LLM comparison |
 | `/tmp/adjudication_results_full.json` | 158 ambiguous cases adjudicated by Claude |

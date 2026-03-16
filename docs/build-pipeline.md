@@ -130,7 +130,7 @@ Cross-service methods appear on every gapic client: `get_operation` → `{iam_pr
 | SDK lines of code parsed | 8.8 million |
 | REST endpoints extracted | 52,841 |
 | `rest_base.py` files parsed | 645 |
-| Methods in method DB | 13,193 |
+| Methods in method DB | 13,529 |
 | Methods auto-resolved (no LLM) | 8,283 |
 | Methods mapped by LLM | 4,678 |
 | LLM batches | 303 |
@@ -145,10 +145,10 @@ Cross-service methods appear on every gapic client: `get_operation` → `{iam_pr
 
 ```
 Pipeline: 303 batches, 302 ok, 1 error
-Output: iam_permissions.json — 13,193 entries
+Output: iam_permissions.json — 13,529 entries
 
 Permission Mappings:
-  Total entries:                 13,193
+  Total entries:                 13,529
   With permissions:              5,690
   With conditional:              121
   Local helpers:                 6,783
@@ -157,7 +157,7 @@ Permission Mappings:
   Services:                      122
 
 vs v1:
-  Mappings:     8,235 → 13,193 (+60%)
+  Mappings:     8,235 → 13,529 (+60%)
   With perms:   3,190 → 5,690  (+78%)
   Services:     62    → 122    (+97%)
   Unique perms: 2,253 → 4,005  (+78%)
@@ -197,13 +197,11 @@ vs v1:
 
 ```
 build_pipeline/
-├── __main__.py                    # CLI entry point
-├── pipeline.py                    # Stage ABC, PipelineContext
+├── __main__.py                    # CLI: add, refresh, stats, run
 ├── stats.py                       # python -m build_pipeline.stats
-├── stages/s01-s07                 # Pipeline stages
-├── extractors/                    # gapic.py, handwritten.py, docstrings.py
-├── llm/                           # prompt.py, claude.py, logger.py
-└── search/                        # embedding_search.py, resource_filter.py
+├── stages/                        # s01 (registry) through s07 (validate)
+│   └── s06_permission_mapping.py  # LLM mapping + prompts + logging
+└── extractors/                    # gapic.py (REST URIs + docstrings), handwritten.py
 ```
 
 ---

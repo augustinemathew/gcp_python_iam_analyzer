@@ -12,7 +12,7 @@ Statically analyzes Python source code to detect GCP SDK method calls and resolv
 | SDK Python source files scanned | 10,066 |
 | SDK lines of code analyzed | 8.8 million |
 | REST API endpoints extracted | 52,841 |
-| SDK methods mapped to permissions | ~12,000 |
+| SDK methods mapped to permissions | ~13,500 |
 | IAM roles in catalog | 2,073 |
 | Valid IAM permissions tracked | 12,879 |
 | GCP services covered | 122 |
@@ -26,7 +26,7 @@ REST URIs + Docstrings (method_context.json)
   ↓ Claude Sonnet (Config D+ prompts)
 IAM Permission Mappings (iam_permissions.json)
   ↓ validation against IAM role catalog
-Production output: ~12,000 method → permission mappings
+Production output: ~13,500 method → permission mappings
 ```
 
 ## LLM comparison: Claude vs Gemini
@@ -82,4 +82,4 @@ Traditional (v1):                        Config D+ (v2):
 
 ## Cost
 
-Full pipeline run (all 122 services): **~$6 in LLM API costs**, ~50 minutes.
+Full pipeline run (all 129 services): **~$6 in LLM API costs**, ~50 minutes.

@@ -94,7 +94,7 @@ Or use `python -m gcp_sdk_detector` instead of `gcp-sdk-detector`.
 
 1. Checks if the file imports from `google.cloud` — no imports means no findings (zero false positives)
 2. Parses the Python source with tree-sitter to find method calls
-3. Matches calls against a database of 23,994 GCP SDK method signatures across 4,745 methods
+3. Matches calls against a database of 24,330 GCP SDK method signatures across 4,914 methods
 4. Resolves each match to IAM permissions via a pre-built mapping
 
 Runtime: <50ms per file. Zero network calls. All data is pre-built JSON.
@@ -103,9 +103,9 @@ Runtime: <50ms per file. Zero network calls. All data is pre-built JSON.
 
 | File | What |
 |---|---|
-| `iam_permissions.json` | 13,193 method → permission mappings across 123 services |
-| `method_db.json` | 23,994 SDK method signatures across 4,745 methods |
-| `service_registry.json` | 123 GCP services with module paths and IAM prefixes |
+| `iam_permissions.json` | 13,529 method → permission mappings across 129 services |
+| `method_db.json` | 24,330 SDK method signatures across 4,914 methods |
+| `service_registry.json` | 129 GCP services with module paths and IAM prefixes |
 | `data/iam_roles.json` | 2,073 IAM roles with 12,879 valid permissions (ground truth) |
 
 ## Adding a new GCP service

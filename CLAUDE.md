@@ -21,7 +21,7 @@ Runtime must be fast. All expensive work (SDK introspection, Gemini inference) h
 ### Build time
 
 Generates static artifacts checked into the repo:
-- `service_registry.json` — 123 services, modules, IAM prefixes
+- `service_registry.json` — 129 services, modules, IAM prefixes
 - `iam_permissions.json` — method→permission mappings
 - `method_db.json` — pre-built method signature database
 - `iam_role_permissions.json` — 12,879 valid IAM permissions (ground truth)
@@ -44,7 +44,7 @@ pytest tests/test_scanner.py -k "test_query"   # run one test
 # CLI
 gcp-sdk-detector scan app.py src/              # scan files
 gcp-sdk-detector scan --json app.py            # JSON output
-gcp-sdk-detector services                      # list 123 services
+gcp-sdk-detector services                      # list 129 services
 gcp-sdk-detector permissions --service storage # show storage mappings
 
 # Build pipeline
