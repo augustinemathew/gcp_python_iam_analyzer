@@ -17693,6 +17693,408 @@
     "local_helper": false,
     "notes": "Updates repricing configuration for specific customer billing modifications"
   },
+  "cloudbuild.CloudBuildClient.approve_build": {
+    "permissions": [
+      "cloudbuild.builds.approve"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires approval permission to approve or reject pending builds"
+  },
+  "cloudbuild.CloudBuildClient.build_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.build_trigger_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.cancel_build": {
+    "permissions": [
+      "cloudbuild.builds.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Canceling a build requires update permission on the build resource"
+  },
+  "cloudbuild.CloudBuildClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.create_build": {
+    "permissions": [
+      "cloudbuild.builds.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates and starts a new build"
+  },
+  "cloudbuild.CloudBuildClient.create_build_trigger": {
+    "permissions": [
+      "cloudbuild.builds.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates build triggers which initiate builds, requires build creation permission"
+  },
+  "cloudbuild.CloudBuildClient.create_worker_pool": {
+    "permissions": [
+      "cloudbuild.workerpools.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates new worker pools"
+  },
+  "cloudbuild.CloudBuildClient.crypto_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.default_service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.delete_build_trigger": {
+    "permissions": [
+      "cloudbuild.builds.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deleting triggers affects build configuration, requires build update permission"
+  },
+  "cloudbuild.CloudBuildClient.delete_worker_pool": {
+    "permissions": [
+      "cloudbuild.workerpools.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes worker pools"
+  },
+  "cloudbuild.CloudBuildClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls"
+  },
+  "cloudbuild.CloudBuildClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls"
+  },
+  "cloudbuild.CloudBuildClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls"
+  },
+  "cloudbuild.CloudBuildClient.get_build": {
+    "permissions": [
+      "cloudbuild.builds.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves information about a specific build"
+  },
+  "cloudbuild.CloudBuildClient.get_build_trigger": {
+    "permissions": [
+      "cloudbuild.builds.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves build trigger information, requires build get permission"
+  },
+  "cloudbuild.CloudBuildClient.get_default_service_account": {
+    "permissions": [
+      "cloudbuild.builds.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Service account info is related to build execution permissions"
+  },
+  "cloudbuild.CloudBuildClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local helper for TLS configuration, no API calls"
+  },
+  "cloudbuild.CloudBuildClient.get_worker_pool": {
+    "permissions": [
+      "cloudbuild.workerpools.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves worker pool details"
+  },
+  "cloudbuild.CloudBuildClient.git_repository_link_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.github_enterprise_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.list_build_triggers": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists existing BuildTriggers in a project"
+  },
+  "cloudbuild.CloudBuildClient.list_builds": {
+    "permissions": [
+      "cloudbuild.builds.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists previously requested builds in a project"
+  },
+  "cloudbuild.CloudBuildClient.list_worker_pools": {
+    "permissions": [
+      "cloudbuild.workerpools.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists WorkerPools in a location"
+  },
+  "cloudbuild.CloudBuildClient.network_attachment_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.network_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_build_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_build_trigger_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_crypto_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_default_service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_git_repository_link_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_github_enterprise_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_network_attachment_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_network_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_repository_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_subscription_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_topic_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.parse_worker_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.receive_trigger_webhook": {
+    "permissions": [],
+    "conditional": [
+      "cloudbuild.builds.create"
+    ],
+    "local_helper": false,
+    "notes": "May create builds when webhook triggers a build"
+  },
+  "cloudbuild.CloudBuildClient.repository_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.retry_build": {
+    "permissions": [
+      "cloudbuild.builds.create"
+    ],
+    "conditional": [
+      "cloudbuild.builds.get"
+    ],
+    "local_helper": false,
+    "notes": "Creates new build based on existing build, may need get permission to read original build details"
+  },
+  "cloudbuild.CloudBuildClient.run_build_trigger": {
+    "permissions": [],
+    "conditional": [
+      "cloudbuild.builds.create"
+    ],
+    "local_helper": false,
+    "notes": "May create builds when trigger is executed"
+  },
+  "cloudbuild.CloudBuildClient.secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.subscription_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.topic_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "cloudbuild.CloudBuildClient.update_build_trigger": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a BuildTrigger by project ID and trigger ID"
+  },
+  "cloudbuild.CloudBuildClient.update_worker_pool": {
+    "permissions": [
+      "cloudbuild.workerpools.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a WorkerPool configuration"
+  },
+  "cloudbuild.CloudBuildClient.worker_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
   "compute.AcceleratorTypesClient.aggregated_list": {
     "permissions": [
       "compute.acceleratorTypes.list"
@@ -61260,6 +61662,354 @@
     "local_helper": false,
     "notes": "Updates principal access boundary policies at organization level"
   },
+  "iamadmin.IAMClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.create_role": {
+    "permissions": [
+      "iam.roles.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new custom role in the project or organization"
+  },
+  "iamadmin.IAMClient.create_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new service account in the project"
+  },
+  "iamadmin.IAMClient.create_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new key for the specified service account"
+  },
+  "iamadmin.IAMClient.delete_role": {
+    "permissions": [
+      "iam.roles.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a custom role (built-in roles cannot be deleted)"
+  },
+  "iamadmin.IAMClient.delete_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a service account and all associated keys"
+  },
+  "iamadmin.IAMClient.delete_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a service account key permanently"
+  },
+  "iamadmin.IAMClient.disable_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.disable"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Disables a service account immediately, preventing authentication"
+  },
+  "iamadmin.IAMClient.disable_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.disable"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Disables a service account key, can be re-enabled later"
+  },
+  "iamadmin.IAMClient.enable_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.enable"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Re-enables a previously disabled service account"
+  },
+  "iamadmin.IAMClient.enable_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.enable"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Re-enables a previously disabled service account key"
+  },
+  "iamadmin.IAMClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client factory method that reads credentials from file, no API call"
+  },
+  "iamadmin.IAMClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client factory method that uses provided credential info, no API call"
+  },
+  "iamadmin.IAMClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client factory method that reads JSON credentials from file, no API call"
+  },
+  "iamadmin.IAMClient.get_iam_policy": {
+    "permissions": [
+      "iam.iAMs.getIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get IAM policy for resource"
+  },
+  "iamadmin.IAMClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Deprecated helper method for mTLS configuration, no API call"
+  },
+  "iamadmin.IAMClient.get_role": {
+    "permissions": [
+      "iam.roles.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Retrieves the definition and metadata of a role"
+  },
+  "iamadmin.IAMClient.get_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Gets a specific service account"
+  },
+  "iamadmin.IAMClient.get_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Gets a specific service account key"
+  },
+  "iamadmin.IAMClient.key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.lint_policy": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Policy linting is a validation operation that doesn't require specific IAM permissions"
+  },
+  "iamadmin.IAMClient.list_roles": {
+    "permissions": [
+      "iam.roles.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists predefined or custom roles"
+  },
+  "iamadmin.IAMClient.list_service_account_keys": {
+    "permissions": [
+      "iam.serviceAccountKeys.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists keys for a service account"
+  },
+  "iamadmin.IAMClient.list_service_accounts": {
+    "permissions": [
+      "iam.serviceAccounts.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists service accounts in a project"
+  },
+  "iamadmin.IAMClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.parse_service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.patch_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates service account properties"
+  },
+  "iamadmin.IAMClient.query_auditable_services": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Queries available audit log services, no specific IAM permission required"
+  },
+  "iamadmin.IAMClient.query_grantable_roles": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Queries roles that can be granted on a resource, no specific IAM permission required"
+  },
+  "iamadmin.IAMClient.query_testable_permissions": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Queries testable permissions on a resource, no specific IAM permission required"
+  },
+  "iamadmin.IAMClient.service_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "iamadmin.IAMClient.set_iam_policy": {
+    "permissions": [
+      "iam.iAMs.setIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: set IAM policy for resource"
+  },
+  "iamadmin.IAMClient.sign_blob": {
+    "permissions": [
+      "iam.serviceAccounts.signBlob"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Signs a blob using service account key (deprecated method)"
+  },
+  "iamadmin.IAMClient.sign_jwt": {
+    "permissions": [
+      "iam.serviceAccounts.signJwt"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Signs a JWT using service account key (deprecated method)"
+  },
+  "iamadmin.IAMClient.test_iam_permissions": {
+    "permissions": [
+      "iam.iAMs.testIamPermissions"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: test IAM permissions"
+  },
+  "iamadmin.IAMClient.undelete_role": {
+    "permissions": [
+      "iam.roles.undelete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Restores a deleted custom role"
+  },
+  "iamadmin.IAMClient.undelete_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.undelete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Restores a deleted service account"
+  },
+  "iamadmin.IAMClient.update_role": {
+    "permissions": [
+      "iam.roles.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a custom role definition"
+  },
+  "iamadmin.IAMClient.update_service_account": {
+    "permissions": [
+      "iam.serviceAccounts.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates service account properties. Deprecated method, PatchServiceAccount should be used instead."
+  },
+  "iamadmin.IAMClient.upload_service_account_key": {
+    "permissions": [
+      "iam.serviceAccountKeys.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Uploads and associates a public key with a service account, creating a new service account key."
+  },
   "iap.IdentityAwareProxyAdminServiceClient.common_billing_account_path": {
     "permissions": [],
     "conditional": [],
@@ -88375,6 +89125,1152 @@
     "notes": "path builder (auto-detected)"
   },
   "videointelligence.VideoIntelligenceServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.asset_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.cancel_operation": {
+    "permissions": [
+      "livestream.operations.cancel"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: cancel long-running operation"
+  },
+  "videolivestream.LivestreamServiceClient.channel_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.clip_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.create_asset": {
+    "permissions": [
+      "livestream.assets.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new asset resource"
+  },
+  "videolivestream.LivestreamServiceClient.create_channel": {
+    "permissions": [
+      "livestream.channels.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new channel resource"
+  },
+  "videolivestream.LivestreamServiceClient.create_clip": {
+    "permissions": [
+      "livestream.clips.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new clip resource within a channel"
+  },
+  "videolivestream.LivestreamServiceClient.create_dvr_session": {
+    "permissions": [
+      "livestream.dvrSessions.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new DVR session within a channel"
+  },
+  "videolivestream.LivestreamServiceClient.create_event": {
+    "permissions": [
+      "livestream.events.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new event within a channel"
+  },
+  "videolivestream.LivestreamServiceClient.create_input": {
+    "permissions": [
+      "livestream.inputs.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new input resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_asset": {
+    "permissions": [
+      "livestream.assets.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing asset resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_channel": {
+    "permissions": [
+      "livestream.channels.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing channel resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_clip": {
+    "permissions": [
+      "livestream.clips.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing clip resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_dvr_session": {
+    "permissions": [
+      "livestream.dvrSessions.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing DVR session resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_event": {
+    "permissions": [
+      "livestream.events.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing event resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_input": {
+    "permissions": [
+      "livestream.inputs.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing input resource"
+  },
+  "videolivestream.LivestreamServiceClient.delete_operation": {
+    "permissions": [
+      "livestream.operations.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: delete long-running operation"
+  },
+  "videolivestream.LivestreamServiceClient.dvr_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.event_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor method, no API calls made"
+  },
+  "videolivestream.LivestreamServiceClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor method, no API calls made"
+  },
+  "videolivestream.LivestreamServiceClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor method, no API calls made"
+  },
+  "videolivestream.LivestreamServiceClient.get_asset": {
+    "permissions": [
+      "livestream.assets.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_channel": {
+    "permissions": [
+      "livestream.channels.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_clip": {
+    "permissions": [
+      "livestream.clips.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_dvr_session": {
+    "permissions": [
+      "livestream.dvrSessions.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_event": {
+    "permissions": [
+      "livestream.events.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_input": {
+    "permissions": [
+      "livestream.inputs.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.get_location": {
+    "permissions": [
+      "livestream.locations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get location metadata"
+  },
+  "videolivestream.LivestreamServiceClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Deprecated local helper method for mTLS configuration"
+  },
+  "videolivestream.LivestreamServiceClient.get_operation": {
+    "permissions": [
+      "livestream.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "videolivestream.LivestreamServiceClient.get_pool": {
+    "permissions": [
+      "livestream.pools.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.input_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.list_assets": {
+    "permissions": [
+      "livestream.assets.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_channels": {
+    "permissions": [
+      "livestream.channels.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_clips": {
+    "permissions": [
+      "livestream.clips.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_dvr_sessions": {
+    "permissions": [
+      "livestream.dvrSessions.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_events": {
+    "permissions": [
+      "livestream.events.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_inputs": {
+    "permissions": [
+      "livestream.inputs.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videolivestream.LivestreamServiceClient.list_locations": {
+    "permissions": [
+      "livestream.locations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list available locations"
+  },
+  "videolivestream.LivestreamServiceClient.list_operations": {
+    "permissions": [
+      "livestream.operations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list long-running operations"
+  },
+  "videolivestream.LivestreamServiceClient.network_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_asset_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_channel_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_clip_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_dvr_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_event_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_input_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_network_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.parse_secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.preview_input": {
+    "permissions": [
+      "livestream.inputs.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires input read access to preview streaming content"
+  },
+  "videolivestream.LivestreamServiceClient.secret_version_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videolivestream.LivestreamServiceClient.start_channel": {
+    "permissions": [
+      "livestream.channels.start"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Starts the specified channel and creates part of the video pipeline"
+  },
+  "videolivestream.LivestreamServiceClient.start_distribution": {
+    "permissions": [
+      "livestream.channels.start"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Starts distribution for a channel, using channels.start permission for channel-level distribution operations"
+  },
+  "videolivestream.LivestreamServiceClient.stop_channel": {
+    "permissions": [
+      "livestream.channels.stop"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Stops the specified channel and releases part of the video pipeline"
+  },
+  "videolivestream.LivestreamServiceClient.stop_distribution": {
+    "permissions": [
+      "livestream.channels.stop"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Stops distribution for a channel, using channels.stop permission for channel-level distribution operations"
+  },
+  "videolivestream.LivestreamServiceClient.update_channel": {
+    "permissions": [
+      "livestream.channels.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates the specified channel configuration"
+  },
+  "videolivestream.LivestreamServiceClient.update_dvr_session": {
+    "permissions": [
+      "livestream.dvrSessions.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates the specified DVR session configuration"
+  },
+  "videolivestream.LivestreamServiceClient.update_input": {
+    "permissions": [
+      "livestream.inputs.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates the specified input configuration"
+  },
+  "videolivestream.LivestreamServiceClient.update_pool": {
+    "permissions": [
+      "livestream.pools.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates the specified pool configuration"
+  },
+  "videostitcher.VideoStitcherServiceClient.cancel_operation": {
+    "permissions": [
+      "videostitcher.operations.cancel"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: cancel long-running operation"
+  },
+  "videostitcher.VideoStitcherServiceClient.cdn_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.create_cdn_key": {
+    "permissions": [
+      "videostitcher.cdnKeys.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.create_live_config": {
+    "permissions": [
+      "videostitcher.liveConfigs.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.create_live_session": {
+    "permissions": [
+      "videostitcher.liveSessions.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.create_slate": {
+    "permissions": [
+      "videostitcher.slates.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.create_vod_config": {
+    "permissions": [
+      "videostitcher.vodConfigs.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.create_vod_session": {
+    "permissions": [
+      "videostitcher.vodSessions.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.delete_cdn_key": {
+    "permissions": [
+      "videostitcher.cdnKeys.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.delete_live_config": {
+    "permissions": [
+      "videostitcher.liveConfigs.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.delete_operation": {
+    "permissions": [
+      "videostitcher.operations.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: delete long-running operation"
+  },
+  "videostitcher.VideoStitcherServiceClient.delete_slate": {
+    "permissions": [
+      "videostitcher.slates.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.delete_vod_config": {
+    "permissions": [
+      "videostitcher.vodConfigs.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor using credentials file"
+  },
+  "videostitcher.VideoStitcherServiceClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor using credentials info"
+  },
+  "videostitcher.VideoStitcherServiceClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Client constructor using credentials JSON"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_cdn_key": {
+    "permissions": [
+      "videostitcher.cdnKeys.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.get_live_ad_tag_detail": {
+    "permissions": [
+      "videostitcher.liveAdTagDetails.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "videostitcher.VideoStitcherServiceClient.get_live_config": {
+    "permissions": [
+      "videostitcher.liveConfigs.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific live config resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_live_session": {
+    "permissions": [
+      "videostitcher.liveSessions.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific live session resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local helper method for TLS configuration, makes no API calls"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_operation": {
+    "permissions": [
+      "videostitcher.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_slate": {
+    "permissions": [
+      "videostitcher.slates.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific slate resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_vod_ad_tag_detail": {
+    "permissions": [
+      "videostitcher.vodAdTagDetails.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific VOD ad tag detail resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_vod_config": {
+    "permissions": [
+      "videostitcher.vodConfigs.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific VOD config resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_vod_session": {
+    "permissions": [
+      "videostitcher.vodSessions.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific VOD session resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.get_vod_stitch_detail": {
+    "permissions": [
+      "videostitcher.vodStitchDetails.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires get permission for the specific VOD stitch detail resource"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_cdn_keys": {
+    "permissions": [
+      "videostitcher.cdnKeys.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for CDN keys in the specified location"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_live_ad_tag_details": {
+    "permissions": [
+      "videostitcher.liveAdTagDetails.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for live ad tag details in the specified live session"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_live_configs": {
+    "permissions": [
+      "videostitcher.liveConfigs.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for live configs in the specified location"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_operations": {
+    "permissions": [
+      "videostitcher.operations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list long-running operations"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_slates": {
+    "permissions": [
+      "videostitcher.slates.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for slates in the specified location"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_vod_ad_tag_details": {
+    "permissions": [
+      "videostitcher.vodAdTagDetails.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for VOD ad tag details in the specified VOD session"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_vod_configs": {
+    "permissions": [
+      "videostitcher.vodConfigs.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for VOD configs in the specified location"
+  },
+  "videostitcher.VideoStitcherServiceClient.list_vod_stitch_details": {
+    "permissions": [
+      "videostitcher.vodStitchDetails.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires list permission for VOD stitch details in the specified VOD session"
+  },
+  "videostitcher.VideoStitcherServiceClient.live_ad_tag_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.live_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.live_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_cdn_key_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_live_ad_tag_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_live_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_live_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_slate_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_vod_ad_tag_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_vod_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_vod_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.parse_vod_stitch_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.slate_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.update_cdn_key": {
+    "permissions": [
+      "videostitcher.cdnKeys.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires update permission on the CDN key resource being modified"
+  },
+  "videostitcher.VideoStitcherServiceClient.update_live_config": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires update permission on the live configuration resource being modified"
+  },
+  "videostitcher.VideoStitcherServiceClient.update_slate": {
+    "permissions": [
+      "videostitcher.slates.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires update permission on the slate resource being modified"
+  },
+  "videostitcher.VideoStitcherServiceClient.update_vod_config": {
+    "permissions": [
+      "videostitcher.vodConfigs.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Requires update permission on the VOD configuration resource being modified"
+  },
+  "videostitcher.VideoStitcherServiceClient.vod_ad_tag_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.vod_config_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.vod_session_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videostitcher.VideoStitcherServiceClient.vod_stitch_detail_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.create_job": {
+    "permissions": [
+      "transcoder.jobs.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a job in the specified region"
+  },
+  "videotranscoder.TranscoderServiceClient.create_job_template": {
+    "permissions": [
+      "transcoder.jobTemplates.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a job template in the specified region"
+  },
+  "videotranscoder.TranscoderServiceClient.delete_job": {
+    "permissions": [
+      "transcoder.jobs.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a job"
+  },
+  "videotranscoder.TranscoderServiceClient.delete_job_template": {
+    "permissions": [
+      "transcoder.jobTemplates.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes a job template"
+  },
+  "videotranscoder.TranscoderServiceClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Creates client instance using credentials file - no API call"
+  },
+  "videotranscoder.TranscoderServiceClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Creates client instance using credentials info - no API call"
+  },
+  "videotranscoder.TranscoderServiceClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Creates client instance using credentials JSON - no API call"
+  },
+  "videotranscoder.TranscoderServiceClient.get_job": {
+    "permissions": [
+      "transcoder.jobs.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Returns the job data"
+  },
+  "videotranscoder.TranscoderServiceClient.get_job_template": {
+    "permissions": [
+      "transcoder.jobTemplates.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Returns the job template data"
+  },
+  "videotranscoder.TranscoderServiceClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Deprecated method that returns endpoint and cert source - no API call"
+  },
+  "videotranscoder.TranscoderServiceClient.job_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.job_template_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.list_job_templates": {
+    "permissions": [
+      "transcoder.jobTemplates.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists job templates in the specified region"
+  },
+  "videotranscoder.TranscoderServiceClient.list_jobs": {
+    "permissions": [
+      "transcoder.jobs.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Lists jobs in the specified region"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_job_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "videotranscoder.TranscoderServiceClient.parse_job_template_path": {
     "permissions": [],
     "conditional": [],
     "local_helper": true,

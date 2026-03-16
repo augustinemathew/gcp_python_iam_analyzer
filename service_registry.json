@@ -277,6 +277,17 @@
       "google.cloud.channel_v1"
     ]
   },
+  "cloudbuild": {
+    "service_id": "cloudbuild",
+    "pip_package": "google-cloud-build",
+    "display_name": "Cloud Build",
+    "iam_prefix": "cloudbuild",
+    "modules": [
+      "google.cloud.devtools.cloudbuild",
+      "google.cloud.devtools.cloudbuild_v1",
+      "google.cloud.devtools.cloudbuild_v2"
+    ]
+  },
   "common": {
     "pip_package": "google-cloud-common",
     "display_name": "common",
@@ -662,6 +673,16 @@
       "google.cloud.iam_credentials_v1",
       "google.cloud.iam_v2",
       "google.cloud.iam_v3"
+    ]
+  },
+  "iamadmin": {
+    "service_id": "iamadmin",
+    "pip_package": "google-cloud-iam",
+    "display_name": "IAM Admin",
+    "iam_prefix": "iam",
+    "modules": [
+      "google.cloud.iam_admin",
+      "google.cloud.iam_admin_v1"
     ]
   },
   "iap": {
