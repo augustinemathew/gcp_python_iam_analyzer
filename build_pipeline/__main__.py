@@ -148,14 +148,12 @@ def ensure_monorepo(monorepo_path: Path | None = None) -> Path:
 
 
 def cmd_diff(args: argparse.Namespace) -> None:
-    """Show what the monorepo has that we don't."""
+    """Show what needs updating: new services, unmapped methods, empty permissions."""
     import json
+    import re
+    from collections import Counter
 
-    from build_pipeline.extractors.monorepo import (
-        discover_monorepo_packages,
-        find_client_files,
-        find_rest_bases_in_package,
-    )
+    from build_pipeline.extractors.monorepo import discover_monorepo_packages
 
     monorepo_root = ensure_monorepo(
         Path(args.monorepo) if args.monorepo else None
@@ -163,34 +161,74 @@ def cmd_diff(args: argparse.Namespace) -> None:
 
     with open("service_registry.json") as f:
         reg = json.load(f)
+    with open("method_db.json") as f:
+        db = json.load(f)
+    with open("iam_permissions.json") as f:
+        perms = json.load(f)
 
+    _LOCAL = [re.compile(r"^(common_\w+_path|parse_common_\w+_path)$"),
+              re.compile(r"^\w+_path$"), re.compile(r"^parse_\w+_path$")]
+    _SKIP = {"get_operation", "cancel_operation", "delete_operation",
+             "list_operations", "wait_operation", "get_location",
+             "list_locations", "get_iam_policy", "set_iam_policy",
+             "test_iam_permissions", "api_endpoint", "from_service_account_file",
+             "from_service_account_info", "get_mtls_endpoint_and_cert_source",
+             "get_transport_class", "universe_domain"}
+
+    def is_auto(mn: str) -> bool:
+        return any(p.match(mn) for p in _LOCAL) or mn in _SKIP
+
+    # 1. New services from monorepo
     mono_pkgs = discover_monorepo_packages(monorepo_root)
     installed = {entry["pip_package"] for entry in reg.values()}
-
     new_pkgs = [p for p in mono_pkgs if p.pip_package not in installed]
-    overlap = [p for p in mono_pkgs if p.pip_package in installed]
 
-    print(f"\nMonorepo: {len(mono_pkgs)} packages")
-    print(f"Already in registry: {len(overlap)}")
-    print(f"New (not in registry): {len(new_pkgs)}")
+    # 2. Unmapped methods
+    unmapped = []
+    for method_name, sigs in db.items():
+        for sig in sigs:
+            if "Async" in sig["class_name"] or is_auto(method_name):
+                continue
+            key = f"{sig['service_id']}.{sig['class_name']}.{method_name}"
+            if key not in perms and f"{sig['service_id']}.*.{method_name}" not in perms:
+                unmapped.append(key)
+
+    # 3. Empty permissions
+    empty = [k for k, v in perms.items()
+             if not v.get("permissions") and not v.get("local_helper")
+             and not is_auto(k.split(".")[-1])]
+
+    # Report
+    print(f"\n{'='*60}")
+    print("  BUILD PIPELINE DIFF")
+    print(f"{'='*60}")
+    print(f"  New services (monorepo):    {len(new_pkgs)}")
+    print(f"  Unmapped methods:           {len(unmapped)}")
+    print(f"  Empty permissions (stale):  {len(empty)}")
+    total_work = len(unmapped) + len(empty)
+    print(f"  Total methods to map/remap: {total_work}")
+    print(f"  Estimated batches:          {(total_work + 14) // 15}")
 
     if new_pkgs:
-        print(f"\n{'Package':<45} {'Methods':>8} {'REST':>6}")
-        print("-" * 65)
-        total_m = total_r = 0
-        for pkg in sorted(new_pkgs, key=lambda p: p.pip_package):
-            clients = find_client_files(pkg.package_path)
-            from build_pipeline.extractors.monorepo import extract_methods_from_source
+        print("\n  New services:")
+        for p in sorted(new_pkgs, key=lambda x: x.pip_package)[:15]:
+            print(f"    {p.pip_package}")
+        if len(new_pkgs) > 15:
+            print(f"    ... and {len(new_pkgs) - 15} more")
 
-            methods = sum(len(extract_methods_from_source(c)) for c in clients)
-            from build_pipeline.extractors.gapic import extract_rest_endpoints
+    if unmapped:
+        svc_counts = Counter(k.split(".")[0] for k in unmapped)
+        print("\n  Unmapped by service (top 10):")
+        for svc, count in svc_counts.most_common(10):
+            print(f"    {svc:<30} {count:>4}")
 
-            rbs = find_rest_bases_in_package(pkg.package_path)
-            rest = sum(len(extract_rest_endpoints(rb)) for rb in rbs)
-            total_m += methods
-            total_r += rest
-            print(f"  {pkg.pip_package:<43} {methods:>8} {rest:>6}")
-        print(f"  {'TOTAL':<43} {total_m:>8} {total_r:>6}")
+    if empty:
+        svc_counts = Counter(k.split(".")[0] for k in empty)
+        print("\n  Empty permissions by service (top 10):")
+        for svc, count in svc_counts.most_common(10):
+            print(f"    {svc:<30} {count:>4}")
+
+    print(f"\n{'='*60}")
 
 
 # ── Subcommand: run (advanced — run individual stages) ───────────────────────
