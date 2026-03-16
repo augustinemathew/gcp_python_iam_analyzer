@@ -39,9 +39,9 @@ Tested against [GoogleCloudPlatform/python-docs-samples](https://github.com/Goog
 
 | Metric | Count |
 |---|---|
-| GCP SDK calls detected | 2,375 |
-| Mapped to permissions | 2,363 (**99%**) |
-| Unique permissions found | 463 |
+| GCP SDK calls detected | 2,501 |
+| Mapped to permissions | 2,501 (**100%**) |
+| Unique permissions found | 516 |
 | Services detected | 73 |
 | Time | <30s |
 
@@ -69,15 +69,19 @@ gcp-sdk-detector scan --json app.py
 # Compact one-line-per-finding (like ruff/mypy)
 gcp-sdk-detector scan --compact src/
 
+# Search methods and permissions (glob wildcards)
+gcp-sdk-detector search '*encrypt*'           # find encrypt-related methods
+gcp-sdk-detector search '*role*'              # find role-related methods
+gcp-sdk-detector search '*.create_bucket'     # exact method name
+gcp-sdk-detector search 'kms.*'               # all KMS methods
+gcp-sdk-detector search 'iam.roles.*'         # search by permission string
+gcp-sdk-detector search 'compute.Instances*'  # Compute Instances methods
+
 # List all mapped GCP services
 gcp-sdk-detector services
 
 # Show permission mappings for a service
 gcp-sdk-detector permissions --service storage
-gcp-sdk-detector permissions --service bigquery
-
-# JSON output for all mappings
-gcp-sdk-detector permissions --json
 ```
 
 Or use `python -m gcp_sdk_detector` instead of `gcp-sdk-detector`.
@@ -86,7 +90,7 @@ Or use `python -m gcp_sdk_detector` instead of `gcp-sdk-detector`.
 
 1. Checks if the file imports from `google.cloud` — no imports means no findings (zero false positives)
 2. Parses the Python source with tree-sitter to find method calls
-3. Matches calls against a database of 13,193 GCP SDK method signatures
+3. Matches calls against a database of 23,994 GCP SDK method signatures across 4,745 methods
 4. Resolves each match to IAM permissions via a pre-built mapping
 
 Runtime: <50ms per file. Zero network calls. All data is pre-built JSON.
@@ -96,7 +100,7 @@ Runtime: <50ms per file. Zero network calls. All data is pre-built JSON.
 | File | What |
 |---|---|
 | `iam_permissions.json` | 13,193 method → permission mappings across 123 services |
-| `method_db.json` | 13,193 SDK method signatures for call matching |
+| `method_db.json` | 23,994 SDK method signatures across 4,745 methods |
 | `service_registry.json` | 123 GCP services with module paths and IAM prefixes |
 | `data/iam_roles.json` | 2,073 IAM roles with 12,879 valid permissions (ground truth) |
 
@@ -147,7 +151,7 @@ See `docs/build-pipeline.md` for the full design, experiments, and decisions.
 
 ```bash
 pip install -e ".[dev]"
-make test     # 277 tests
+make test     # 281 tests
 make lint     # ruff check
 make fmt      # ruff format
 ```

@@ -186,6 +186,69 @@ def cmd_permissions(args: argparse.Namespace) -> int:
     return 0
 
 
+# ── search ──────────────────────────────────────────────────────────────
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    """Search permission mappings using glob-style patterns."""
+    import fnmatch
+
+    perms_path = Path(args.permissions) if hasattr(args, "permissions") else _DEFAULT_PERMISSIONS
+    resolver = StaticPermissionResolver(perms_path)
+    entries = resolver.all_entries()
+
+    pattern = args.pattern
+
+    # Match against method keys (e.g. "*.encrypt", "kms.*", "*role*")
+    matched = {}
+    for key, result in entries.items():
+        if fnmatch.fnmatch(key, pattern) or fnmatch.fnmatch(key.lower(), pattern.lower()) or any(fnmatch.fnmatch(p, pattern) or fnmatch.fnmatch(p.lower(), pattern.lower()) for p in result.permissions):
+            matched[key] = result
+
+    if not matched:
+        print(f"No matches for '{pattern}'")
+        return 0
+
+    if args.json:
+        data = {}
+        for key, result in sorted(matched.items()):
+            data[key] = {
+                "permissions": result.permissions,
+                "conditional": result.conditional_permissions,
+                "local_helper": result.is_local_helper,
+                "notes": result.notes,
+            }
+        print(json.dumps(data, indent=2))
+    else:
+        # Build table rows (skip local helpers unless --show-all)
+        rows = []
+        for key in sorted(matched):
+            result = matched[key]
+            if result.is_local_helper and not args.show_all:
+                continue
+            perms = ", ".join(result.permissions) if result.permissions else "(local helper)" if result.is_local_helper else "(none)"
+            cond = ", ".join(result.conditional_permissions) if result.conditional_permissions else ""
+            rows.append((key, perms, cond, result.notes))
+
+        if not rows:
+            print(f"No matches for '{pattern}'")
+            return 0
+
+        # Calculate column widths
+        max_key = min(max(len(r[0]) for r in rows), 55)
+        max_perm = min(max(len(r[1]) for r in rows), 50)
+
+        print(f"\n  {'Method':<{max_key}}  {'Permissions':<{max_perm}}  Conditional")
+        print(f"  {'─' * max_key}  {'─' * max_perm}  {'─' * 30}")
+        for key, perms, cond, _notes in rows:
+            key_s = key[:max_key]
+            perm_s = perms[:max_perm]
+            print(f"  {key_s:<{max_key}}  {perm_s:<{max_perm}}  {cond}")
+        print(f"\n  {len(rows)} result(s) for '{pattern}'")
+
+    return 0
+
+
 # ── main ─────────────────────────────────────────────────────────────────
 
 
@@ -200,21 +263,11 @@ def main():
               %(prog)s scan src/                    Scan all .py files in a directory
               %(prog)s scan --json app.py           JSON output for CI/tooling
               %(prog)s scan --show-all app.py       Include local helpers in output
-              %(prog)s services                     List all 62 GCP services
-              %(prog)s services --json              Machine-readable service registry
+              %(prog)s services                     List all GCP services
               %(prog)s permissions --service storage Show Storage permission mappings
-              %(prog)s permissions --json            Full permission database as JSON
-
-            how it works:
-              1. Detects google.cloud imports in each file (no imports = no findings)
-              2. Parses Python with tree-sitter to find method calls
-              3. Matches calls against a database of GCP SDK method signatures
-              4. Resolves each match to IAM permissions via iam_permissions.json
-
-            supported services:
-              62 GCP services including BigQuery, Cloud Storage, Pub/Sub, Secret Manager,
-              Cloud KMS, Compute Engine, Vertex AI, GKE, Firestore, Spanner, and more.
-              Run '%(prog)s services' for the full list.
+              %(prog)s search '*encrypt*'            Find encrypt-related methods
+              %(prog)s search '*role*'               Find role-related methods
+              %(prog)s search 'kms.*'                All KMS methods
         """),
     )
     parser.add_argument("--registry", default=str(_DEFAULT_REGISTRY), help=argparse.SUPPRESS)
@@ -300,6 +353,31 @@ def main():
     perm_p.add_argument("--service", help="filter by service_id (e.g. storage, bigquery)")
     perm_p.add_argument("--json", action="store_true", help="output as JSON")
 
+    # search
+    search_p = sub.add_parser(
+        "search",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        help="Search methods and permissions with wildcards",
+        description=textwrap.dedent("""\
+            Search the permission database using glob-style wildcards.
+
+            Matches against both method keys (service.Class.method) and
+            permission strings (iam_prefix.resource.action).
+        """),
+        epilog=textwrap.dedent("""\
+            examples:
+              %(prog)s '*encrypt*'             Find all encrypt-related methods
+              %(prog)s '*role*'                Find all role-related methods
+              %(prog)s 'kms.*'                 All KMS methods
+              %(prog)s 'compute.Instances*'    Compute Instances methods
+              %(prog)s '*.create'              All create methods
+              %(prog)s 'storage.buckets.*'     Search by permission string
+        """),
+    )
+    search_p.add_argument("pattern", help="glob pattern (use * for wildcard, ? for single char)")
+    search_p.add_argument("--json", action="store_true", help="output as JSON")
+    search_p.add_argument("--show-all", action="store_true", help="include local helpers")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -310,6 +388,7 @@ def main():
         "scan": cmd_scan,
         "services": cmd_services,
         "permissions": cmd_permissions,
+        "search": cmd_search,
     }
 
     handler = commands.get(args.command)
