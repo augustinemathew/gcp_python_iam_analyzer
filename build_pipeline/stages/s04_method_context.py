@@ -27,6 +27,7 @@ from build_pipeline.extractors.handwritten import (
     extract_bigquery,
     extract_storage,
 )
+from build_pipeline.extractors.monorepo import find_rest_bases_in_package
 
 # Hand-written client packages and their source file patterns
 _HANDWRITTEN_EXTRACTORS = {
@@ -63,6 +64,7 @@ def build_method_context(
     registry_path: Path,
     output_path: Path | None = None,
     filter_services: list[str] | None = None,
+    monorepo_root: Path | None = None,
 ) -> dict[str, dict]:
     """Build method_context.json for all methods in method_db.json.
 
@@ -99,9 +101,10 @@ def build_method_context(
             key = f"{service_id}.{class_name}.{method_name}"
             stats["total"] += 1
 
-            # Try gapic extraction
+            # Try gapic extraction (pip first, then monorepo)
             ctx = _try_gapic(
-                service_id, class_name, method_name, registry, rest_cache
+                service_id, class_name, method_name, registry, rest_cache,
+                monorepo_root=monorepo_root,
             )
             if ctx:
                 stats["gapic"] += 1
@@ -151,8 +154,13 @@ def _try_gapic(
     method_name: str,
     registry: dict,
     cache: dict[str, dict[str, dict[str, RestEndpoint]]],
+    monorepo_root: Path | None = None,
 ) -> MethodContext | None:
-    """Try to find a REST endpoint for this method in gapic rest_base.py."""
+    """Try to find a REST endpoint for this method in gapic rest_base.py.
+
+    Checks pip-installed packages first. If no rest_base.py found and
+    monorepo_root is provided, checks the monorepo filesystem.
+    """
     entry = registry.get(service_id, {})
     pip_package = entry.get("pip_package", "")
     if not pip_package:
@@ -161,11 +169,15 @@ def _try_gapic(
     # Cache rest_base endpoints per package
     if pip_package not in cache:
         cache[pip_package] = {}
-        rb_files = find_rest_base_files(pip_package)
+        if monorepo_root:
+            # Monorepo mode: read from filesystem
+            pkg_dir = monorepo_root / "packages" / pip_package
+            rb_files = find_rest_bases_in_package(pkg_dir) if pkg_dir.is_dir() else []
+        else:
+            # Pip mode: read from installed packages
+            rb_files = find_rest_base_files(pip_package)
         for rb in rb_files:
-            # Map service directory name → endpoints
-            # e.g. .../services/key_management_service/transports/rest_base.py
-            service_dir = rb.parent.parent.name  # "key_management_service"
+            service_dir = rb.parent.parent.name
             cache[pip_package][service_dir] = extract_rest_endpoints(rb)
 
     # Match class_name to service directory
