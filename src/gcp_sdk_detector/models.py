@@ -4,6 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# Google SDK namespace prefixes that contain GCP services with IAM permissions.
+# Used by the scanner for fast import detection and by the build pipeline
+# for package discovery. One source of truth.
+# NOTE: Only GCP services. Not google.ads, google.maps, google.shopping, google.apps —
+# those are separate products without GCP IAM permissions.
+GCP_IMPORT_MARKERS = (
+    "google.cloud",
+    "google.ai",
+    "google.monitoring",
+    "google.pubsub",
+)
+
 
 @dataclass(frozen=True)
 class PermissionResult:

@@ -53,8 +53,10 @@ def discover_monorepo_packages(monorepo_root: Path) -> list[MonorepoPackage]:
             continue
         if pkg_dir.name in SKIP_PACKAGES:
             continue
-        # Only google-cloud-* for now
-        if not pkg_dir.name.startswith("google-cloud-"):
+        # Only GCP packages (google-cloud-*, google-ai-*)
+        # Not google-ads, google-maps, google-shopping — no IAM permissions
+        if not (pkg_dir.name.startswith("google-cloud-") or
+                pkg_dir.name.startswith("google-ai-")):
             continue
 
         modules = _find_modules(pkg_dir)
@@ -141,8 +143,20 @@ def _count_params(func_node: ast.FunctionDef) -> tuple[int, int, bool]:
     return required, total, has_kwargs
 
 
+# Namespaces under google.* that contain GCP services with IAM permissions.
+# Must stay in sync with GCP_IMPORT_MARKERS in models.py.
+_GCP_NAMESPACES = frozenset({
+    "cloud", "ai", "monitoring", "pubsub", "pubsub_v1",
+})
+
+
 def _find_modules(pkg_dir: Path) -> list[str]:
-    """Find importable google.cloud.* modules in a package directory."""
+    """Find importable google.* modules in a package directory.
+
+    Handles google.cloud.*, google.ai.*, google.monitoring.*, etc.
+    For google.cloud (most packages): returns google.cloud.kms_v1, etc.
+    For flat namespaces (google.monitoring): returns google.monitoring_v3, etc.
+    """
     modules: set[str] = set()
 
     for init in pkg_dir.rglob("__init__.py"):
@@ -151,23 +165,29 @@ def _find_modules(pkg_dir: Path) -> list[str]:
         rel = init.parent.relative_to(pkg_dir)
         parts = rel.parts
 
-        # Must start with google/cloud/
-        if len(parts) < 3 or parts[0] != "google" or parts[1] != "cloud":
+        if len(parts) < 2 or parts[0] != "google":
             continue
 
-        # The module is the third part (e.g. kms_v1)
-        submod = parts[2]
-        if submod.startswith("_") or submod.startswith("."):
+        namespace = parts[1]
+        if namespace.startswith("_") or namespace not in _GCP_NAMESPACES:
             continue
 
-        # Build the full module path
-        module_path = ".".join(parts[:3])
-        modules.add(module_path)
+        if len(parts) >= 3:
+            # Nested: google.cloud.kms_v1, google.ai.generativelanguage_v1
+            submod = parts[2]
+            if submod.startswith("_"):
+                continue
+            modules.add(".".join(parts[:3]))
+        else:
+            # Flat: google.monitoring, google.pubsub_v1
+            modules.add(f"google.{namespace}")
 
     return sorted(modules)
 
 
 def _derive_service_id(pip_package: str) -> str:
     """Derive service_id from pip package name."""
-    suffix = pip_package.removeprefix("google-cloud-")
-    return suffix.replace("-", "")
+    for prefix in ("google-cloud-", "google-ai-"):
+        if pip_package.startswith(prefix):
+            return pip_package.removeprefix(prefix).replace("-", "")
+    return pip_package.removeprefix("google-").replace("-", "")

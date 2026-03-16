@@ -17,27 +17,34 @@ import aiofiles
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
-from gcp_sdk_detector.models import Finding, MethodDB, MethodSig, ScanResult
+from gcp_sdk_detector.models import GCP_IMPORT_MARKERS, Finding, MethodDB, MethodSig, ScanResult
 from gcp_sdk_detector.registry import ServiceRegistry
 from gcp_sdk_detector.resolver import PermissionResolver
 
 # Fast string check — if this isn't in the file, skip parsing entirely
-_GCP_IMPORT_MARKER = "google.cloud"
+# Uses GCP_IMPORT_MARKERS from models.py
 
 
 def build_module_to_service(registry: ServiceRegistry) -> dict[str, str]:
     """Derive module_name → service_id mapping from the service registry.
 
     Each service entry has a `modules` list like ["google.cloud.storage",
-    "google.cloud.kms_v1"]. We strip the "google.cloud." prefix to get
-    the import-level module name (e.g. "storage", "kms_v1") and map it
-    to the service_id.
+    "google.ai.generativelanguage_v1"]. We strip "google." and map the
+    remainder to service_id. Also maps just the leaf for simple imports.
     """
     mapping: dict[str, str] = {}
     for service_id, entry in registry.all_entries().items():
         for mod_path in entry.modules:
-            submodule = mod_path.removeprefix("google.cloud.")
-            mapping[submodule] = service_id
+            # google.cloud.storage → cloud.storage
+            # google.ai.generativelanguage_v1 → ai.generativelanguage_v1
+            after_google = mod_path.removeprefix("google.")
+            mapping[after_google] = service_id
+
+            # Also strip the namespace for backward compat:
+            # cloud.storage → storage, security.privateca_v1 → security.privateca_v1
+            parts = after_google.split(".", 1)
+            if len(parts) == 2:
+                mapping[parts[1]] = service_id
     return mapping
 
 
@@ -129,7 +136,7 @@ def detect_gcp_imports(
         Set of service_ids imported in the file. Empty = no GCP imports.
     """
     # Fast early exit — no GCP imports anywhere in the file
-    if _GCP_IMPORT_MARKER not in source:
+    if not any(m in source for m in GCP_IMPORT_MARKERS):
         return set()
 
     if src_bytes is None:
@@ -181,9 +188,9 @@ def _handle_import_from(
 
     module_path = _text(module_node, src)
 
-    if module_path == "google.cloud":
-        # from google.cloud import storage, bigquery
-        # The imported names are the module names
+    # Check if this is a GCP namespace import: from google.cloud import X, from google.ai import X
+    if any(module_path == marker for marker in GCP_IMPORT_MARKERS):
+        # from google.cloud import storage — imported names are module names
         for child in node.children:
             if child.type == "dotted_name" and child != module_node:
                 name = _text(child, src)
@@ -191,7 +198,6 @@ def _handle_import_from(
                 if sid:
                     service_ids.add(sid)
             elif child.type == "aliased_import":
-                # from google.cloud import storage as gcs
                 for sub in child.children:
                     if sub.type == "dotted_name":
                         name = _text(sub, src)
@@ -200,9 +206,8 @@ def _handle_import_from(
                             service_ids.add(sid)
                         break
 
-    elif module_path.startswith("google.cloud."):
+    elif any(module_path.startswith(marker + ".") for marker in GCP_IMPORT_MARKERS):
         # from google.cloud.storage import Client
-        # from google.cloud.security.privateca_v1 import CertificateAuthorityServiceClient
         sid = _resolve_import_to_service(module_path, module_to_service)
         if sid:
             service_ids.add(sid)
@@ -212,24 +217,26 @@ def _resolve_import_to_service(
     import_path: str,
     module_to_service: dict[str, str],
 ) -> str | None:
-    """Resolve a google.cloud.* import path to a service_id.
+    """Resolve a google.* import path to a service_id.
 
-    Tries progressively longer submodule paths to handle nested modules:
-      google.cloud.security.privateca_v1 → try security.privateca_v1, then security
-      google.cloud.storage → try storage
+    Strips 'google.' and tries progressively longer submodule paths:
+      google.cloud.security.privateca_v1 → cloud.security.privateca_v1, then security.privateca_v1, ...
+      google.ai.generativelanguage_v1 → ai.generativelanguage_v1, then generativelanguage_v1
     """
-    if not import_path.startswith("google.cloud."):
+    if not import_path.startswith("google."):
         return None
 
-    submodule = import_path.removeprefix("google.cloud.")
-    parts = submodule.split(".")
+    after_google = import_path.removeprefix("google.")
+    parts = after_google.split(".")
 
-    # Try full path first, then progressively shorter
-    for i in range(len(parts), 0, -1):
-        candidate = ".".join(parts[:i])
-        sid = module_to_service.get(candidate)
-        if sid:
-            return sid
+    # Try full path (cloud.storage), then without namespace (storage),
+    # then progressively shorter nested paths (security.privateca_v1 → privateca_v1)
+    for start in range(len(parts)):
+        for end in range(len(parts), start, -1):
+            candidate = ".".join(parts[start:end])
+            sid = module_to_service.get(candidate)
+            if sid:
+                return sid
 
     return None
 
@@ -302,7 +309,7 @@ class GCPCallScanner:
         result = ScanResult(file=filename)
 
         # Fast early exit — no GCP imports anywhere in the file
-        if _GCP_IMPORT_MARKER not in source:
+        if not any(m in source for m in GCP_IMPORT_MARKERS):
             return result
 
         # Single parse, shared between import detection and call walk
