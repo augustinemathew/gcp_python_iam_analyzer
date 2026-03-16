@@ -109,6 +109,86 @@ def _find_service_permissions(
     return sorted(found)
 
 
+def _find_permissions_hybrid(
+    batch: list[dict],
+    service_id: str,
+    iam_prefix: str,
+    all_perms: dict[str, list[str]],
+    perm_embeddings: object | None,
+    perm_labels: list[str] | None,
+    embed_model: object | None,
+    top_k: int = 50,
+) -> list[str]:
+    """Hybrid search: prefix lookup + semantic reranking.
+
+    1. Prefix lookup — get all permissions for the service
+    2. Semantic search — top 30 from corpus using method context as query
+    3. Merge candidates
+    4. Rerank everything by semantic similarity to the batch
+    """
+    import numpy as np
+
+    # Prefix lookup
+    prefix_results = set()
+    for try_prefix in [iam_prefix, service_id, f"cloud{service_id}"]:
+        if try_prefix in all_perms:
+            prefix_results.update(all_perms[try_prefix])
+
+    # If no embedding model, return prefix results only
+    if embed_model is None or perm_embeddings is None:
+        return sorted(prefix_results)[:top_k]
+
+    # Build query from batch methods
+    queries = []
+    for m in batch:
+        q = f"{service_id} {m.get('class_name', '')} {m.get('method_name', '')}"
+        if m.get("rest_uri"):
+            q += f" {m['rest_uri']}"
+        queries.append(q)
+    combined_query = " ".join(queries)
+
+    # Semantic search
+    q_emb = embed_model.encode([combined_query], normalize_embeddings=True)
+    scores = (q_emb @ perm_embeddings.T)[0]
+
+    # Merge: prefix + top 30 semantic
+    top_indices = np.argsort(scores)[::-1][:30]
+    candidates = set(prefix_results)
+    for i in top_indices:
+        candidates.add(perm_labels[i])
+
+    # Rerank all candidates by semantic similarity
+    perm_to_score = {perm_labels[i]: float(scores[i]) for i in range(len(perm_labels))}
+    ranked = sorted(candidates, key=lambda p: perm_to_score.get(p, 0), reverse=True)
+
+    return ranked[:top_k]
+
+
+def _load_embedding_index() -> tuple:
+    """Load the permission embedding index for hybrid search.
+
+    Returns (embeddings, labels, model) or (None, None, None) if unavailable.
+    """
+    index_path = Path("data/permission_embeddings.npz")
+    if not index_path.exists():
+        print("  No embedding index — using prefix-only search", file=sys.stderr)
+        return None, None, None
+
+    try:
+        import numpy as np
+        from sentence_transformers import SentenceTransformer
+
+        data = np.load(index_path, allow_pickle=True)
+        embeddings = data["embeddings"]
+        labels = list(data["permissions"])
+        model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        print(f"  Loaded embedding index ({len(labels)} permissions)", file=sys.stderr)
+        return embeddings, labels, model
+    except ImportError:
+        print("  sentence-transformers not installed — using prefix-only", file=sys.stderr)
+        return None, None, None
+
+
 def _save(mappings: dict, output_path: Path) -> None:
     with open(output_path, "w") as f:
         json.dump(dict(sorted(mappings.items())), f, indent=2)
@@ -236,19 +316,25 @@ def _build_prompt_for_batch(
     display_name: str,
     iam_prefix: str,
     valid_perms: dict[str, list[str]],
+    perm_embeddings: object | None = None,
+    perm_labels: list[str] | None = None,
+    embed_model: object | None = None,
 ) -> tuple[str, str]:
     """Build the appropriate prompt for a batch. Returns (prompt, tag)."""
-    svc_perms = _find_service_permissions(service_id, iam_prefix, valid_perms)
+    hint_perms = _find_permissions_hybrid(
+        batch, service_id, iam_prefix, valid_perms,
+        perm_embeddings, perm_labels, embed_model,
+    )
     has_rest = any(m.get("rest_uri") for m in batch)
 
     if has_rest:
         prompt = build_prompt_with_rest_context(
             service_id, display_name, iam_prefix, batch,
-            hint_permissions=svc_perms or None,
+            hint_permissions=hint_perms or None,
         )
-        return prompt, "D"
+        return prompt, "D+"
 
-    prompt = build_prompt_with_permission_list(service_id, display_name, batch, svc_perms)
+    prompt = build_prompt_with_permission_list(service_id, display_name, batch, hint_perms)
     return prompt, "v1"
 
 
@@ -266,6 +352,9 @@ def _run_llm_batches(
     total_batches = sum(
         (len(m) + BATCH_SIZE - 1) // BATCH_SIZE for m in by_service.values()
     )
+
+    # Load embedding model for hybrid permission search
+    perm_embeddings, perm_labels, embed_model = _load_embedding_index()
 
     logger = LLMLogger(log_dir, prefix="s06_mapping")
     import anthropic
@@ -286,6 +375,7 @@ def _run_llm_batches(
 
             prompt, tag = _build_prompt_for_batch(
                 batch, service_id, display_name, iam_prefix, valid_perms,
+                perm_embeddings, perm_labels, embed_model,
             )
 
             print(
