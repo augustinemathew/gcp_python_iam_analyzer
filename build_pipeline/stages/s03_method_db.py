@@ -49,6 +49,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build method_db.json")
     parser.add_argument("--registry", default="service_registry.json")
     parser.add_argument("--output", "-o", default="method_db.json")
+    parser.add_argument("--monorepo", help="Path to monorepo (accepted but not yet used by s03)")
     args = parser.parse_args()
     build_method_database(Path(args.registry), Path(args.output))
 

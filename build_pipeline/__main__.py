@@ -51,11 +51,14 @@ def cmd_add(args: argparse.Namespace) -> None:
         sys.exit(1)
     print("  Installed.", file=sys.stderr)
 
-    # Step 2: Rebuild registry + method DB + context (s01, s03, s04)
+    # Step 2: Sync monorepo for REST URI extraction
+    args.monorepo_root = ensure_monorepo()
+
+    # Step 3: Rebuild registry + method DB + context (s01, s03, s04)
     for stage_id in ["s01", "s03", "s04"]:
         _run_stage(stage_id, args)
 
-    # Step 3: Map new methods (s06, resume skips existing)
+    # Step 4: Map new methods (s06, resume skips existing)
     _run_stage("s06", args)
 
     print("\nDone. New service(s) added and mapped.", file=sys.stderr)
@@ -75,9 +78,10 @@ def cmd_refresh(args: argparse.Namespace) -> None:
         args.no_resume = True
     else:
         print(f"Refreshing {', '.join(args.service)}...", file=sys.stderr)
-        args.no_resume = True  # Force re-map for specified services
+        args.no_resume = True
 
-    # Rebuild context for the service(s), then re-map
+    args.monorepo_root = ensure_monorepo()
+
     _run_stage("s04", args)
     _run_stage("s06", args)
 
@@ -108,6 +112,41 @@ MONOREPO_URL = "https://github.com/googleapis/google-cloud-python.git"
 MONOREPO_DEFAULT_PATH = Path("/tmp/google-cloud-python")
 
 
+def ensure_monorepo(monorepo_path: Path | None = None) -> Path:
+    """Ensure the monorepo is cloned and up to date. Returns the path."""
+    root = monorepo_path or MONOREPO_DEFAULT_PATH
+
+    if root.exists():
+        print(f"Syncing monorepo at {root}...", file=sys.stderr)
+        result = subprocess.run(
+            ["git", "-C", str(root), "pull", "--ff-only"],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            # Pull failed (detached HEAD from --depth 1). Do a fetch + reset instead.
+            subprocess.run(
+                ["git", "-C", str(root), "fetch", "--depth", "1", "origin"],
+                capture_output=True, timeout=60,
+            )
+            subprocess.run(
+                ["git", "-C", str(root), "reset", "--hard", "origin/main"],
+                capture_output=True, timeout=60,
+            )
+        print("  Up to date.", file=sys.stderr)
+    else:
+        print(f"Cloning monorepo to {root}...", file=sys.stderr)
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", MONOREPO_URL, str(root)],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode != 0:
+            print(f"git clone failed:\n{result.stderr}", file=sys.stderr)
+            sys.exit(1)
+        print("  Done.", file=sys.stderr)
+
+    return root
+
+
 def cmd_diff(args: argparse.Namespace) -> None:
     """Show what the monorepo has that we don't."""
     import json
@@ -118,18 +157,9 @@ def cmd_diff(args: argparse.Namespace) -> None:
         find_rest_bases_in_package,
     )
 
-    monorepo_root = Path(args.monorepo) if args.monorepo else MONOREPO_DEFAULT_PATH
-
-    if not monorepo_root.exists():
-        print(f"Cloning monorepo to {monorepo_root}...", file=sys.stderr)
-        result = subprocess.run(
-            ["git", "clone", "--depth", "1", MONOREPO_URL, str(monorepo_root)],
-            capture_output=True, text=True,
-        )
-        if result.returncode != 0:
-            print(f"git clone failed:\n{result.stderr}", file=sys.stderr)
-            sys.exit(1)
-        print("  Done.", file=sys.stderr)
+    monorepo_root = ensure_monorepo(
+        Path(args.monorepo) if args.monorepo else None
+    )
 
     with open("service_registry.json") as f:
         reg = json.load(f)
@@ -175,6 +205,11 @@ def cmd_run(args: argparse.Namespace) -> None:
         stages_to_run = STAGE_ORDER[idx:]
     else:
         stages_to_run = STAGE_ORDER
+
+    # Sync monorepo if any source-analysis stage will run
+    source_stages = {"s01", "s03", "s04"}
+    if source_stages & set(stages_to_run):
+        args.monorepo_root = ensure_monorepo()
 
     print(f"Pipeline: {' → '.join(stages_to_run)}", file=sys.stderr)
     if args.service:
@@ -234,6 +269,10 @@ def _build_stage_argv(stage_id: str, args: argparse.Namespace) -> list[str]:
     model = getattr(args, "model", None)
     if stage_id == "s06" and model:
         argv.extend(["--model", model])
+
+    monorepo_root = getattr(args, "monorepo_root", None)
+    if stage_id in ("s01", "s03", "s04") and monorepo_root:
+        argv.extend(["--monorepo", str(monorepo_root)])
 
     no_resume = getattr(args, "no_resume", False)
     if stage_id == "s06" and no_resume:

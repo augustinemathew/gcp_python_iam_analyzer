@@ -40,6 +40,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Build service_registry.json")
     parser.add_argument("--output", "-o", default="service_registry.json")
+    parser.add_argument("--monorepo", help="Path to monorepo (accepted but not yet used by s01)")
     args = parser.parse_args()
     build_registry(Path(args.output))
 

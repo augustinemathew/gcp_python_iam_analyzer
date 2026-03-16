@@ -338,6 +338,7 @@ def main() -> None:
         "--output", "-o", default="method_context.json", help="Output path"
     )
     parser.add_argument("--service", action="append", dest="services")
+    parser.add_argument("--monorepo", help="Path to google-cloud-python monorepo")
     args = parser.parse_args()
 
     build_method_context(
@@ -345,6 +346,7 @@ def main() -> None:
         registry_path=Path(args.registry),
         output_path=Path(args.output),
         filter_services=args.services,
+        monorepo_root=Path(args.monorepo) if args.monorepo else None,
     )
 
 
