@@ -1,10 +1,21 @@
 {
+  "accessapproval": {
+    "pip_package": "google-cloud-access-approval",
+    "display_name": "accessapproval",
+    "iam_prefix": "accessapproval",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.accessapproval",
+      "google.cloud.accessapproval_v1"
+    ]
+  },
   "aiplatform": {
     "pip_package": "google-cloud-aiplatform",
-    "display_name": "Vertex AI",
+    "display_name": "aiplatform",
     "iam_prefix": "aiplatform",
-    "discovery_doc": "https://aiplatform.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/aiplatform",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.aiplatform",
       "google.cloud.aiplatform_v1"
@@ -12,7 +23,7 @@
   },
   "alloydb": {
     "pip_package": "google-cloud-alloydb",
-    "display_name": "AlloyDB",
+    "display_name": "alloydb",
     "iam_prefix": "alloydb",
     "discovery_doc": "",
     "iam_reference": "",
@@ -22,9 +33,53 @@
       "google.cloud.alloydb_v1alpha"
     ]
   },
+  "apigateway": {
+    "pip_package": "google-cloud-api-gateway",
+    "display_name": "apigateway",
+    "iam_prefix": "apigateway",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.apigateway",
+      "google.cloud.apigateway_v1"
+    ]
+  },
+  "apigeeconnect": {
+    "pip_package": "google-cloud-apigee-connect",
+    "display_name": "apigeeconnect",
+    "iam_prefix": "apigeeconnect",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.apigeeconnect",
+      "google.cloud.apigeeconnect_v1"
+    ]
+  },
+  "apikeys": {
+    "pip_package": "google-cloud-api-keys",
+    "display_name": "apikeys",
+    "iam_prefix": "apikeys",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.api_keys",
+      "google.cloud.api_keys_v2"
+    ]
+  },
+  "apphub": {
+    "pip_package": "google-cloud-apphub",
+    "display_name": "apphub",
+    "iam_prefix": "apphub",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.apphub",
+      "google.cloud.apphub_v1"
+    ]
+  },
   "artifactregistry": {
     "pip_package": "google-cloud-artifact-registry",
-    "display_name": "Artifact Registry",
+    "display_name": "artifactregistry",
     "iam_prefix": "artifactregistry",
     "discovery_doc": "",
     "iam_reference": "",
@@ -35,8 +90,8 @@
   },
   "asset": {
     "pip_package": "google-cloud-asset",
-    "display_name": "Cloud Asset Inventory",
-    "iam_prefix": "cloudasset",
+    "display_name": "asset",
+    "iam_prefix": "asset",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -44,9 +99,53 @@
       "google.cloud.asset_v1"
     ]
   },
+  "assuredworkloads": {
+    "pip_package": "google-cloud-assured-workloads",
+    "display_name": "assuredworkloads",
+    "iam_prefix": "assuredworkloads",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.assuredworkloads",
+      "google.cloud.assuredworkloads_v1"
+    ]
+  },
+  "automl": {
+    "pip_package": "google-cloud-automl",
+    "display_name": "automl",
+    "iam_prefix": "automl",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.automl",
+      "google.cloud.automl_v1"
+    ]
+  },
+  "backupdr": {
+    "pip_package": "google-cloud-backupdr",
+    "display_name": "backupdr",
+    "iam_prefix": "backupdr",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.backupdr",
+      "google.cloud.backupdr_v1"
+    ]
+  },
+  "baremetalsolution": {
+    "pip_package": "google-cloud-bare-metal-solution",
+    "display_name": "baremetalsolution",
+    "iam_prefix": "baremetalsolution",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.bare_metal_solution",
+      "google.cloud.bare_metal_solution_v2"
+    ]
+  },
   "batch": {
     "pip_package": "google-cloud-batch",
-    "display_name": "Batch",
+    "display_name": "batch",
     "iam_prefix": "batch",
     "discovery_doc": "",
     "iam_reference": "",
@@ -56,23 +155,79 @@
       "google.cloud.batch_v1alpha"
     ]
   },
+  "beyondcorpappconnections": {
+    "pip_package": "google-cloud-beyondcorp-appconnections",
+    "display_name": "beyondcorpappconnections",
+    "iam_prefix": "beyondcorpappconnections",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.beyondcorp_appconnections",
+      "google.cloud.beyondcorp_appconnections_v1"
+    ]
+  },
   "bigquery": {
     "pip_package": "google-cloud-bigquery",
-    "display_name": "BigQuery",
+    "display_name": "bigquery",
     "iam_prefix": "bigquery",
-    "discovery_doc": "https://bigquery.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/bigquery",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.bigquery",
       "google.cloud.bigquery_v2"
     ]
   },
+  "bigqueryconnection": {
+    "pip_package": "google-cloud-bigquery-connection",
+    "display_name": "bigqueryconnection",
+    "iam_prefix": "bigqueryconnection",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.bigquery_connection",
+      "google.cloud.bigquery_connection_v1"
+    ]
+  },
+  "bigquerydatatransfer": {
+    "pip_package": "google-cloud-bigquery-datatransfer",
+    "display_name": "bigquerydatatransfer",
+    "iam_prefix": "bigquerydatatransfer",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.bigquery_datatransfer",
+      "google.cloud.bigquery_datatransfer_v1"
+    ]
+  },
+  "bigqueryreservation": {
+    "pip_package": "google-cloud-bigquery-reservation",
+    "display_name": "bigqueryreservation",
+    "iam_prefix": "bigqueryreservation",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.bigquery_reservation",
+      "google.cloud.bigquery_reservation_v1"
+    ]
+  },
+  "bigquerystorage": {
+    "pip_package": "google-cloud-bigquery-storage",
+    "display_name": "bigquerystorage",
+    "iam_prefix": "bigquerystorage",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.bigquery_storage",
+      "google.cloud.bigquery_storage_v1",
+      "google.cloud.bigquery_storage_v1alpha"
+    ]
+  },
   "bigtable": {
     "pip_package": "google-cloud-bigtable",
-    "display_name": "Cloud Bigtable",
+    "display_name": "bigtable",
     "iam_prefix": "bigtable",
-    "discovery_doc": "https://bigtableadmin.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/bigtable",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.bigtable",
       "google.cloud.bigtable_v2"
@@ -80,18 +235,29 @@
   },
   "billing": {
     "pip_package": "google-cloud-billing",
-    "display_name": "Cloud Billing",
+    "display_name": "billing",
     "iam_prefix": "billing",
-    "discovery_doc": "https://cloudbilling.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/billing",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.billing",
       "google.cloud.billing_v1"
     ]
   },
+  "binaryauthorization": {
+    "pip_package": "google-cloud-binary-authorization",
+    "display_name": "binaryauthorization",
+    "iam_prefix": "binaryauthorization",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.binaryauthorization",
+      "google.cloud.binaryauthorization_v1"
+    ]
+  },
   "certificatemanager": {
     "pip_package": "google-cloud-certificate-manager",
-    "display_name": "Certificate Manager",
+    "display_name": "certificatemanager",
     "iam_prefix": "certificatemanager",
     "discovery_doc": "",
     "iam_reference": "",
@@ -102,8 +268,8 @@
   },
   "channel": {
     "pip_package": "google-cloud-channel",
-    "display_name": "Channel Services",
-    "iam_prefix": "cloudchannel",
+    "display_name": "channel",
+    "iam_prefix": "channel",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -111,57 +277,55 @@
       "google.cloud.channel_v1"
     ]
   },
-  "cloudfunctions": {
-    "pip_package": "google-cloud-functions",
-    "display_name": "Cloud Functions",
-    "iam_prefix": "cloudfunctions",
-    "discovery_doc": "https://cloudfunctions.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/cloudfunctions",
+  "common": {
+    "pip_package": "google-cloud-common",
+    "display_name": "common",
+    "iam_prefix": "common",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
-      "google.cloud.functions",
-      "google.cloud.functions_v1",
-      "google.cloud.functions_v2"
-    ]
-  },
-  "cloudscheduler": {
-    "pip_package": "google-cloud-scheduler",
-    "display_name": "Cloud Scheduler",
-    "iam_prefix": "cloudscheduler",
-    "discovery_doc": "https://cloudscheduler.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/cloudscheduler",
-    "modules": [
-      "google.cloud.scheduler",
-      "google.cloud.scheduler_v1"
-    ]
-  },
-  "cloudtasks": {
-    "pip_package": "google-cloud-tasks",
-    "display_name": "Cloud Tasks",
-    "iam_prefix": "cloudtasks",
-    "discovery_doc": "https://cloudtasks.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/cloudtasks",
-    "modules": [
-      "google.cloud.tasks",
-      "google.cloud.tasks_v2"
+      "google.cloud.common"
     ]
   },
   "compute": {
     "pip_package": "google-cloud-compute",
-    "display_name": "Compute Engine",
+    "display_name": "compute",
     "iam_prefix": "compute",
-    "discovery_doc": "https://compute.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/compute",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.compute",
       "google.cloud.compute_v1"
     ]
   },
+  "config": {
+    "pip_package": "google-cloud-config",
+    "display_name": "config",
+    "iam_prefix": "config",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.config",
+      "google.cloud.config_v1"
+    ]
+  },
+  "contactcenterinsights": {
+    "pip_package": "google-cloud-contact-center-insights",
+    "display_name": "contactcenterinsights",
+    "iam_prefix": "contactcenterinsights",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.contact_center_insights",
+      "google.cloud.contact_center_insights_v1"
+    ]
+  },
   "container": {
     "pip_package": "google-cloud-container",
-    "display_name": "Google Kubernetes Engine",
+    "display_name": "container",
     "iam_prefix": "container",
-    "discovery_doc": "https://container.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/container",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.container",
       "google.cloud.container_v1"
@@ -169,7 +333,7 @@
   },
   "datacatalog": {
     "pip_package": "google-cloud-datacatalog",
-    "display_name": "Data Catalog",
+    "display_name": "datacatalog",
     "iam_prefix": "datacatalog",
     "discovery_doc": "",
     "iam_reference": "",
@@ -178,9 +342,41 @@
       "google.cloud.datacatalog_v1"
     ]
   },
+  "dataflowclient": {
+    "pip_package": "google-cloud-dataflow-client",
+    "display_name": "dataflowclient",
+    "iam_prefix": "dataflowclient",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.dataflow"
+    ]
+  },
+  "dataform": {
+    "pip_package": "google-cloud-dataform",
+    "display_name": "dataform",
+    "iam_prefix": "dataform",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.dataform",
+      "google.cloud.dataform_v1"
+    ]
+  },
+  "datafusion": {
+    "pip_package": "google-cloud-data-fusion",
+    "display_name": "datafusion",
+    "iam_prefix": "datafusion",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.data_fusion",
+      "google.cloud.data_fusion_v1"
+    ]
+  },
   "dataplex": {
     "pip_package": "google-cloud-dataplex",
-    "display_name": "Dataplex",
+    "display_name": "dataplex",
     "iam_prefix": "dataplex",
     "discovery_doc": "",
     "iam_reference": "",
@@ -191,7 +387,7 @@
   },
   "dataproc": {
     "pip_package": "google-cloud-dataproc",
-    "display_name": "Dataproc",
+    "display_name": "dataproc",
     "iam_prefix": "dataproc",
     "discovery_doc": "",
     "iam_reference": "",
@@ -202,19 +398,31 @@
   },
   "datastore": {
     "pip_package": "google-cloud-datastore",
-    "display_name": "Cloud Datastore",
+    "display_name": "datastore",
     "iam_prefix": "datastore",
-    "discovery_doc": "https://datastore.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/datastore",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.datastore",
       "google.cloud.datastore_v1"
     ]
   },
+  "datastream": {
+    "pip_package": "google-cloud-datastream",
+    "display_name": "datastream",
+    "iam_prefix": "datastream",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.datastream",
+      "google.cloud.datastream_v1",
+      "google.cloud.datastream_v1alpha1"
+    ]
+  },
   "deploy": {
     "pip_package": "google-cloud-deploy",
-    "display_name": "Cloud Deploy",
-    "iam_prefix": "clouddeploy",
+    "display_name": "deploy",
+    "iam_prefix": "deploy",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -224,28 +432,73 @@
   },
   "dialogflow": {
     "pip_package": "google-cloud-dialogflow",
-    "display_name": "Dialogflow",
+    "display_name": "dialogflow",
     "iam_prefix": "dialogflow",
-    "discovery_doc": "https://dialogflow.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/dialogflow",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.dialogflow",
       "google.cloud.dialogflow_v2"
     ]
   },
+  "dialogflowcx": {
+    "pip_package": "google-cloud-dialogflow-cx",
+    "display_name": "dialogflowcx",
+    "iam_prefix": "dialogflowcx",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.dialogflowcx",
+      "google.cloud.dialogflowcx_v3"
+    ]
+  },
+  "discoveryengine": {
+    "pip_package": "google-cloud-discoveryengine",
+    "display_name": "discoveryengine",
+    "iam_prefix": "discoveryengine",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.discoveryengine",
+      "google.cloud.discoveryengine_v1",
+      "google.cloud.discoveryengine_v1alpha"
+    ]
+  },
+  "dlp": {
+    "pip_package": "google-cloud-dlp",
+    "display_name": "dlp",
+    "iam_prefix": "dlp",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.dlp",
+      "google.cloud.dlp_v2"
+    ]
+  },
+  "dms": {
+    "pip_package": "google-cloud-dms",
+    "display_name": "dms",
+    "iam_prefix": "dms",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.clouddms",
+      "google.cloud.clouddms_v1"
+    ]
+  },
   "dns": {
     "pip_package": "google-cloud-dns",
-    "display_name": "Cloud DNS",
+    "display_name": "dns",
     "iam_prefix": "dns",
-    "discovery_doc": "https://dns.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/dns",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.dns"
     ]
   },
   "documentai": {
     "pip_package": "google-cloud-documentai",
-    "display_name": "Document AI",
+    "display_name": "documentai",
     "iam_prefix": "documentai",
     "discovery_doc": "",
     "iam_reference": "",
@@ -256,7 +509,7 @@
   },
   "domains": {
     "pip_package": "google-cloud-domains",
-    "display_name": "Cloud Domains",
+    "display_name": "domains",
     "iam_prefix": "domains",
     "discovery_doc": "",
     "iam_reference": "",
@@ -265,20 +518,64 @@
       "google.cloud.domains_v1"
     ]
   },
+  "edgecontainer": {
+    "pip_package": "google-cloud-edgecontainer",
+    "display_name": "edgecontainer",
+    "iam_prefix": "edgecontainer",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.edgecontainer",
+      "google.cloud.edgecontainer_v1"
+    ]
+  },
+  "edgenetwork": {
+    "pip_package": "google-cloud-edgenetwork",
+    "display_name": "edgenetwork",
+    "iam_prefix": "edgenetwork",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.edgenetwork",
+      "google.cloud.edgenetwork_v1"
+    ]
+  },
   "errorreporting": {
     "pip_package": "google-cloud-error-reporting",
-    "display_name": "Error Reporting",
-    "iam_prefix": "clouderrorreporting",
+    "display_name": "errorreporting",
+    "iam_prefix": "errorreporting",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
       "google.cloud.error_reporting"
     ]
   },
+  "essentialcontacts": {
+    "pip_package": "google-cloud-essential-contacts",
+    "display_name": "essentialcontacts",
+    "iam_prefix": "essentialcontacts",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.essential_contacts",
+      "google.cloud.essential_contacts_v1"
+    ]
+  },
+  "eventarc": {
+    "pip_package": "google-cloud-eventarc",
+    "display_name": "eventarc",
+    "iam_prefix": "eventarc",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.eventarc",
+      "google.cloud.eventarc_v1"
+    ]
+  },
   "filestore": {
     "pip_package": "google-cloud-filestore",
-    "display_name": "Filestore",
-    "iam_prefix": "file",
+    "display_name": "filestore",
+    "iam_prefix": "filestore",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -288,18 +585,41 @@
   },
   "firestore": {
     "pip_package": "google-cloud-firestore",
-    "display_name": "Firestore",
-    "iam_prefix": "datastore",
-    "discovery_doc": "https://firestore.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/datastore",
+    "display_name": "firestore",
+    "iam_prefix": "firestore",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.firestore",
       "google.cloud.firestore_v1"
     ]
   },
+  "functions": {
+    "pip_package": "google-cloud-functions",
+    "display_name": "functions",
+    "iam_prefix": "functions",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.functions",
+      "google.cloud.functions_v1",
+      "google.cloud.functions_v2"
+    ]
+  },
+  "gkebackup": {
+    "pip_package": "google-cloud-gke-backup",
+    "display_name": "gkebackup",
+    "iam_prefix": "gkebackup",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.gke_backup",
+      "google.cloud.gke_backup_v1"
+    ]
+  },
   "gkehub": {
     "pip_package": "google-cloud-gke-hub",
-    "display_name": "GKE Hub",
+    "display_name": "gkehub",
     "iam_prefix": "gkehub",
     "discovery_doc": "",
     "iam_reference": "",
@@ -308,12 +628,23 @@
       "google.cloud.gkehub_v1"
     ]
   },
+  "gkemulticloud": {
+    "pip_package": "google-cloud-gke-multicloud",
+    "display_name": "gkemulticloud",
+    "iam_prefix": "gkemulticloud",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.gke_multicloud",
+      "google.cloud.gke_multicloud_v1"
+    ]
+  },
   "iam": {
     "pip_package": "google-cloud-iam",
-    "display_name": "IAM",
+    "display_name": "iam",
     "iam_prefix": "iam",
-    "discovery_doc": "https://iam.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/iam",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.iam",
       "google.cloud.iam_credentials",
@@ -322,12 +653,34 @@
       "google.cloud.iam_v3"
     ]
   },
+  "iap": {
+    "pip_package": "google-cloud-iap",
+    "display_name": "iap",
+    "iam_prefix": "iap",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.iap",
+      "google.cloud.iap_v1"
+    ]
+  },
+  "ids": {
+    "pip_package": "google-cloud-ids",
+    "display_name": "ids",
+    "iam_prefix": "ids",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.ids",
+      "google.cloud.ids_v1"
+    ]
+  },
   "kms": {
     "pip_package": "google-cloud-kms",
-    "display_name": "Cloud KMS",
-    "iam_prefix": "cloudkms",
-    "discovery_doc": "https://cloudkms.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/cloudkms",
+    "display_name": "kms",
+    "iam_prefix": "kms",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.kms",
       "google.cloud.kms_v1"
@@ -335,30 +688,51 @@
   },
   "language": {
     "pip_package": "google-cloud-language",
-    "display_name": "Cloud Natural Language",
+    "display_name": "language",
     "iam_prefix": "language",
-    "discovery_doc": "https://language.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/language",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.language",
       "google.cloud.language_v1",
       "google.cloud.language_v2"
     ]
   },
+  "lifesciences": {
+    "pip_package": "google-cloud-life-sciences",
+    "display_name": "lifesciences",
+    "iam_prefix": "lifesciences",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.lifesciences"
+    ]
+  },
   "logging": {
     "pip_package": "google-cloud-logging",
-    "display_name": "Cloud Logging",
+    "display_name": "logging",
     "iam_prefix": "logging",
-    "discovery_doc": "https://logging.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/logging",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.logging",
       "google.cloud.logging_v2"
     ]
   },
+  "managedidentities": {
+    "pip_package": "google-cloud-managed-identities",
+    "display_name": "managedidentities",
+    "iam_prefix": "managedidentities",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.managedidentities",
+      "google.cloud.managedidentities_v1"
+    ]
+  },
   "memcache": {
     "pip_package": "google-cloud-memcache",
-    "display_name": "Memorystore for Memcached",
+    "display_name": "memcache",
     "iam_prefix": "memcache",
     "discovery_doc": "",
     "iam_reference": "",
@@ -367,20 +741,42 @@
       "google.cloud.memcache_v1"
     ]
   },
+  "migrationcenter": {
+    "pip_package": "google-cloud-migrationcenter",
+    "display_name": "migrationcenter",
+    "iam_prefix": "migrationcenter",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.migrationcenter",
+      "google.cloud.migrationcenter_v1"
+    ]
+  },
   "monitoring": {
     "pip_package": "google-cloud-monitoring",
-    "display_name": "Cloud Monitoring",
+    "display_name": "monitoring",
     "iam_prefix": "monitoring",
-    "discovery_doc": "https://monitoring.googleapis.com/$discovery/rest?version=v3",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/monitoring",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.monitoring",
       "google.cloud.monitoring_v3"
     ]
   },
+  "netapp": {
+    "pip_package": "google-cloud-netapp",
+    "display_name": "netapp",
+    "iam_prefix": "netapp",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.netapp",
+      "google.cloud.netapp_v1"
+    ]
+  },
   "networkconnectivity": {
     "pip_package": "google-cloud-network-connectivity",
-    "display_name": "Network Connectivity Center",
+    "display_name": "networkconnectivity",
     "iam_prefix": "networkconnectivity",
     "discovery_doc": "",
     "iam_reference": "",
@@ -392,7 +788,7 @@
   },
   "networkmanagement": {
     "pip_package": "google-cloud-network-management",
-    "display_name": "Network Management",
+    "display_name": "networkmanagement",
     "iam_prefix": "networkmanagement",
     "discovery_doc": "",
     "iam_reference": "",
@@ -401,9 +797,32 @@
       "google.cloud.network_management_v1"
     ]
   },
+  "networksecurity": {
+    "pip_package": "google-cloud-network-security",
+    "display_name": "networksecurity",
+    "iam_prefix": "networksecurity",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.network_security",
+      "google.cloud.network_security_v1",
+      "google.cloud.network_security_v1alpha1"
+    ]
+  },
+  "networkservices": {
+    "pip_package": "google-cloud-network-services",
+    "display_name": "networkservices",
+    "iam_prefix": "networkservices",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.network_services",
+      "google.cloud.network_services_v1"
+    ]
+  },
   "notebooks": {
     "pip_package": "google-cloud-notebooks",
-    "display_name": "Vertex AI Workbench",
+    "display_name": "notebooks",
     "iam_prefix": "notebooks",
     "discovery_doc": "",
     "iam_reference": "",
@@ -415,8 +834,8 @@
   },
   "optimization": {
     "pip_package": "google-cloud-optimization",
-    "display_name": "Cloud Optimization",
-    "iam_prefix": "cloudoptimization",
+    "display_name": "optimization",
+    "iam_prefix": "optimization",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -426,7 +845,7 @@
   },
   "orgpolicy": {
     "pip_package": "google-cloud-org-policy",
-    "display_name": "Organization Policy",
+    "display_name": "orgpolicy",
     "iam_prefix": "orgpolicy",
     "discovery_doc": "",
     "iam_reference": "",
@@ -437,7 +856,7 @@
   },
   "osconfig": {
     "pip_package": "google-cloud-os-config",
-    "display_name": "VM Manager",
+    "display_name": "osconfig",
     "iam_prefix": "osconfig",
     "discovery_doc": "",
     "iam_reference": "",
@@ -449,8 +868,8 @@
   },
   "oslogin": {
     "pip_package": "google-cloud-os-login",
-    "display_name": "OS Login",
-    "iam_prefix": "compute",
+    "display_name": "oslogin",
+    "iam_prefix": "oslogin",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -458,20 +877,73 @@
       "google.cloud.oslogin_v1"
     ]
   },
+  "phishingprotection": {
+    "pip_package": "google-cloud-phishing-protection",
+    "display_name": "phishingprotection",
+    "iam_prefix": "phishingprotection",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.phishingprotection"
+    ]
+  },
+  "policytroubleshooter": {
+    "pip_package": "google-cloud-policy-troubleshooter",
+    "display_name": "policytroubleshooter",
+    "iam_prefix": "policytroubleshooter",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.policytroubleshooter",
+      "google.cloud.policytroubleshooter_v1"
+    ]
+  },
+  "privatecatalog": {
+    "pip_package": "google-cloud-private-catalog",
+    "display_name": "privatecatalog",
+    "iam_prefix": "privatecatalog",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.privatecatalog"
+    ]
+  },
   "pubsub": {
     "pip_package": "google-cloud-pubsub",
-    "display_name": "Pub/Sub",
+    "display_name": "pubsub",
     "iam_prefix": "pubsub",
-    "discovery_doc": "https://pubsub.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/pubsub",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.pubsub",
       "google.cloud.pubsub_v1"
     ]
   },
+  "quotas": {
+    "pip_package": "google-cloud-quotas",
+    "display_name": "quotas",
+    "iam_prefix": "quotas",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.cloudquotas",
+      "google.cloud.cloudquotas_v1"
+    ]
+  },
+  "recaptchaenterprise": {
+    "pip_package": "google-cloud-recaptcha-enterprise",
+    "display_name": "recaptchaenterprise",
+    "iam_prefix": "recaptchaenterprise",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.recaptchaenterprise",
+      "google.cloud.recaptchaenterprise_v1"
+    ]
+  },
   "recommender": {
     "pip_package": "google-cloud-recommender",
-    "display_name": "Recommender",
+    "display_name": "recommender",
     "iam_prefix": "recommender",
     "discovery_doc": "",
     "iam_reference": "",
@@ -482,10 +954,10 @@
   },
   "redis": {
     "pip_package": "google-cloud-redis",
-    "display_name": "Memorystore for Redis",
+    "display_name": "redis",
     "iam_prefix": "redis",
-    "discovery_doc": "https://redis.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/redis",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.redis",
       "google.cloud.redis_v1"
@@ -493,18 +965,29 @@
   },
   "resourcemanager": {
     "pip_package": "google-cloud-resource-manager",
-    "display_name": "Resource Manager",
+    "display_name": "resourcemanager",
     "iam_prefix": "resourcemanager",
-    "discovery_doc": "https://cloudresourcemanager.googleapis.com/$discovery/rest?version=v3",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/resourcemanager",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.resourcemanager",
       "google.cloud.resourcemanager_v3"
     ]
   },
+  "resourcesettings": {
+    "pip_package": "google-cloud-resource-settings",
+    "display_name": "resourcesettings",
+    "iam_prefix": "resourcesettings",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.resourcesettings",
+      "google.cloud.resourcesettings_v1"
+    ]
+  },
   "retail": {
     "pip_package": "google-cloud-retail",
-    "display_name": "Retail",
+    "display_name": "retail",
     "iam_prefix": "retail",
     "discovery_doc": "",
     "iam_reference": "",
@@ -516,29 +999,75 @@
   },
   "run": {
     "pip_package": "google-cloud-run",
-    "display_name": "Cloud Run",
+    "display_name": "run",
     "iam_prefix": "run",
-    "discovery_doc": "https://run.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/run",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.run",
       "google.cloud.run_v2"
     ]
   },
+  "scheduler": {
+    "pip_package": "google-cloud-scheduler",
+    "display_name": "scheduler",
+    "iam_prefix": "scheduler",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.scheduler",
+      "google.cloud.scheduler_v1"
+    ]
+  },
   "secretmanager": {
     "pip_package": "google-cloud-secret-manager",
-    "display_name": "Secret Manager",
+    "display_name": "secretmanager",
     "iam_prefix": "secretmanager",
-    "discovery_doc": "https://secretmanager.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/secretmanager",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.secretmanager",
       "google.cloud.secretmanager_v1"
     ]
   },
+  "securesourcemanager": {
+    "pip_package": "google-cloud-securesourcemanager",
+    "display_name": "securesourcemanager",
+    "iam_prefix": "securesourcemanager",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.securesourcemanager",
+      "google.cloud.securesourcemanager_v1"
+    ]
+  },
+  "securitycenter": {
+    "pip_package": "google-cloud-securitycenter",
+    "display_name": "securitycenter",
+    "iam_prefix": "securitycenter",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.securitycenter",
+      "google.cloud.securitycenter_v1",
+      "google.cloud.securitycenter_v2"
+    ]
+  },
+  "servicecontrol": {
+    "pip_package": "google-cloud-service-control",
+    "display_name": "servicecontrol",
+    "iam_prefix": "servicecontrol",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.servicecontrol",
+      "google.cloud.servicecontrol_v1",
+      "google.cloud.servicecontrol_v2"
+    ]
+  },
   "servicedirectory": {
     "pip_package": "google-cloud-service-directory",
-    "display_name": "Service Directory",
+    "display_name": "servicedirectory",
     "iam_prefix": "servicedirectory",
     "discovery_doc": "",
     "iam_reference": "",
@@ -547,9 +1076,20 @@
       "google.cloud.servicedirectory_v1"
     ]
   },
+  "servicemanagement": {
+    "pip_package": "google-cloud-service-management",
+    "display_name": "servicemanagement",
+    "iam_prefix": "servicemanagement",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.servicemanagement",
+      "google.cloud.servicemanagement_v1"
+    ]
+  },
   "serviceusage": {
     "pip_package": "google-cloud-service-usage",
-    "display_name": "Service Usage",
+    "display_name": "serviceusage",
     "iam_prefix": "serviceusage",
     "discovery_doc": "",
     "iam_reference": "",
@@ -558,12 +1098,23 @@
       "google.cloud.service_usage_v1"
     ]
   },
+  "shell": {
+    "pip_package": "google-cloud-shell",
+    "display_name": "shell",
+    "iam_prefix": "shell",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.shell",
+      "google.cloud.shell_v1"
+    ]
+  },
   "spanner": {
     "pip_package": "google-cloud-spanner",
-    "display_name": "Cloud Spanner",
+    "display_name": "spanner",
     "iam_prefix": "spanner",
-    "discovery_doc": "https://spanner.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/spanner",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.spanner_dbapi",
       "google.cloud.spanner_v1"
@@ -571,10 +1122,10 @@
   },
   "speech": {
     "pip_package": "google-cloud-speech",
-    "display_name": "Cloud Speech-to-Text",
+    "display_name": "speech",
     "iam_prefix": "speech",
-    "discovery_doc": "https://speech.googleapis.com/$discovery/rest?version=v2",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/speech",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.speech",
       "google.cloud.speech_v1",
@@ -583,20 +1134,64 @@
   },
   "storage": {
     "pip_package": "google-cloud-storage",
-    "display_name": "Cloud Storage",
+    "display_name": "storage",
     "iam_prefix": "storage",
-    "discovery_doc": "https://storage.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/storage",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.storage"
     ]
   },
+  "storagetransfer": {
+    "pip_package": "google-cloud-storage-transfer",
+    "display_name": "storagetransfer",
+    "iam_prefix": "storagetransfer",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.storage_transfer",
+      "google.cloud.storage_transfer_v1"
+    ]
+  },
+  "support": {
+    "pip_package": "google-cloud-support",
+    "display_name": "support",
+    "iam_prefix": "support",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.support",
+      "google.cloud.support_v2"
+    ]
+  },
+  "talent": {
+    "pip_package": "google-cloud-talent",
+    "display_name": "talent",
+    "iam_prefix": "talent",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.talent",
+      "google.cloud.talent_v4"
+    ]
+  },
+  "tasks": {
+    "pip_package": "google-cloud-tasks",
+    "display_name": "tasks",
+    "iam_prefix": "tasks",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.tasks",
+      "google.cloud.tasks_v2"
+    ]
+  },
   "texttospeech": {
     "pip_package": "google-cloud-texttospeech",
-    "display_name": "Cloud Text-to-Speech",
+    "display_name": "texttospeech",
     "iam_prefix": "texttospeech",
-    "discovery_doc": "https://texttospeech.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/texttospeech",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.texttospeech",
       "google.cloud.texttospeech_v1"
@@ -604,7 +1199,7 @@
   },
   "tpu": {
     "pip_package": "google-cloud-tpu",
-    "display_name": "Cloud TPU",
+    "display_name": "tpu",
     "iam_prefix": "tpu",
     "discovery_doc": "",
     "iam_reference": "",
@@ -617,8 +1212,8 @@
   },
   "trace": {
     "pip_package": "google-cloud-trace",
-    "display_name": "Cloud Trace",
-    "iam_prefix": "cloudtrace",
+    "display_name": "trace",
+    "iam_prefix": "trace",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
@@ -629,31 +1224,64 @@
   },
   "translate": {
     "pip_package": "google-cloud-translate",
-    "display_name": "Cloud Translation",
-    "iam_prefix": "cloudtranslate",
-    "discovery_doc": "https://translation.googleapis.com/$discovery/rest?version=v3",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/translate",
+    "display_name": "translate",
+    "iam_prefix": "translate",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.translate",
       "google.cloud.translate_v2",
       "google.cloud.translate_v3"
     ]
   },
+  "videointelligence": {
+    "pip_package": "google-cloud-videointelligence",
+    "display_name": "videointelligence",
+    "iam_prefix": "videointelligence",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.videointelligence",
+      "google.cloud.videointelligence_v1"
+    ]
+  },
   "vision": {
     "pip_package": "google-cloud-vision",
-    "display_name": "Cloud Vision",
+    "display_name": "vision",
     "iam_prefix": "vision",
-    "discovery_doc": "https://vision.googleapis.com/$discovery/rest?version=v1",
-    "iam_reference": "https://cloud.google.com/iam/docs/roles-permissions/vision",
+    "discovery_doc": "",
+    "iam_reference": "",
     "modules": [
       "google.cloud.vision",
       "google.cloud.vision_helpers",
       "google.cloud.vision_v1"
     ]
   },
+  "vmmigration": {
+    "pip_package": "google-cloud-vm-migration",
+    "display_name": "vmmigration",
+    "iam_prefix": "vmmigration",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.vmmigration",
+      "google.cloud.vmmigration_v1"
+    ]
+  },
+  "vmwareengine": {
+    "pip_package": "google-cloud-vmwareengine",
+    "display_name": "vmwareengine",
+    "iam_prefix": "vmwareengine",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.vmwareengine",
+      "google.cloud.vmwareengine_v1"
+    ]
+  },
   "vpcaccess": {
     "pip_package": "google-cloud-vpc-access",
-    "display_name": "Serverless VPC Access",
+    "display_name": "vpcaccess",
     "iam_prefix": "vpcaccess",
     "discovery_doc": "",
     "iam_reference": "",
@@ -664,7 +1292,7 @@
   },
   "webrisk": {
     "pip_package": "google-cloud-webrisk",
-    "display_name": "Web Risk",
+    "display_name": "webrisk",
     "iam_prefix": "webrisk",
     "discovery_doc": "",
     "iam_reference": "",
@@ -675,7 +1303,7 @@
   },
   "websecurityscanner": {
     "pip_package": "google-cloud-websecurityscanner",
-    "display_name": "Web Security Scanner",
+    "display_name": "websecurityscanner",
     "iam_prefix": "websecurityscanner",
     "discovery_doc": "",
     "iam_reference": "",
@@ -687,13 +1315,24 @@
   },
   "workflows": {
     "pip_package": "google-cloud-workflows",
-    "display_name": "Workflows",
+    "display_name": "workflows",
     "iam_prefix": "workflows",
     "discovery_doc": "",
     "iam_reference": "",
     "modules": [
       "google.cloud.workflows",
       "google.cloud.workflows_v1"
+    ]
+  },
+  "workstations": {
+    "pip_package": "google-cloud-workstations",
+    "display_name": "workstations",
+    "iam_prefix": "workstations",
+    "discovery_doc": "",
+    "iam_reference": "",
+    "modules": [
+      "google.cloud.workstations",
+      "google.cloud.workstations_v1"
     ]
   }
 }

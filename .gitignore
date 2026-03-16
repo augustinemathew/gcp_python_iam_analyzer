@@ -35,4 +35,10 @@ data/discovery_docs/*.json
 data/iam_reference/*.json
 data/method_inventory.json
 data/permission_embeddings.json
+data/permission_embeddings.npz
 data/llm_logs/
+data/pipeline_stats.json
+data/validation_report.json
+
+# v2 pipeline intermediate (regenerable from installed packages)
+method_context.json

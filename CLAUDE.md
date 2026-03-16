@@ -103,8 +103,28 @@ Google-flavored:
 - `@pytest.mark.slow` for integration tests
 - Test the sad path
 
+## Working as a Design Partner
+
+When acting as a design partner (not just implementing):
+- **Measure first.** Run small experiments on a single service before generalizing.
+- **Track assumptions.** Every design decision rests on an assumption. Document what's validated vs. assumed.
+- **Document fallbacks.** For every extraction strategy, define what happens when it fails. Nothing should be a hard dependency.
+- **Update `docs/build-pipeline-v2.md`** as the single source of truth for v2 design, experiments, and decisions.
+- **Capture experiment results in the doc** — not just success/failure but sample data, per-query breakdowns, and key findings.
+- **Run experiments in `/tmp`**, not in the project. Don't modify project files during exploration.
+
+## Build Pipeline v2
+
+See `docs/build-pipeline-v2.md` for the full design. Key context:
+- v2 enriches LLM prompts with REST URIs extracted from SDK source code
+- 57/70 packages are gapic (REST endpoints in `rest_base.py`), 3 hand-written, 6 no REST transport, 4 infrastructure
+- Local embeddings (bge-small-en-v1.5, 33M params) replace Gemini API embeddings
+- `data/iam_roles.json` will replace `iam_role_permissions.json` with full role metadata
+- Fallback chain: REST URI → span_name/docstring → embedding search → resource filter → v1 baseline
+
 ## Dependencies
 
 - Python 3.12+, tree-sitter, aiofiles, pytest, ruff
 - Build pipeline: google-genai SDK (`gemini-3-flash-preview`), anthropic SDK (Claude for gap-filling)
-- 62 GCP service packages installed for introspection
+- Build pipeline (v2): sentence-transformers, BAAI/bge-small-en-v1.5 (local embeddings)
+- 70 GCP service packages installed for introspection
