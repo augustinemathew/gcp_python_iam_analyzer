@@ -259,9 +259,12 @@ def map_permissions(
                     else:
                         full_key = f"{service_id}.*.{raw_key}"
 
+                    # Normalize: LLM sometimes returns dicts instead of strings
+                    # e.g. {"condition": "...", "permissions": ["..."]}
+                    perms = _flatten_permissions(mapping.get("permissions") or [])
+                    cond = _flatten_permissions(mapping.get("conditional") or [])
+
                     # Post-process: strip invalid permissions if we have ground truth
-                    perms = mapping.get("permissions") or []
-                    cond = mapping.get("conditional") or []
                     if all_valid_set:
                         perms = [p for p in perms if p in all_valid_set]
                         cond = [p for p in cond if p in all_valid_set]
@@ -292,6 +295,27 @@ def map_permissions(
         file=sys.stderr,
     )
     return all_mappings
+
+
+def _flatten_permissions(items: list) -> list[str]:
+    """Normalize permission list — handle dicts the LLM sometimes returns.
+
+    The LLM occasionally returns conditional permissions as dicts:
+      [{"condition": "...", "permissions": ["storage.objects.update"]}]
+    instead of flat strings. Extract the permission strings.
+    """
+    result = []
+    for item in items:
+        if isinstance(item, str):
+            result.append(item)
+        elif isinstance(item, dict):
+            # Extract nested permissions
+            nested = item.get("permissions") or item.get("permission") or []
+            if isinstance(nested, str):
+                result.append(nested)
+            elif isinstance(nested, list):
+                result.extend(p for p in nested if isinstance(p, str))
+    return result
 
 
 def _find_service_permissions(
