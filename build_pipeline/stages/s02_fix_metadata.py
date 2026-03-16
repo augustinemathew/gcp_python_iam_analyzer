@@ -161,6 +161,8 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--registry", default="service_registry.json")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--monorepo", default="/tmp/google-cloud-python",
+                        help="Path to monorepo (default: /tmp/google-cloud-python)")
     args = parser.parse_args()
 
     fix_metadata(Path(args.registry), model=args.model, dry_run=args.dry_run)

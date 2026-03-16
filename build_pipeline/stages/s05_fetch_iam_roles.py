@@ -184,6 +184,8 @@ def main() -> None:
         default="iam_role_permissions.json",
         help="Output path for flat permission index",
     )
+    parser.add_argument("--monorepo", default="/tmp/google-cloud-python",
+                        help="Path to monorepo (default: /tmp/google-cloud-python)")
     args = parser.parse_args()
 
     output_path = Path(args.output)

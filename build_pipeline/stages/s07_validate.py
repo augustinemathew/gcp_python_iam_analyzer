@@ -153,6 +153,8 @@ def main() -> None:
     parser.add_argument("--permissions", default="iam_role_permissions.json")
     parser.add_argument("--output", "-o", default="data/validation_report.json")
     parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument("--monorepo", default="/tmp/google-cloud-python",
+                        help="Path to monorepo (default: /tmp/google-cloud-python)")
     args = parser.parse_args()
 
     validate_mappings(

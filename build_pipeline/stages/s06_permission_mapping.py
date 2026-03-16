@@ -576,6 +576,8 @@ def main() -> None:
     parser.add_argument("--service", action="append", dest="services")
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--log-dir", default="data/llm_logs")
+    parser.add_argument("--monorepo", default="/tmp/google-cloud-python",
+                        help="Path to monorepo (default: /tmp/google-cloud-python)")
     args = parser.parse_args()
 
     map_permissions(
