@@ -87,12 +87,34 @@ Delete temp files. Remove debug instrumentation after experiments. Track what yo
 
 ## Python Style
 
-Google-flavored:
+Follows the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html):
+
+### Naming
 - `module_name`, `function_name`, `ClassName`, `CONSTANT_NAME`, `_private`
+
+### Types
 - Type hints on all signatures. `X | None` over `Optional[X]`. `from __future__ import annotations` everywhere.
 - `frozen=True` dataclasses for value objects. `field(default_factory=list)` for mutable defaults.
+
+### Well-factored code
+- **Functions should be small and focused.** If a function exceeds ~40 lines, break it up. Each function should do one thing.
+- **One screen rule.** A reader should understand a function without scrolling. If you can't see the whole function at once, it's too long.
+- **Extract, don't nest.** If a block of logic has a clear name, make it a function. Prefer flat call chains over deep nesting.
+- **Break up when:** errors are hard to debug, you want to reuse a piece, or the function is hard to name because it does too many things.
+- **Don't break up when:** splitting would just scatter related logic across unrelated functions, making the flow harder to follow.
+
+### General
 - Catch specific exceptions. f-strings for formatting. Properties over getters.
 - No classes when a function will do. No abstractions for one-time operations.
+- Docstring mandatory for: public API, nontrivial size, non-obvious logic.
+
+### Current violations to fix
+These functions exceed 40 lines and should be refactored:
+- `s06_permission_mapping.py:map_permissions()` — 204 lines. Split into: load/init, auto-resolve, batch loop, post-process.
+- `stats.py:analyze_artifacts()` — 193 lines. Split into per-artifact analyzers.
+- `stats.py:print_report()` — 86 lines. Split into per-section printers.
+- `s02_fix_metadata.py:fix_metadata()` — 104 lines. Split into: fetch corrections, apply corrections.
+- `s07_validate.py:validate_mappings()` — 102 lines. Split into: build index, validate, report.
 
 ## Testing
 
