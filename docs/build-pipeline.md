@@ -130,16 +130,40 @@ Cross-service methods appear on every gapic client: `get_operation` → `{iam_pr
 | SDK lines of code parsed | 8.8 million |
 | REST endpoints extracted | 52,841 |
 | `rest_base.py` files parsed | 645 |
-| Methods in method DB | 12,000+ |
+| Methods in method DB | 12,961 |
 | Methods auto-resolved (no LLM) | 8,283 |
-| Methods mapped by LLM | ~4,700 |
-| LLM batches | ~310 |
-| LLM errors | 0 |
+| Methods mapped by LLM | 4,678 |
+| LLM batches | 303 |
+| LLM errors | 1 (fixed — nested dict parsing) |
 | IAM roles in catalog | 2,073 |
 | Valid permissions tracked | 12,879 |
 | Services covered | 119 |
-| Cost (full pipeline) | ~$6-8 |
+| Cost (full pipeline) | ~$6 |
 | Time (full pipeline) | ~50 min |
+
+### Latest run (2026-03-16)
+
+```
+Pipeline: 303 batches, 302 ok, 1 error
+Output: iam_permissions_v2.json — 12,960 entries
+
+Permission Mappings:
+  Total entries:                 12,960
+  With permissions:              5,690
+  With conditional:              121
+  Local helpers:                 6,783
+  Empty (no perms, not helper):  493
+  Unique permissions referenced: 4,005
+  Services:                      119
+
+vs v1:
+  Mappings:     8,235 → 12,960 (+57%)
+  With perms:   3,190 → 5,690  (+78%)
+  Services:     62    → 119    (+92%)
+  Unique perms: 2,253 → 4,005  (+78%)
+  Empty gaps:   579   → 493    (-15%)
+  Agreement on shared keys: 85%
+```
 
 ---
 
