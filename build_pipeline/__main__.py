@@ -101,6 +101,68 @@ def cmd_stats(args: argparse.Namespace) -> None:
         print_report(report)
 
 
+# ── Subcommand: diff ──────────────────────────────────────────────────────────
+
+
+MONOREPO_URL = "https://github.com/googleapis/google-cloud-python.git"
+MONOREPO_DEFAULT_PATH = Path("/tmp/google-cloud-python")
+
+
+def cmd_diff(args: argparse.Namespace) -> None:
+    """Show what the monorepo has that we don't."""
+    import json
+
+    from build_pipeline.extractors.monorepo import (
+        discover_monorepo_packages,
+        find_client_files,
+        find_rest_bases_in_package,
+    )
+
+    monorepo_root = Path(args.monorepo) if args.monorepo else MONOREPO_DEFAULT_PATH
+
+    if not monorepo_root.exists():
+        print(f"Cloning monorepo to {monorepo_root}...", file=sys.stderr)
+        result = subprocess.run(
+            ["git", "clone", "--depth", "1", MONOREPO_URL, str(monorepo_root)],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            print(f"git clone failed:\n{result.stderr}", file=sys.stderr)
+            sys.exit(1)
+        print("  Done.", file=sys.stderr)
+
+    with open("service_registry.json") as f:
+        reg = json.load(f)
+
+    mono_pkgs = discover_monorepo_packages(monorepo_root)
+    installed = {entry["pip_package"] for entry in reg.values()}
+
+    new_pkgs = [p for p in mono_pkgs if p.pip_package not in installed]
+    overlap = [p for p in mono_pkgs if p.pip_package in installed]
+
+    print(f"\nMonorepo: {len(mono_pkgs)} packages")
+    print(f"Already in registry: {len(overlap)}")
+    print(f"New (not in registry): {len(new_pkgs)}")
+
+    if new_pkgs:
+        print(f"\n{'Package':<45} {'Methods':>8} {'REST':>6}")
+        print("-" * 65)
+        total_m = total_r = 0
+        for pkg in sorted(new_pkgs, key=lambda p: p.pip_package):
+            clients = find_client_files(pkg.package_path)
+            from build_pipeline.extractors.monorepo import extract_methods_from_source
+
+            methods = sum(len(extract_methods_from_source(c)) for c in clients)
+            from build_pipeline.extractors.gapic import extract_rest_endpoints
+
+            rbs = find_rest_bases_in_package(pkg.package_path)
+            rest = sum(len(extract_rest_endpoints(rb)) for rb in rbs)
+            total_m += methods
+            total_r += rest
+            print(f"  {pkg.pip_package:<43} {methods:>8} {rest:>6}")
+        print(f"  {'TOTAL':<43} {total_m:>8} {total_r:>6}")
+
+
 # ── Subcommand: run (advanced — run individual stages) ───────────────────────
 
 
@@ -190,15 +252,14 @@ def main() -> None:
         description="GCP SDK IAM Permission Detector — Build Pipeline",
         epilog=textwrap.dedent("""\
             common workflows:
+              %(prog)s diff                          Show what monorepo has that we don't
               %(prog)s add google-cloud-vision       Install + map a new service
               %(prog)s refresh --service kms         Re-map one service
-              %(prog)s refresh --all                 Re-map everything (~$6, ~50 min)
               %(prog)s stats                         Show pipeline stats
 
             advanced:
               %(prog)s run                           Run all stages s01-s07
               %(prog)s run --stage s04              Run one stage
-              %(prog)s run --from s04                Run s04 through s07
               %(prog)s run --dry-run                 Show what would run
         """),
     )
@@ -220,6 +281,10 @@ def main() -> None:
     stats_p.add_argument("--json", action="store_true", help="JSON output")
     stats_p.add_argument("--root", default=".", help="Project root directory")
 
+    # diff
+    diff_p = sub.add_parser("diff", help="Show what monorepo has that we don't")
+    diff_p.add_argument("--monorepo", help=f"Path to monorepo (default: {MONOREPO_DEFAULT_PATH})")
+
     # run (advanced)
     run_p = sub.add_parser("run", help="Run pipeline stages directly")
     run_p.add_argument("--stage", choices=STAGES.keys(), help="Run a single stage")
@@ -240,6 +305,7 @@ def main() -> None:
         "add": cmd_add,
         "refresh": cmd_refresh,
         "stats": cmd_stats,
+        "diff": cmd_diff,
         "run": cmd_run,
     }
     commands[args.command](args)
