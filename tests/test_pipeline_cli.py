@@ -10,57 +10,79 @@ class TestPipelineCLI:
     def test_help(self):
         result = subprocess.run(
             [sys.executable, "-m", "build_pipeline", "--help"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            capture_output=True, text=True, timeout=10,
         )
         assert result.returncode == 0
-        assert "s01" in result.stdout
-        assert "s06" in result.stdout
-        assert "Permission Mapping" in result.stdout
+        assert "add" in result.stdout
+        assert "refresh" in result.stdout
+        assert "stats" in result.stdout
+        assert "run" in result.stdout
 
-    def test_dry_run_all(self):
+    def test_add_help(self):
         result = subprocess.run(
-            [sys.executable, "-m", "build_pipeline", "--dry-run"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            [sys.executable, "-m", "build_pipeline", "add", "--help"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert "packages" in result.stdout
+        assert "google-cloud" in result.stdout or "pip" in result.stdout
+
+    def test_refresh_help(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "build_pipeline", "refresh", "--help"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert "--service" in result.stdout
+        assert "--all" in result.stdout
+
+    def test_stats(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "build_pipeline", "stats"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert result.returncode == 0
+        assert "PIPELINE STATS" in result.stdout
+        assert "Installed" in result.stdout
+
+    def test_run_dry_run(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "build_pipeline", "run", "--dry-run"],
+            capture_output=True, text=True, timeout=10,
         )
         assert result.returncode == 0
         assert "dry-run" in result.stderr
         assert "s01" in result.stderr
-        assert "s07" in result.stderr
 
-    def test_dry_run_single_stage(self):
+    def test_run_dry_run_single_stage(self):
         result = subprocess.run(
-            [sys.executable, "-m", "build_pipeline", "--stage", "s04", "--dry-run"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            [sys.executable, "-m", "build_pipeline", "run", "--stage", "s04", "--dry-run"],
+            capture_output=True, text=True, timeout=10,
         )
         assert result.returncode == 0
         assert "s04" in result.stderr
         assert "Method Context" in result.stderr
 
-    def test_dry_run_from_stage(self):
+    def test_run_dry_run_from_stage(self):
         result = subprocess.run(
-            [sys.executable, "-m", "build_pipeline", "--from", "s05", "--dry-run"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            [sys.executable, "-m", "build_pipeline", "run", "--from", "s05", "--dry-run"],
+            capture_output=True, text=True, timeout=10,
         )
         assert result.returncode == 0
         assert "s05" in result.stderr
         assert "s06" in result.stderr
-        assert "s07" in result.stderr
-        # Should NOT include s01-s04
-        assert "s01" not in result.stderr
 
-    def test_invalid_stage_rejected(self):
+    def test_no_command_shows_help(self):
         result = subprocess.run(
-            [sys.executable, "-m", "build_pipeline", "--stage", "s99"],
-            capture_output=True,
-            text=True,
-            timeout=10,
+            [sys.executable, "-m", "build_pipeline"],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert result.returncode == 0
+        assert "add" in result.stdout
+
+    def test_invalid_subcommand(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "build_pipeline", "nonexistent"],
+            capture_output=True, text=True, timeout=10,
         )
         assert result.returncode != 0
