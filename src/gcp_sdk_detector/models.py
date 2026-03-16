@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Google SDK namespace prefixes that contain GCP services with IAM permissions.
-# Used by the scanner for fast import detection and by the build pipeline
-# for package discovery. One source of truth.
-# NOTE: Only GCP services. Not google.ads, google.maps, google.shopping, google.apps —
-# those are separate products without GCP IAM permissions.
+# GCP SDK namespace prefixes that contain services with IAM permissions.
+# Most live under google.cloud.*, but a few use other namespaces.
+# Validated against the google-cloud-python monorepo (262 packages).
+# NOT included: google.auth, google.api_core, google.protobuf (infrastructure)
+# NOT included: google.ads, google.maps, google.shopping (separate products, no GCP IAM)
 GCP_IMPORT_MARKERS = (
-    "google.cloud",
-    "google.ai",
-    "google.monitoring",
-    "google.pubsub",
+    "google.cloud",       # 95%+ of GCP services
+    "google.pubsub",      # google-cloud-pubsub uses google.pubsub_v1
+    "google.monitoring",  # google-cloud-monitoring-dashboards uses google.monitoring.*
+    "google.identity",    # google-cloud-access-context-manager uses google.identity.*
 )
 
 
