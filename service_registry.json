@@ -931,6 +931,17 @@
       "google.cloud.policytroubleshooter_v1"
     ]
   },
+  "privateca": {
+    "service_id": "privateca",
+    "pip_package": "google-cloud-private-ca",
+    "display_name": "Certificate Authority Service",
+    "iam_prefix": "privateca",
+    "modules": [
+      "google.cloud.security.privateca",
+      "google.cloud.security.privateca_v1",
+      "google.cloud.security.privateca_v1beta1"
+    ]
+  },
   "privatecatalog": {
     "pip_package": "google-cloud-private-catalog",
     "display_name": "privatecatalog",
@@ -1276,6 +1287,36 @@
     "modules": [
       "google.cloud.videointelligence",
       "google.cloud.videointelligence_v1"
+    ]
+  },
+  "videolivestream": {
+    "service_id": "videolivestream",
+    "pip_package": "google-cloud-video-live-stream",
+    "display_name": "Live Stream API",
+    "iam_prefix": "livestream",
+    "modules": [
+      "google.cloud.video.live_stream",
+      "google.cloud.video.live_stream_v1"
+    ]
+  },
+  "videostitcher": {
+    "service_id": "videostitcher",
+    "pip_package": "google-cloud-video-stitcher",
+    "display_name": "Video Stitcher API",
+    "iam_prefix": "videostitcher",
+    "modules": [
+      "google.cloud.video.stitcher",
+      "google.cloud.video.stitcher_v1"
+    ]
+  },
+  "videotranscoder": {
+    "service_id": "videotranscoder",
+    "pip_package": "google-cloud-video-transcoder",
+    "display_name": "Transcoder API",
+    "iam_prefix": "transcoder",
+    "modules": [
+      "google.cloud.video.transcoder",
+      "google.cloud.video.transcoder_v1"
     ]
   },
   "vision": {

@@ -82,6 +82,12 @@ def _extract_method_name(call_node: Node, src: bytes) -> str | None:
 
 
 def _count_positional_args(call_node: Node, src: bytes) -> int:
+    """Count arguments in a function call for signature matching.
+
+    Counts both positional and keyword arguments, since keyword args
+    satisfy the same parameters as positional args. Only skips **kwargs
+    splat since that can match any number of parameters.
+    """
     arg_list = None
     for child in call_node.children:
         if child.type == "argument_list":
@@ -93,8 +99,9 @@ def _count_positional_args(call_node: Node, src: bytes) -> int:
     for child in arg_list.children:
         if child.type in ("(", ")", ","):
             continue
-        if child.type in ("keyword_argument", "dictionary_splat", "list_splat"):
+        if child.type in ("dictionary_splat", "list_splat"):
             continue
+        # Count both positional args and keyword args
         count += 1
     return count
 
@@ -201,11 +208,36 @@ def _handle_import_from(
 
     elif module_path.startswith("google.cloud."):
         # from google.cloud.storage import Client
-        # from google.cloud.kms_v1 import KeyManagementServiceClient
-        submodule = module_path.removeprefix("google.cloud.").split(".")[0]
-        sid = module_to_service.get(submodule)
+        # from google.cloud.security.privateca_v1 import CertificateAuthorityServiceClient
+        sid = _resolve_import_to_service(module_path, module_to_service)
         if sid:
             service_ids.add(sid)
+
+
+def _resolve_import_to_service(
+    import_path: str,
+    module_to_service: dict[str, str],
+) -> str | None:
+    """Resolve a google.cloud.* import path to a service_id.
+
+    Tries progressively longer submodule paths to handle nested modules:
+      google.cloud.security.privateca_v1 → try security.privateca_v1, then security
+      google.cloud.storage → try storage
+    """
+    if not import_path.startswith("google.cloud."):
+        return None
+
+    submodule = import_path.removeprefix("google.cloud.")
+    parts = submodule.split(".")
+
+    # Try full path first, then progressively shorter
+    for i in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:i])
+        sid = module_to_service.get(candidate)
+        if sid:
+            return sid
+
+    return None
 
 
 def _handle_import(
@@ -218,21 +250,17 @@ def _handle_import(
     for child in node.children:
         if child.type == "dotted_name":
             name = _text(child, src)
-            if name.startswith("google.cloud."):
-                submodule = name.removeprefix("google.cloud.").split(".")[0]
-                sid = module_to_service.get(submodule)
-                if sid:
-                    service_ids.add(sid)
+            sid = _resolve_import_to_service(name, module_to_service)
+            if sid:
+                service_ids.add(sid)
         elif child.type == "aliased_import":
             # import google.cloud.storage as gcs
             for sub in child.children:
                 if sub.type == "dotted_name":
                     name = _text(sub, src)
-                    if name.startswith("google.cloud."):
-                        submodule = name.removeprefix("google.cloud.").split(".")[0]
-                        sid = module_to_service.get(submodule)
-                        if sid:
-                            service_ids.add(sid)
+                    sid = _resolve_import_to_service(name, module_to_service)
+                    if sid:
+                        service_ids.add(sid)
                     break
 
 

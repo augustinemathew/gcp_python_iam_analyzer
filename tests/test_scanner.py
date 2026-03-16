@@ -230,20 +230,23 @@ class TestArgCounting:
             "test.py",
         )
         assert len(result.findings) == 1
-        assert result.findings[0].arg_count == 0
+        # keyword arg counts toward total (satisfies the parameter)
+        assert result.findings[0].arg_count == 1
 
     def test_mixed_positional_and_keyword(self, simple_db, simple_resolver):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver)
         result = scanner.scan_source(_src('client.query("sql", timeout=30)'), "test.py")
-        assert result.findings[0].arg_count == 1
+        # 1 positional + 1 keyword = 2 total args
+        assert result.findings[0].arg_count == 2
 
     def test_kwargs_splat_ignored(self, simple_db, simple_resolver):
         from gcp_sdk_detector.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver)
         result = scanner.scan_source(_src('client.query("sql", **opts)'), "test.py")
+        # 1 positional, **opts ignored (splat can match any number)
         assert result.findings[0].arg_count == 1
 
     def test_args_splat_counts_zero(self, simple_db, simple_resolver):
@@ -298,7 +301,8 @@ class TestSignatureMatching:
             "test.py",
         )
         assert len(result.findings) == 1
-        assert result.findings[0].arg_count == 2
+        # 2 positional + 1 keyword = 3 total (matched because has_var_kwargs=True)
+        assert result.findings[0].arg_count == 3
 
     def test_var_kwargs_extra_positional(self, simple_db, simple_resolver):
         from gcp_sdk_detector.scanner import GCPCallScanner

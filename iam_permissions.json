@@ -74550,6 +74550,456 @@
     "local_helper": false,
     "notes": "Requires permission to troubleshoot IAM policies to analyze whether a principal has specific permissions on resources"
   },
+  "privateca.CertificateAuthorityServiceClient.activate_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Activates a certificate authority by changing its state"
+  },
+  "privateca.CertificateAuthorityServiceClient.ca_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.cancel_operation": {
+    "permissions": [
+      "privateca.operations.cancel"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: cancel long-running operation"
+  },
+  "privateca.CertificateAuthorityServiceClient.certificate_authority_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.certificate_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.certificate_revocation_list_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.certificate_template_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.create_ca_pool": {
+    "permissions": [
+      "privateca.caPools.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new CA pool resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.create_certificate": {
+    "permissions": [
+      "privateca.certificates.create"
+    ],
+    "conditional": [
+      "privateca.caPools.use"
+    ],
+    "local_helper": false,
+    "notes": "Requires use permission on the CA pool to issue certificates"
+  },
+  "privateca.CertificateAuthorityServiceClient.create_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new certificate authority resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.create_certificate_template": {
+    "permissions": [
+      "privateca.certificateTemplates.create"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Creates a new certificate template resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.delete_ca_pool": {
+    "permissions": [
+      "privateca.caPools.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing CA pool"
+  },
+  "privateca.CertificateAuthorityServiceClient.delete_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing certificate authority"
+  },
+  "privateca.CertificateAuthorityServiceClient.delete_certificate_template": {
+    "permissions": [
+      "privateca.certificateTemplates.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Deletes an existing certificate template"
+  },
+  "privateca.CertificateAuthorityServiceClient.delete_operation": {
+    "permissions": [
+      "privateca.operations.delete"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: delete long-running operation"
+  },
+  "privateca.CertificateAuthorityServiceClient.disable_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Disables a certificate authority by changing its state"
+  },
+  "privateca.CertificateAuthorityServiceClient.enable_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Enables a certificate authority by changing its state"
+  },
+  "privateca.CertificateAuthorityServiceClient.fetch_ca_certs": {
+    "permissions": [
+      "privateca.caPools.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Fetches certificate authority certificates from a CA pool"
+  },
+  "privateca.CertificateAuthorityServiceClient.fetch_certificate_authority_csr": {
+    "permissions": [
+      "privateca.certificateAuthorities.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Fetches the certificate signing request from a subordinate CA"
+  },
+  "privateca.CertificateAuthorityServiceClient.from_service_account_file": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls made"
+  },
+  "privateca.CertificateAuthorityServiceClient.from_service_account_info": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls made"
+  },
+  "privateca.CertificateAuthorityServiceClient.from_service_account_json": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Local client constructor, no API calls made"
+  },
+  "privateca.CertificateAuthorityServiceClient.get_ca_pool": {
+    "permissions": [
+      "privateca.caPools.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.get_certificate": {
+    "permissions": [
+      "privateca.certificates.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.get_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.get_certificate_revocation_list": {
+    "permissions": [
+      "privateca.certificateRevocationLists.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.get_certificate_template": {
+    "permissions": [
+      "privateca.certificateTemplates.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.get_iam_policy": {
+    "permissions": [
+      "privateca.certificateAuthoritys.getIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get IAM policy for resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.get_location": {
+    "permissions": [
+      "privateca.locations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get location metadata"
+  },
+  "privateca.CertificateAuthorityServiceClient.get_mtls_endpoint_and_cert_source": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "Deprecated method that returns client configuration, no API call made"
+  },
+  "privateca.CertificateAuthorityServiceClient.get_operation": {
+    "permissions": [
+      "privateca.operations.get"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: get long-running operation status"
+  },
+  "privateca.CertificateAuthorityServiceClient.list_ca_pools": {
+    "permissions": [
+      "privateca.caPools.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.list_certificate_authorities": {
+    "permissions": [
+      "privateca.certificateAuthorities.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.list_certificate_revocation_lists": {
+    "permissions": [
+      "privateca.certificateRevocationLists.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.list_certificate_templates": {
+    "permissions": [
+      "privateca.certificateTemplates.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.list_certificates": {
+    "permissions": [
+      "privateca.certificates.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.list_locations": {
+    "permissions": [
+      "privateca.locations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list available locations"
+  },
+  "privateca.CertificateAuthorityServiceClient.list_operations": {
+    "permissions": [
+      "privateca.operations.list"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: list long-running operations"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_ca_pool_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_certificate_authority_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_certificate_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_certificate_revocation_list_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_certificate_template_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_common_billing_account_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_common_folder_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_common_location_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_common_organization_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.parse_common_project_path": {
+    "permissions": [],
+    "conditional": [],
+    "local_helper": true,
+    "notes": "path builder (auto-detected)"
+  },
+  "privateca.CertificateAuthorityServiceClient.revoke_certificate": {
+    "permissions": [
+      "privateca.certificates.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Certificate revocation is a form of certificate update operation"
+  },
+  "privateca.CertificateAuthorityServiceClient.set_iam_policy": {
+    "permissions": [
+      "privateca.certificateAuthoritys.setIamPolicy"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: set IAM policy for resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.test_iam_permissions": {
+    "permissions": [
+      "privateca.certificateAuthoritys.testIamPermissions"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "cross-service utility: test IAM permissions"
+  },
+  "privateca.CertificateAuthorityServiceClient.undelete_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Undelete operation requires update permission on certificate authority"
+  },
+  "privateca.CertificateAuthorityServiceClient.update_ca_pool": {
+    "permissions": [
+      "privateca.caPools.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.update_certificate": {
+    "permissions": [
+      "privateca.certificates.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": ""
+  },
+  "privateca.CertificateAuthorityServiceClient.update_certificate_authority": {
+    "permissions": [
+      "privateca.certificateAuthorities.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a Certificate Authority resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.update_certificate_revocation_list": {
+    "permissions": [
+      "privateca.certificateRevocationLists.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a Certificate Revocation List resource"
+  },
+  "privateca.CertificateAuthorityServiceClient.update_certificate_template": {
+    "permissions": [
+      "privateca.certificateTemplates.update"
+    ],
+    "conditional": [],
+    "local_helper": false,
+    "notes": "Updates a Certificate Template resource"
+  },
   "privatecatalog.PrivateCatalogClient.catalog_path": {
     "permissions": [],
     "conditional": [],
