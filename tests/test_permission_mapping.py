@@ -7,9 +7,10 @@ from unittest.mock import patch
 
 import pytest
 
-from build_pipeline.llm import build_config_d_prompt, build_v1_fallback_prompt
 from build_pipeline.stages.s06_permission_mapping import (
     _try_auto_resolve_cross_service,
+    build_config_d_prompt,
+    build_v1_fallback_prompt,
     map_permissions,
 )
 
