@@ -7,11 +7,11 @@ dev:
 	pip install -e ".[dev]"
 
 lint:
-	ruff check src/ tests/ build/
+	ruff check src/ tests/ build_pipeline/
 
 fmt:
-	ruff format src/ tests/ build/
-	ruff check --fix src/ tests/ build/
+	ruff format src/ tests/ build_pipeline/
+	ruff check --fix src/ tests/ build_pipeline/
 
 test:
 	pytest
