@@ -9,8 +9,8 @@ import pytest
 
 from build_pipeline.stages.s06_permission_mapping import (
     _try_auto_resolve_cross_service,
-    build_config_d_prompt,
-    build_v1_fallback_prompt,
+    build_prompt_with_permission_list,
+    build_prompt_with_rest_context,
     map_permissions,
 )
 
@@ -29,7 +29,7 @@ class TestConfigDPrompt:
                 "span_name": None,
             }
         ]
-        prompt = build_config_d_prompt("kms", "Cloud KMS", "cloudkms", methods)
+        prompt = build_prompt_with_rest_context("kms", "Cloud KMS", "cloudkms", methods)
         assert "POST /v1/" in prompt
         assert ":encrypt" in prompt
         assert "cloudkms" in prompt
@@ -46,7 +46,7 @@ class TestConfigDPrompt:
                 "span_name": "BigQuery.getDataset",
             }
         ]
-        prompt = build_config_d_prompt("bigquery", "BigQuery", "bigquery", methods)
+        prompt = build_prompt_with_rest_context("bigquery", "BigQuery", "bigquery", methods)
         assert "BigQuery.getDataset" in prompt
 
     def test_method_without_rest_uri(self):
@@ -61,7 +61,7 @@ class TestConfigDPrompt:
                 "span_name": None,
             }
         ]
-        prompt = build_config_d_prompt("bigquery", "BigQuery", "bigquery", methods)
+        prompt = build_prompt_with_rest_context("bigquery", "BigQuery", "bigquery", methods)
         assert "Client.query" in prompt
         assert "Run a query." in prompt
         assert "REST:" not in prompt  # no REST line for this method
@@ -73,7 +73,7 @@ class TestConfigDPrompt:
              "description": f"Method {i}.", "span_name": None}
             for i in range(15)
         ]
-        prompt = build_config_d_prompt("test", "Test", "test", methods)
+        prompt = build_prompt_with_rest_context("test", "Test", "test", methods)
         assert "method_0" in prompt
         assert "method_14" in prompt
         assert prompt.count("REST: GET") == 15
@@ -84,7 +84,7 @@ class TestConfigDPrompt:
              "rest_method": None, "rest_uri": None,
              "description": "", "span_name": None}
         ]
-        prompt = build_config_d_prompt("kms", "Cloud KMS", "cloudkms", methods)
+        prompt = build_prompt_with_rest_context("kms", "Cloud KMS", "cloudkms", methods)
         assert "cloudkms.{resource}.{action}" in prompt
 
     def test_long_description_truncated(self):
@@ -93,7 +93,7 @@ class TestConfigDPrompt:
              "rest_method": None, "rest_uri": None,
              "description": "x" * 500, "span_name": None}
         ]
-        prompt = build_config_d_prompt("test", "Test", "test", methods)
+        prompt = build_prompt_with_rest_context("test", "Test", "test", methods)
         # Description should be truncated to 200 chars
         assert "x" * 201 not in prompt
 
@@ -176,7 +176,7 @@ class TestV1FallbackPrompt:
              "description": "Does a thing."}
         ]
         perms = ["svc.resources.create", "svc.resources.get"]
-        prompt = build_v1_fallback_prompt("svc", "Service", methods, perms)
+        prompt = build_prompt_with_permission_list("svc", "Service", methods, perms)
         assert "svc.resources.create" in prompt
         assert "svc.resources.get" in prompt
         assert "C.do_thing" in prompt
@@ -184,7 +184,7 @@ class TestV1FallbackPrompt:
     def test_says_prefer_not_must(self):
         """v1 fallback should say 'prefer' not 'MUST be from'."""
         methods = [{"class_name": "C", "method_name": "m", "description": ""}]
-        prompt = build_v1_fallback_prompt("svc", "Svc", methods, ["svc.a.b"])
+        prompt = build_prompt_with_permission_list("svc", "Svc", methods, ["svc.a.b"])
         assert "prefer" in prompt.lower()
 
 

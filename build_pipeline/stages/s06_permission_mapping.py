@@ -242,13 +242,13 @@ def _build_prompt_for_batch(
     has_rest = any(m.get("rest_uri") for m in batch)
 
     if has_rest:
-        prompt = build_config_d_prompt(
+        prompt = build_prompt_with_rest_context(
             service_id, display_name, iam_prefix, batch,
             hint_permissions=svc_perms or None,
         )
         return prompt, "D"
 
-    prompt = build_v1_fallback_prompt(service_id, display_name, batch, svc_perms)
+    prompt = build_prompt_with_permission_list(service_id, display_name, batch, svc_perms)
     return prompt, "v1"
 
 
@@ -400,7 +400,7 @@ class LLMLogger:
         self._f.close()
 
 
-def build_config_d_prompt(
+def build_prompt_with_rest_context(
     service_id: str, display_name: str, iam_prefix: str,
     methods: list[dict], hint_permissions: list[str] | None = None,
 ) -> str:
@@ -441,7 +441,7 @@ For EACH method, provide:
 Return ONLY valid JSON. Keys must be ClassName.method_name."""
 
 
-def build_v1_fallback_prompt(
+def build_prompt_with_permission_list(
     service_id: str, display_name: str,
     methods: list[dict], valid_permissions: list[str],
 ) -> str:

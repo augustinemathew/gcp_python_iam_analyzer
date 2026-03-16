@@ -19,10 +19,14 @@ dev = [
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",
     "ruff>=0.9",
+    "vulture>=2.0",
 ]
 build = [
-    "aiohttp>=3.9",
+    "anthropic>=0.30",
     "google-genai>=1.0",
+    "google-cloud-iam>=2.0",
+    "sentence-transformers>=3.0",
+    "einops>=0.8",
 ]
 
 [project.scripts]

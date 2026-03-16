@@ -48,7 +48,11 @@ Tested against [GoogleCloudPlatform/python-docs-samples](https://github.com/Goog
 ## Install
 
 ```bash
-pip install -e .
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .               # runtime scanner only
+pip install -e ".[dev]"        # + tests, linting
+pip install -e ".[dev,build]"  # + build pipeline (anthropic, sentence-transformers, etc.)
 ```
 
 ## Usage
