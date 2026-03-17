@@ -1,8 +1,16 @@
 # Monorepo Source Support — Design Document
 
-**Status:** Proposed
+**Status:** Implemented (2026-03-16)
 **Author:** Generated from analysis of `google-cloud-python` monorepo + `gcp_python_iam_analyzer`
 **Date:** 2026-03-16
+
+> **Implementation note:** This RFC has been implemented with two modifications from
+> the original proposal: (1) the monorepo is the default source for all source-analysis
+> stages — there is no `--monorepo` flag; `ensure_monorepo()` auto-clones to
+> `/tmp/google-cloud-python` before s01/s03/s04 run; (2) the pipeline uses both monorepo
+> and pip, not monorepo-only — pip remains the fallback for 5 packages that live outside
+> the monorepo (aiplatform, storage, spanner, bigtable, resource-settings). See
+> `docs/build-pipeline.md` for the definitive current-state documentation.
 
 ---
 
