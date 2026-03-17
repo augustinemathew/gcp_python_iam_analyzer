@@ -7,7 +7,6 @@
                              |_|    |___/
 ```
 
-# IAMSpy
 
 **You're deploying a service. What IAM permissions does it need?**
 
@@ -31,7 +30,7 @@ def run(project_id: str):
     bucket.blob("daily/events.csv").upload_from_filename("/tmp/events.csv")
 ```
 
-Run IAMSpy:
+## Run IAMSpy:
 
 ```
 $ iamspy scan src/pipeline.py
