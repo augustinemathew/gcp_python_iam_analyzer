@@ -9,38 +9,70 @@
 
 # IAMSpy
 
-**Spy on your Python code to find exactly which GCP IAM permissions it needs.**
+**You're deploying a service. What IAM permissions does it need?**
+
+You have this:
+
+```python
+# src/pipeline.py
+from google.cloud import bigquery, secretmanager, storage
+
+def run(project_id: str):
+    sm = secretmanager.SecretManagerServiceClient()
+    secret = sm.access_secret_version(
+        request={"name": f"projects/{project_id}/secrets/db-password/versions/latest"}
+    )
+
+    bq = bigquery.Client(project=project_id)
+    rows = bq.query("SELECT user_id, event FROM analytics.events LIMIT 1000").result()
+
+    gcs = storage.Client()
+    bucket = gcs.get_bucket("my-exports")
+    bucket.blob("daily/events.csv").upload_from_filename("/tmp/events.csv")
+```
+
+Run IAMSpy:
 
 ```
-$ iamspy scan app.py
+$ iamspy scan src/pipeline.py
 
-app.py
-    12  client.create_key_ring(request={"parent": parent, "key_ring_id": id})
-        → cloudkms.keyRings.create
+src/pipeline.py
+     6  secret = sm.access_secret_version(
+        → secretmanager.versions.access
 
-    18  client.encrypt(request={"name": key_name, "plaintext": data})
-        → cloudkms.cryptoKeyVersions.useToEncrypt
+    12  rows = bq.query("SELECT user_id, event FROM analytics.events LIMIT 1000").result()
+        → bigquery.jobs.create
+        ⚠ conditional: bigquery.tables.getData, bigquery.tables.create
 
-    25  bucket = storage_client.get_bucket("my-data")
+    16  bucket = gcs.get_bucket("my-exports")
         → storage.buckets.get
 
+    17  bucket.blob("daily/events.csv").upload_from_filename("/tmp/events.csv")
+        → storage.objects.create
+        ⚠ conditional: storage.objects.update
+
 ──────────────────────────────────────────────────
-1 file(s), 3 finding(s)
+1 file(s), 4 finding(s)
+Services: bigquery, secretmanager, storage
 
 Required permissions:
-  • cloudkms.keyRings.create
-  • cloudkms.cryptoKeyVersions.useToEncrypt
+  • bigquery.jobs.create
+  • secretmanager.versions.access
   • storage.buckets.get
+  • storage.objects.create
+  ⚠ bigquery.tables.create (conditional)
+  ⚠ bigquery.tables.getData (conditional)
+  ⚠ storage.objects.update (conditional)
 ```
 
-⚡ No runtime imports. 🌐 No network calls. 🔑 No GCP credentials.
+Exact permissions. Before you deploy. No guessing, no reading docs.
 
-**100% accurate** on Google's [python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples) — 3,144 SDK calls, every one mapped. → [How we validated](docs/accuracy.md)
+⚡ No runtime imports. 🌐 No network calls. 🔑 No GCP credentials.
 
 | | |
 |---|---|
 | ⚡ **Fast** | < 50ms per file. 3,600 files in < 30 seconds. |
-| 🎯 **Accurate** | >93% on python-docs-samples (3,144 calls, 706 permissions) |
+| 🎯 **Accurate** | >93% on Google's [python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples) (3,144 calls) |
 | 📦 **Complete** | 25,011 methods across 205 GCP services |
 | 🛡️ **Zero false positives** | No GCP imports = no findings. Period. |
 
@@ -54,26 +86,22 @@ iamspy --help
 ## Usage
 
 ```bash
-# Scan a file or directory
-iamspy scan app.py
-iamspy scan src/
-
-# Output formats
-iamspy scan --compact src/    # one line per finding (like ruff)
-iamspy scan --json app.py     # JSON for CI/tooling
-iamspy scan --show-all app.py # include path builders and constructors
+iamspy scan app.py          # single file
+iamspy scan src/            # entire directory
+iamspy scan --compact src/  # one line per finding (like ruff)
+iamspy scan --json app.py   # JSON for CI/tooling
 ```
 
-Search any method or permission without scanning a file:
+Search any method without scanning a file:
 
 ```
 $ iamspy search '*encrypt*'
 
-  Method                                            Permissions
-  ────────────────────────────────────────────────  ───────────────────────────────────────
-  kms.KeyManagementServiceClient.encrypt            cloudkms.cryptoKeyVersions.useToEncrypt
-  kms.KeyManagementServiceClient.raw_encrypt        cloudkms.cryptoKeyVersions.useToEncrypt
-  compute.InstancesClient.start_with_encryption_key compute.instances.startWithEncryptionKey
+  Method                                             Permissions
+  ─────────────────────────────────────────────────  ───────────────────────────────────────
+  kms.KeyManagementServiceClient.encrypt             cloudkms.cryptoKeyVersions.useToEncrypt
+  kms.KeyManagementServiceClient.raw_encrypt         cloudkms.cryptoKeyVersions.useToEncrypt
+  compute.InstancesClient.start_with_encryption_key  compute.instances.startWithEncryptionKey
 
   19 result(s) for '*encrypt*'
 ```
@@ -97,12 +125,9 @@ Your Python code
 │  4. 🔑 Resolve IAM permissions              │
 │     Method → permission(s) via pre-built DB │
 └─────────────────────────────────────────────┘
-    │
-    ▼
-Required permissions: bigquery.jobs.create, storage.buckets.get, ...
 ```
 
-All data is pre-built JSON. No SDK imports, no network calls, no credentials. The scanner loads 3 JSON files (~10MB) and parses your source — that's it.
+All data is pre-built JSON. No SDK imports, no network calls, no credentials.
 
 ## Coverage
 
@@ -110,18 +135,17 @@ All data is pre-built JSON. No SDK imports, no network calls, no credentials. Th
 |---|---|
 | GCP services | 205 |
 | SDK methods mapped | 25,011 |
-| Method signatures | 24,330 |
 | IAM permissions tracked | 12,879 |
-| python-docs-samples accuracy | 100% (3,144/3,144) |
+| python-docs-samples accuracy | >93% (3,144 calls) |
 
 ## Examples
 
-Browse [examples/](examples/) — ready-to-scan GCP scripts with expected `iamspy` output:
+Browse [examples/](examples/) — real GCP scripts with expected `iamspy` output:
 
-| File | What it shows |
+| | |
 |---|---|
-| [kms_encrypt_decrypt.py](examples/kms_encrypt_decrypt.py) | Create key, encrypt, decrypt — 4 permissions |
-| [bigquery_pipeline.py](examples/bigquery_pipeline.py) | Load, query, export — with conditional permissions |
+| [kms_encrypt_decrypt.py](examples/kms_encrypt_decrypt.py) | Create key, encrypt, decrypt |
+| [bigquery_pipeline.py](examples/bigquery_pipeline.py) | Load from GCS, query, export — with conditionals |
 | [secret_manager.py](examples/secret_manager.py) | Full secret lifecycle |
 | [storage_pipeline.py](examples/storage_pipeline.py) | Upload, download, copy, delete |
 
@@ -129,20 +153,11 @@ Browse [examples/](examples/) — ready-to-scan GCP scripts with expected `iamsp
 
 | | |
 |---|---|
-| [Getting started](docs/getting-started.md) | Reading output, scanning directories, output formats |
-| [CI integration](docs/ci-integration.md) | GitHub Actions, Cloud Build, failing on unmapped |
-| [Accuracy](docs/accuracy.md) | How we validated, methodology, known limitations |
-| [Architecture](docs/architecture.md) | How the scanner works (for contributors) |
+| [Getting started](docs/getting-started.md) | First scan, reading output, output formats |
+| [CI integration](docs/ci-integration.md) | GitHub Actions, Cloud Build |
+| [Accuracy](docs/accuracy.md) | How we validated, known limitations |
+| [Architecture](docs/architecture.md) | How the scanner works |
 | [Build pipeline](docs/build-pipeline.md) | Rebuilding the permission database |
-
-## Adding a service
-
-```bash
-pip install google-cloud-newservice
-python -m build_pipeline add google-cloud-newservice
-```
-
-Incremental — only maps new methods.
 
 ## Development
 
