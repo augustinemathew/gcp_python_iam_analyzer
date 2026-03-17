@@ -1,4 +1,7 @@
-"""CLI entry point with subcommands: scan, services, permissions."""
+"""CLI entry point with subcommands: scan, services, permissions.
+
+Tests: tests/test_cli.py
+"""
 
 from __future__ import annotations
 
@@ -9,12 +12,12 @@ import sys
 import textwrap
 from pathlib import Path
 
-from gcp_sdk_detector.loader import load_method_db
-from gcp_sdk_detector.models import Finding
-from gcp_sdk_detector.registry import ServiceRegistry
-from gcp_sdk_detector.resolver import StaticPermissionResolver
-from gcp_sdk_detector.scanner import GCPCallScanner
-from gcp_sdk_detector.terminal_output import Formatter, print_progress, print_scan_results
+from iamspy.loader import load_method_db
+from iamspy.models import Finding
+from iamspy.registry import ServiceRegistry
+from iamspy.resolver import StaticPermissionResolver
+from iamspy.scanner import GCPCallScanner
+from iamspy.terminal_output import Formatter, print_progress, print_scan_results
 
 # Default paths (relative to where the CLI is run)
 _DEFAULT_REGISTRY = Path(__file__).parent.parent.parent / "service_registry.json"
@@ -35,7 +38,7 @@ def _load_scanner(args: argparse.Namespace) -> GCPCallScanner:
         db = load_method_db(method_db_path)
     else:
         # Fall back to runtime introspection if method_db.json is missing
-        from gcp_sdk_detector.introspect import build_method_db, discover_gcp_packages
+        from iamspy.introspect import build_method_db, discover_gcp_packages
 
         pkgs = discover_gcp_packages(registry=registry)
         db = build_method_db(packages=pkgs, registry=registry)
@@ -46,41 +49,48 @@ def _load_scanner(args: argparse.Namespace) -> GCPCallScanner:
 # ── scan ─────────────────────────────────────────────────────────────────
 
 
-def cmd_scan(args: argparse.Namespace) -> int:
-    scanner = _load_scanner(args)
-
+def _collect_targets(paths: list[str]) -> tuple[list[Path], int]:
+    """Expand paths to .py files. Returns (targets, error) where error=1 on bad path."""
     targets: list[Path] = []
-    for path_str in args.paths:
+    for path_str in paths:
         p = Path(path_str)
         if not p.exists():
             print(f"Error: {p} does not exist", file=sys.stderr)
-            return 1
+            return [], 1
         if p.is_dir():
             targets.extend(sorted(p.rglob("*.py")))
         else:
             targets.append(p)
+    return targets, 0
 
+
+def _print_json_results(results: list, show_all: bool) -> None:
+    findings_out = []
+    for result in results:
+        for f in result.findings:
+            if not show_all and f.status == "no_api_call":
+                continue
+            findings_out.append(_finding_to_dict(f))
+    print(json.dumps(findings_out, indent=2))
+
+
+def cmd_scan(args: argparse.Namespace) -> int:
+    scanner = _load_scanner(args)
+    targets, err = _collect_targets(args.paths)
+    if err:
+        return err
     if not targets:
         print("No Python files found", file=sys.stderr)
         return 0
 
-    # Show progress for multi-file scans
     if len(targets) > 1 and not args.json:
         print_progress(0, len(targets))
-
     results = asyncio.run(scanner.scan_files(targets))
-
     if len(targets) > 1 and not args.json:
         print_progress(len(targets), len(targets))
 
     if args.json:
-        findings_out = []
-        for result in results:
-            for f in result.findings:
-                if not args.show_all and f.status == "no_api_call":
-                    continue
-                findings_out.append(_finding_to_dict(f))
-        print(json.dumps(findings_out, indent=2))
+        _print_json_results(results, show_all=args.show_all)
     elif args.compact:
         _print_compact(results, show_all=args.show_all)
     else:
@@ -139,7 +149,8 @@ def cmd_services(args: argparse.Namespace) -> int:
         print("-" * 100)
         for sid in registry.service_ids():
             entry = registry.get(sid)
-            assert entry is not None
+            if entry is None:
+                continue
             print(f"{sid:<25} {entry.display_name:<30} {entry.iam_prefix:<20} {entry.pip_package}")
         print(f"\n{len(registry)} services")
 

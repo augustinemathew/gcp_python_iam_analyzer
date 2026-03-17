@@ -1,4 +1,7 @@
-"""PermissionResolver interface and static JSON-backed implementation."""
+"""PermissionResolver interface and static JSON-backed implementation.
+
+Tests: tests/test_resolver.py
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from gcp_sdk_detector.models import PermissionResult
+from iamspy.models import PermissionResult
 
 
 class PermissionResolver(ABC):

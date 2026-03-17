@@ -1,11 +1,14 @@
-"""Load a pre-built method_db.json file."""
+"""Load a pre-built method_db.json file.
+
+Tests: tests/test_smoke.py
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from gcp_sdk_detector.models import MethodDB, MethodSig
+from iamspy.models import MethodDB, MethodSig
 
 
 def load_method_db(path: str | Path) -> MethodDB:

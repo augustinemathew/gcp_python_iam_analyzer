@@ -6,6 +6,8 @@ scan_files() wraps it with async concurrent file reads.
 Import-aware: no GCP imports = no findings. The module→service_id mapping
 is derived from service_registry.json at init time, so adding a new service
 to the registry automatically enables import detection for it.
+
+Tests: tests/test_scanner.py, tests/test_scanner_real.py, tests/test_import_detection.py
 """
 
 from __future__ import annotations
@@ -17,11 +19,12 @@ import aiofiles
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
-from gcp_sdk_detector.models import Finding, MethodDB, MethodSig, ScanResult
-from gcp_sdk_detector.registry import ServiceRegistry
-from gcp_sdk_detector.resolver import PermissionResolver
+from iamspy.models import Finding, MethodDB, MethodSig, ScanResult
+from iamspy.registry import ServiceRegistry
+from iamspy.resolver import PermissionResolver
 
-# Fast string check — if this isn't in the file, skip parsing entirely
+# Module-level language singleton — Language() is expensive to construct
+_LANGUAGE = Language(tspython.language())
 
 
 def build_module_to_service(registry: ServiceRegistry) -> dict[str, str]:
@@ -116,9 +119,7 @@ def detect_gcp_imports(
     if src_bytes is None:
         src_bytes = source.encode("utf-8")
     if tree is None:
-        language = Language(tspython.language())
-        parser = Parser(language)
-        tree = parser.parse(src_bytes)
+        tree = Parser(_LANGUAGE).parse(src_bytes)
 
     service_ids: set[str] = set()
     _walk_imports(tree.root_node, src_bytes, module_to_service, service_ids)
@@ -268,8 +269,7 @@ class GCPCallScanner:
     ):
         self.db = db
         self.resolver = resolver
-        self._language = Language(tspython.language())
-        self._parser = Parser(self._language)
+        self._parser = Parser(_LANGUAGE)
 
         if registry is None:
             raise ValueError("registry is required — it drives import detection")

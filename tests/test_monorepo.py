@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pytest
 
 from build_pipeline.extractors.monorepo import (
+    _count_params,
     discover_monorepo_packages,
     extract_methods_from_source,
     find_client_files,
@@ -103,6 +105,49 @@ class TestMonorepoMethodExtraction:
         assert encrypt
         assert "min_args" in encrypt[0]
         assert "max_args" in encrypt[0]
+
+
+def _parse_func(src: str) -> ast.FunctionDef:
+    return ast.parse(src).body[0]
+
+
+class TestCountParams:
+    """Unit tests for _count_params — covers GAPIC keyword-only arg patterns."""
+
+    def test_simple_positional(self):
+        f = _parse_func("def foo(self, a, b): pass")
+        min_a, max_a, has_kw = _count_params(f)
+        assert min_a == 2
+        assert max_a == 2
+        assert not has_kw
+
+    def test_all_defaults(self):
+        f = _parse_func("def foo(self, a=None, b=None): pass")
+        min_a, max_a, _ = _count_params(f)
+        assert min_a == 0
+        assert max_a == 2
+
+    def test_gapic_pattern(self):
+        """GAPIC: def foo(self, request=None, *, parent=None, retry=None, timeout=None)"""
+        src = "def foo(self, request=None, *, parent=None, retry=None, timeout=None): pass"
+        f = _parse_func(src)
+        min_a, max_a, has_kw = _count_params(f)
+        assert min_a == 0  # all have defaults
+        assert max_a == 4  # request + parent + retry + timeout
+        assert not has_kw
+
+    def test_gapic_required_kwonly(self):
+        """GAPIC with required keyword-only args."""
+        src = "def foo(self, request=None, *, parent): pass"
+        f = _parse_func(src)
+        min_a, max_a, _ = _count_params(f)
+        assert min_a == 1  # parent is required
+        assert max_a == 2  # request + parent
+
+    def test_var_kwargs(self):
+        f = _parse_func("def foo(self, **kwargs): pass")
+        _, _, has_kw = _count_params(f)
+        assert has_kw
 
 
 class TestMonorepoMissingDir:

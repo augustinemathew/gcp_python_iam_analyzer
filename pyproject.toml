@@ -30,8 +30,7 @@ build = [
 ]
 
 [project.scripts]
-iamspy = "gcp_sdk_detector.__main__:main"
-gcp-sdk-detector = "gcp_sdk_detector.__main__:main"
+iamspy = "iamspy.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -63,10 +62,10 @@ max-args = 8
 max-complexity = 15
 
 [tool.ruff.lint.isort]
-known-first-party = ["gcp_sdk_detector", "build_pipeline"]
+known-first-party = ["iamspy", "build_pipeline"]
 
 [tool.coverage.run]
-source = ["gcp_sdk_detector"]
+source = ["iamspy"]
 
 [tool.coverage.report]
 show_missing = true

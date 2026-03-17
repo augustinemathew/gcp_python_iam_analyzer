@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from gcp_sdk_detector.models import MethodDB, MethodSig
-from gcp_sdk_detector.resolver import StaticPermissionResolver
+from iamspy.models import MethodDB, MethodSig
+from iamspy.resolver import StaticPermissionResolver
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ def simple_resolver(data_dir: Path) -> StaticPermissionResolver:
 
 class TestMethodNameExtraction:
     def test_simple_method_call(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("SELECT 1")'), "test.py")
@@ -157,7 +157,7 @@ class TestMethodNameExtraction:
         assert result.findings[0].method_name == "query"
 
     def test_chained_attribute_call(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
@@ -168,21 +168,21 @@ class TestMethodNameExtraction:
         assert "upload_from_filename" in method_names
 
     def test_bare_function_matches(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('query("SELECT 1")'), "test.py")
         assert len(result.findings) == 1
 
     def test_unknown_method_no_match(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.unknown_method(arg)"), "test.py")
         assert len(result.findings) == 0
 
     def test_deeply_nested_chain(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('a.b.c.d.query("sql")'), "test.py")
@@ -195,21 +195,21 @@ class TestMethodNameExtraction:
 
 class TestArgCounting:
     def test_single_positional(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert result.findings[0].arg_count == 1
 
     def test_two_positional(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", 30)'), "test.py")
         assert result.findings[0].arg_count == 2
 
     def test_zero_positional_all_keyword(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db(
             {
@@ -234,7 +234,7 @@ class TestArgCounting:
         assert result.findings[0].arg_count == 1
 
     def test_mixed_positional_and_keyword(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", timeout=30)'), "test.py")
@@ -242,7 +242,7 @@ class TestArgCounting:
         assert result.findings[0].arg_count == 2
 
     def test_kwargs_splat_ignored(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", **opts)'), "test.py")
@@ -250,7 +250,7 @@ class TestArgCounting:
         assert result.findings[0].arg_count == 1
 
     def test_args_splat_counts_zero(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db({"close": [_sig(min_args=0, max_args=1)]})
         scanner = GCPCallScanner(db, simple_resolver, registry=test_registry)
@@ -258,7 +258,7 @@ class TestArgCounting:
         assert result.findings[0].arg_count == 0
 
     def test_no_args(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db({"close": [_sig(min_args=0, max_args=0)]})
         scanner = GCPCallScanner(db, simple_resolver, registry=test_registry)
@@ -272,28 +272,28 @@ class TestArgCounting:
 
 class TestSignatureMatching:
     def test_exact_match(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert len(result.findings) == 1
 
     def test_too_many_args_no_match(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("a", "b", "c")'), "test.py")
         assert len(result.findings) == 0
 
     def test_too_few_args_no_match(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("client.get_bucket()"), "test.py")
         assert len(result.findings) == 0
 
     def test_var_kwargs_permissive(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
@@ -305,7 +305,7 @@ class TestSignatureMatching:
         assert result.findings[0].arg_count == 3
 
     def test_var_kwargs_extra_positional(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(
@@ -316,21 +316,21 @@ class TestSignatureMatching:
         assert result.findings[0].arg_count == 4
 
     def test_var_kwargs_too_few(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src("publisher.publish(topic_only)"), "test.py")
         assert len(result.findings) == 0
 
     def test_range_match_at_min(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
         assert len(result.findings) == 1
 
     def test_range_match_at_max(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql", 30)'), "test.py")
@@ -343,7 +343,7 @@ class TestSignatureMatching:
 class TestCrossServiceAmbiguity:
     def test_filters_by_imports(self, data_dir, test_registry):
         """get_iam_policy in storage+bigquery+kms; only imported ones match."""
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db(
             {
@@ -382,7 +382,7 @@ class TestCrossServiceAmbiguity:
         assert service_ids == {"storage", "bigquery"}
 
     def test_class_specific_resolution(self, data_dir, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db(
             {
@@ -426,7 +426,7 @@ class TestCrossServiceAmbiguity:
 
 class TestPermissionResolution:
     def test_mapped(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.query("sql")'), "test.py")
@@ -434,7 +434,7 @@ class TestPermissionResolution:
         assert result.findings[0].permissions == ["bigquery.jobs.create"]
 
     def test_conditional(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('blob.upload_from_filename("/tmp/x")'), "test.py")
@@ -442,14 +442,14 @@ class TestPermissionResolution:
         assert result.findings[0].conditional_permissions == ["storage.objects.delete"]
 
     def test_local_helper(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('client.dataset("analytics")'), "test.py")
         assert result.findings[0].status == "no_api_call"
 
     def test_unmapped(self, data_dir, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db({"new_method": [_sig(min_args=1, max_args=1)]})
         resolver = _make_resolver(data_dir, {})
@@ -458,7 +458,7 @@ class TestPermissionResolution:
         assert result.findings[0].status == "unmapped"
 
     def test_wildcard_class(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source(_src('blob.upload_from_filename("p")'), "test.py")
@@ -470,7 +470,7 @@ class TestPermissionResolution:
 
 class TestRealWorldPatterns:
     def test_demo_source(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = textwrap.dedent("""\
@@ -486,7 +486,7 @@ class TestRealWorldPatterns:
         assert "get_bucket" in methods
 
     def test_path_builder_and_api_call(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(
@@ -502,7 +502,7 @@ class TestRealWorldPatterns:
         assert statuses["publish"] == "mapped"
 
     def test_multiline_call(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(
@@ -517,21 +517,21 @@ class TestRealWorldPatterns:
         assert result.findings[0].arg_count == 1
 
     def test_empty_source(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source("", "empty.py")
         assert result.findings == []
 
     def test_syntax_error_source(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source("def broken(:\n  pass\n", "broken.py")
         assert result.findings == []
 
     def test_call_text_truncated(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         long_arg = '"' + "x" * 200 + '"'
@@ -540,7 +540,7 @@ class TestRealWorldPatterns:
         assert len(result.findings[0].call_text) <= 120
 
     def test_line_and_col_tracking(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         # 3 import lines + comment + assignment + query call
@@ -555,7 +555,7 @@ class TestRealWorldPatterns:
 
 class TestScanResultAggregation:
     def test_all_permissions_aggregated(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src('client.query("sql")\nclient.get_bucket("b")\n')
@@ -564,7 +564,7 @@ class TestScanResultAggregation:
         assert "storage.buckets.get" in result.all_permissions
 
     def test_services_aggregated(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src('client.query("sql")\nclient.get_bucket("b")\n')
@@ -578,7 +578,7 @@ class TestScanResultAggregation:
 
 class TestAsyncScanning:
     async def test_scan_files(self, simple_db, simple_resolver, test_registry, tmp_path):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         f1 = tmp_path / "a.py"
@@ -594,14 +594,14 @@ class TestAsyncScanning:
         assert len(results[2].findings) == 0
 
     async def test_scan_files_empty_list(self, simple_db, simple_resolver, test_registry):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         results = await scanner.scan_files([])
         assert results == []
 
     async def test_scan_files_missing_file(self, simple_db, simple_resolver, test_registry, tmp_path):
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         with pytest.raises((FileNotFoundError, OSError)):
@@ -626,12 +626,12 @@ class TestImportDetection:
     }
 
     def test_from_import(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("from google.cloud import storage\n", self._MAP) == {"storage"}
 
     def test_multiple_imports(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("from google.cloud import storage, bigquery\n", self._MAP) == {
             "storage",
@@ -639,42 +639,42 @@ class TestImportDetection:
         }
 
     def test_submodule_import(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("from google.cloud.storage import Client\n", self._MAP) == {
             "storage"
         }
 
     def test_dotted_import(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("import google.cloud.bigquery\n", self._MAP) == {"bigquery"}
 
     def test_versioned_import(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("from google.cloud import pubsub_v1\n", self._MAP) == {"pubsub"}
 
     def test_with_alias(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("from google.cloud import storage as gcs\n", self._MAP) == {
             "storage"
         }
 
     def test_no_gcp_imports(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports("import pandas as pd\nimport os\n", self._MAP) == set()
 
     def test_parenthesized_multiline(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         source = "from google.cloud import (\n    storage,\n    bigquery,\n)\n"
         assert detect_gcp_imports(source, self._MAP) == {"storage", "bigquery"}
 
     def test_versioned_submodule(self):
-        from gcp_sdk_detector.scanner import detect_gcp_imports
+        from iamspy.scanner import detect_gcp_imports
 
         assert detect_gcp_imports(
             "from google.cloud.kms_v1 import KeyManagementServiceClient\n", self._MAP
@@ -687,7 +687,7 @@ class TestImportDetection:
 class TestImportAwareFiltering:
     def test_no_gcp_imports_no_findings(self, simple_db, simple_resolver, test_registry):
         """No GCP imports → no findings, even if method name matches."""
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         result = scanner.scan_source('client.query("SELECT 1")', "test.py")
@@ -695,7 +695,7 @@ class TestImportAwareFiltering:
 
     def test_pandas_query_no_findings(self, simple_db, simple_resolver, test_registry):
         """pandas .query() produces no findings — no GCP imports."""
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = textwrap.dedent("""\
@@ -708,7 +708,7 @@ class TestImportAwareFiltering:
 
     def test_filters_to_imported_service(self, data_dir, test_registry):
         """query() resolves to bigquery only when bigquery is imported."""
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         db = _make_db(
             {
@@ -740,7 +740,7 @@ class TestImportAwareFiltering:
 
     def test_comments_and_strings_not_scanned(self, simple_db, simple_resolver, test_registry):
         """Comments and string literals don't produce findings."""
-        from gcp_sdk_detector.scanner import GCPCallScanner
+        from iamspy.scanner import GCPCallScanner
 
         scanner = GCPCallScanner(simple_db, simple_resolver, registry=test_registry)
         source = _src(

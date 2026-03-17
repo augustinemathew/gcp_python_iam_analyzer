@@ -4,6 +4,8 @@ Uses method_context.json to build enriched prompts with REST URIs,
 docstrings, and the full service permission list as a soft vocabulary hint.
 
 Saves after each batch (resumable). Logs all LLM calls.
+
+Tests: tests/test_permission_mapping.py
 """
 
 from __future__ import annotations
@@ -356,54 +358,53 @@ def _run_llm_batches(
     # Load embedding model for hybrid permission search
     perm_embeddings, perm_labels, embed_model = _load_embedding_index()
 
-    logger = LLMLogger(log_dir, prefix="s06_mapping")
     import anthropic
 
     client = anthropic.Anthropic()
     global_batch = 0
     ok = err = 0
 
-    for service_id in sorted(by_service):
-        methods = by_service[service_id]
-        entry = registry.get(service_id, {})
-        display_name = entry.get("display_name", service_id)
-        iam_prefix = entry.get("iam_prefix", service_id)
+    with LLMLogger(log_dir, prefix="s06_mapping") as logger:
+        for service_id in sorted(by_service):
+            methods = by_service[service_id]
+            entry = registry.get(service_id, {})
+            display_name = entry.get("display_name", service_id)
+            iam_prefix = entry.get("iam_prefix", service_id)
 
-        for i in range(0, len(methods), BATCH_SIZE):
-            batch = methods[i : i + BATCH_SIZE]
-            global_batch += 1
+            for i in range(0, len(methods), BATCH_SIZE):
+                batch = methods[i : i + BATCH_SIZE]
+                global_batch += 1
 
-            prompt, tag = _build_prompt_for_batch(
-                batch, service_id, display_name, iam_prefix, valid_perms,
-                perm_embeddings, perm_labels, embed_model,
-            )
-
-            print(
-                f"\r  [{global_batch}/{total_batches}] "
-                f"{display_name} batch {i // BATCH_SIZE + 1} "
-                f"({len(batch)}m, {tag})...",
-                end="", flush=True, file=sys.stderr,
-            )
-
-            try:
-                response_text = call_claude(prompt, model=model, client=client)
-                logger.log(
-                    service_id=service_id, batch_idx=i // BATCH_SIZE,
-                    prompt=prompt, response=response_text, model=model,
+                prompt, tag = _build_prompt_for_batch(
+                    batch, service_id, display_name, iam_prefix, valid_perms,
+                    perm_embeddings, perm_labels, embed_model,
                 )
-                raw = json.loads(response_text)
-                _process_llm_response(raw, service_id, all_valid_set, all_mappings)
 
-                ok += 1
-                _save(all_mappings, output_path)
-                print(f" OK ({len(raw)}) [{ok} ok, {err} err]", file=sys.stderr)
-            except Exception as e:
-                err += 1
-                print(f" ERR: {str(e)[:80]} [{ok} ok, {err} err]", file=sys.stderr)
+                print(
+                    f"\r  [{global_batch}/{total_batches}] "
+                    f"{display_name} batch {i // BATCH_SIZE + 1} "
+                    f"({len(batch)}m, {tag})...",
+                    end="", flush=True, file=sys.stderr,
+                )
 
-            time.sleep(0.5)
+                try:
+                    response_text = call_claude(prompt, model=model, client=client)
+                    logger.log(
+                        service_id=service_id, batch_idx=i // BATCH_SIZE,
+                        prompt=prompt, response=response_text, model=model,
+                    )
+                    raw = json.loads(response_text)
+                    _process_llm_response(raw, service_id, all_valid_set, all_mappings)
 
-    logger.close()
+                    ok += 1
+                    _save(all_mappings, output_path)
+                    print(f" OK ({len(raw)}) [{ok} ok, {err} err]", file=sys.stderr)
+                except Exception as e:
+                    err += 1
+                    print(f" ERR: {str(e)[:80]} [{ok} ok, {err} err]", file=sys.stderr)
+
+                time.sleep(0.5)
+
     return ok, err
 
 
@@ -485,6 +486,12 @@ class LLMLogger:
             "prompt": prompt, "response": response,
         }) + "\n")
         self._f.flush()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def close(self) -> None:
         self._f.close()

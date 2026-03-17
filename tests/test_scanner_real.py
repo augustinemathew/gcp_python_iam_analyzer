@@ -10,14 +10,15 @@ from pathlib import Path
 
 import pytest
 
-from gcp_sdk_detector.introspect import build_method_db, discover_gcp_packages
-from gcp_sdk_detector.registry import ServiceRegistry
-from gcp_sdk_detector.resolver import StaticPermissionResolver
-from gcp_sdk_detector.scanner import GCPCallScanner
+from iamspy.introspect import build_method_db, discover_gcp_packages
+from iamspy.registry import ServiceRegistry
+from iamspy.resolver import StaticPermissionResolver
+from iamspy.scanner import GCPCallScanner
 
 PROJECT_ROOT = Path(__file__).parent.parent
 REGISTRY_PATH = PROJECT_ROOT / "service_registry.json"
 PERMISSIONS_PATH = PROJECT_ROOT / "iam_permissions.json"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 # Import lines for test source
 _GCS = "from google.cloud import storage\n"
@@ -246,18 +247,8 @@ class TestCloudKMS:
 
 class TestMultiService:
     def test_realistic_app(self, scanner):
-        source = textwrap.dedent("""\
-            from google.cloud import storage, bigquery, secretmanager
-            sm = secretmanager.SecretManagerServiceClient()
-            secret = sm.access_secret_version(request={"name": "projects/p/secrets/s/versions/latest"})
-            sc = storage.Client()
-            bucket = sc.get_bucket("my-bucket")
-            blob = bucket.blob("data.csv")
-            blob.upload_from_filename("/tmp/data.csv")
-            bq = bigquery.Client(project="my-project")
-            rows = bq.query("SELECT * FROM dataset.table LIMIT 10")
-        """)
-        result = scanner.scan_source(source, "app.py")
+        source = (FIXTURES_DIR / "multi_service_app.py").read_text()
+        result = scanner.scan_source(source, "multi_service_app.py")
         perms = result.all_permissions
         assert "secretmanager.versions.access" in perms
         assert "storage.buckets.get" in perms
@@ -276,18 +267,20 @@ class TestMultiService:
         assert "storage.buckets.get" in perms
         assert "storage.objects.create" in perms
 
-    async def test_async_scan_real_files(self, scanner, tmp_path):
-        f1 = tmp_path / "storage_app.py"
-        f1.write_text(_src('client.get_bucket("b")\nblob.upload_from_filename("/tmp/x")\n', _GCS))
-        f2 = tmp_path / "bq_app.py"
-        f2.write_text(_src('client.query("SELECT 1")', _BQ))
-        f3 = tmp_path / "no_gcp.py"
-        f3.write_text("x = 1 + 2\nprint(x)")
-        results = await scanner.scan_files([f1, f2, f3])
+    async def test_async_scan_real_files(self, scanner):
+        files = [
+            FIXTURES_DIR / "storage_app.py",
+            FIXTURES_DIR / "bigquery_app.py",
+            FIXTURES_DIR / "no_gcp_imports.py",
+        ]
+        results = await scanner.scan_files(files)
         assert len(results) == 3
-        assert len(results[0].findings) >= 2
-        assert len(results[1].findings) >= 1
-        assert len(results[2].findings) == 0
+        storage_perms = results[0].all_permissions
+        assert "storage.buckets.get" in storage_perms
+        assert "storage.objects.create" in storage_perms
+        bq_perms = results[1].all_permissions
+        assert "bigquery.jobs.create" in bq_perms
+        assert len(results[2].findings) == 0  # no_gcp_imports.py
 
 
 # ── Edge Cases with Real DB ──────────────────────────────────────────────
@@ -306,12 +299,8 @@ class TestRealDBEdgeCases:
 
     def test_non_gcp_code_no_findings(self, scanner):
         """No GCP imports → no findings, even if method names match."""
-        source = textwrap.dedent("""\
-            import pandas as pd
-            df = pd.read_csv("data.csv")
-            result = df.query("column > 5")
-        """)
-        result = scanner.scan_source(source, "pandas_app.py")
+        source = (FIXTURES_DIR / "no_gcp_imports.py").read_text()
+        result = scanner.scan_source(source, "no_gcp_imports.py")
         assert len(result.findings) == 0
 
     def test_comments_and_strings_not_scanned(self, scanner):

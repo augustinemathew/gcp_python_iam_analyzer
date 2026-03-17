@@ -1,13 +1,15 @@
 """Pretty terminal output for scan results.
 
 ANSI color support with graceful fallback for non-TTY output.
+
+Tests: tests/test_cli.py (via CLI integration tests)
 """
 
 from __future__ import annotations
 
 import sys
 
-from gcp_sdk_detector.models import ScanResult
+from iamspy.models import Finding, ScanResult
 
 # ANSI escape codes
 _BOLD = "\033[1m"
@@ -73,6 +75,38 @@ def _read_source_line(filepath: str, line_num: int) -> str | None:
     return None
 
 
+def _print_finding(
+    f: Finding,
+    fmt: Formatter,
+    all_perms: set[str],
+    all_conditional: set[str],
+    all_services: set[str],
+    file,
+) -> None:
+    all_services.update(sorted({m.display_name for m in f.matched}))
+    source_line = _read_source_line(f.file, f.line)
+    line_str = fmt.dim(f"{f.line:>4}")
+
+    if source_line:
+        highlighted = _highlight_method_in_line(source_line.strip(), f.method_name, fmt)
+        print(f"  {line_str}  {highlighted}", file=file)
+    else:
+        print(f"  {line_str}  {fmt.bold(f.method_name)}()", file=file)
+
+    if f.permissions:
+        perm_str = fmt.green(", ".join(f.permissions))
+        print(f"        {fmt.dim('→')} {perm_str}", file=file)
+        all_perms.update(f.permissions)
+        if f.conditional_permissions:
+            cond_str = fmt.yellow(", ".join(f.conditional_permissions))
+            print(f"        {fmt.yellow('⚠')} conditional: {cond_str}", file=file)
+            all_conditional.update(f.conditional_permissions)
+    elif f.status == "unmapped":
+        print(f"        {fmt.dim('→')} {fmt.dim('unmapped')}", file=file)
+    elif f.status == "no_api_call":
+        print(f"        {fmt.dim('→')} {fmt.dim('local helper')}", file=file)
+
+
 def print_scan_results(
     results: list[ScanResult],
     show_all: bool = False,
@@ -93,55 +127,21 @@ def print_scan_results(
         findings = result.findings
         if not show_all:
             findings = [f for f in findings if f.status != "no_api_call"]
-
         if not findings:
             continue
 
         files_with_findings += 1
         total_findings += len(findings)
-
-        # File header
         print(f"\n{fmt.bold(result.file)}", file=file)
-
         for f in findings:
-            services = sorted({m.display_name for m in f.matched})
-            all_services.update(services)
-
-            # Read and display the actual source line with method highlighted
-            source_line = _read_source_line(f.file, f.line)
-            line_str = fmt.dim(f"{f.line:>4}")
-
-            if source_line:
-                highlighted = _highlight_method_in_line(source_line.strip(), f.method_name, fmt)
-                print(f"  {line_str}  {highlighted}", file=file)
-            else:
-                print(f"  {line_str}  {fmt.bold(f.method_name)}()", file=file)
-
-            # Permissions on the next line, indented
-            if f.permissions:
-                perm_str = fmt.green(", ".join(f.permissions))
-                print(f"        {fmt.dim('→')} {perm_str}", file=file)
-                all_perms.update(f.permissions)
-
-                if f.conditional_permissions:
-                    cond_str = fmt.yellow(", ".join(f.conditional_permissions))
-                    print(f"        {fmt.yellow('⚠')} conditional: {cond_str}", file=file)
-                    all_conditional.update(f.conditional_permissions)
-            elif f.status == "unmapped":
-                print(f"        {fmt.dim('→')} {fmt.dim('unmapped')}", file=file)
-            elif f.status == "no_api_call":
-                print(f"        {fmt.dim('→')} {fmt.dim('local helper')}", file=file)
+            _print_finding(f, fmt, all_perms, all_conditional, all_services, file)
 
     if total_findings == 0:
         print("No GCP SDK calls found.", file=file)
         return
 
-    # Summary
     print(f"\n{fmt.dim('─' * 50)}", file=file)
-    print(
-        f"{files_with_findings} file(s), {total_findings} finding(s)",
-        file=file,
-    )
+    print(f"{files_with_findings} file(s), {total_findings} finding(s)", file=file)
     print(f"Services: {', '.join(sorted(all_services))}", file=file)
 
     if all_perms or all_conditional:

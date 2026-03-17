@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from gcp_sdk_detector.models import ServiceEntry
-from gcp_sdk_detector.registry import ServiceRegistry
+from iamspy.models import ServiceEntry
+from iamspy.registry import ServiceRegistry
 
 # Single source of truth for test services.
 # Used by both test_registry (ServiceRegistry object) and sample_service_registry (JSON file).

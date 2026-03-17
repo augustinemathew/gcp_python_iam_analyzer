@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from gcp_sdk_detector.resolver import PermissionResolver, StaticPermissionResolver
+from iamspy.resolver import PermissionResolver, StaticPermissionResolver
 
 
 class TestStaticPermissionResolver:
@@ -136,7 +136,7 @@ class TestPermissionResolverIsABC:
 
     def test_custom_resolver(self):
         """A concrete subclass works correctly."""
-        from gcp_sdk_detector.models import PermissionResult
+        from iamspy.models import PermissionResult
 
         class DictResolver(PermissionResolver):
             def __init__(self, data: dict[str, PermissionResult]):

@@ -18,7 +18,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 def run_cli(*args: str, input_text: str | None = None) -> subprocess.CompletedProcess:
     """Run the CLI via subprocess and return the result."""
     return subprocess.run(
-        [sys.executable, "-m", "gcp_sdk_detector", *args],
+        [sys.executable, "-m", "iamspy", *args],
         capture_output=True,
         text=True,
         cwd=str(PROJECT_ROOT),

@@ -1,8 +1,23 @@
-"""Core data models for the GCP SDK IAM Permission Detector."""
+"""Core data models for the GCP SDK IAM Permission Detector.
+
+Tests: tests/test_models.py
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+# Method names too generic to be useful — high false positive rate.
+# Shared by both introspect.py (installed SDK) and monorepo.py (source AST).
+GENERIC_SKIP = frozenset({
+    "get", "set", "put", "post", "delete", "list", "close", "open",
+    "read", "write", "update", "create", "patch", "run", "start", "stop",
+    "reset", "copy", "move", "exists", "flush",
+    "send", "keys", "values", "items", "pop", "clear",
+    "__init__", "__repr__", "__str__", "__eq__", "__hash__",
+    "__enter__", "__exit__", "__del__", "__getattr__", "__setattr__",
+    "__getstate__", "__setstate__", "__reduce__",
+})
 
 
 @dataclass(frozen=True)

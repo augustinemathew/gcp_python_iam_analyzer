@@ -8,9 +8,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from gcp_sdk_detector.introspect import discover_gcp_packages
-from gcp_sdk_detector.models import ServiceEntry
-from gcp_sdk_detector.registry import ServiceRegistry
+from iamspy.introspect import discover_gcp_packages
+from iamspy.models import ServiceEntry
+from iamspy.registry import ServiceRegistry
 
 
 def build_registry(output_path: Path | None = None) -> ServiceRegistry:

@@ -1,11 +1,14 @@
-"""Service registry — canonical mapping from service_id to metadata."""
+"""Service registry — canonical mapping from service_id to metadata.
+
+Tests: tests/test_registry.py
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from gcp_sdk_detector.models import ServiceEntry
+from iamspy.models import ServiceEntry
 
 
 class ServiceRegistry:
@@ -18,6 +21,9 @@ class ServiceRegistry:
 
     def __init__(self, entries: dict[str, ServiceEntry] | None = None):
         self._entries: dict[str, ServiceEntry] = entries or {}
+        self._by_pip: dict[str, ServiceEntry] = {
+            e.pip_package: e for e in self._entries.values()
+        }
 
     @classmethod
     def from_json(cls, path: str | Path) -> ServiceRegistry:
@@ -67,10 +73,7 @@ class ServiceRegistry:
         return sorted(self._entries.keys())
 
     def lookup_by_pip_package(self, pip_package: str) -> ServiceEntry | None:
-        for entry in self._entries.values():
-            if entry.pip_package == pip_package:
-                return entry
-        return None
+        return self._by_pip.get(pip_package)
 
     def lookup_by_module(self, module_path: str) -> ServiceEntry | None:
         for entry in self._entries.values():
@@ -78,15 +81,23 @@ class ServiceRegistry:
                 return entry
         return None
 
+    def __iter__(self):
+        return iter(self._entries.values())
+
     def add(self, entry: ServiceEntry) -> None:
         self._entries[entry.service_id] = entry
+        self._by_pip[entry.pip_package] = entry
 
 
 def derive_service_id(pip_package: str) -> str:
     """Derive service_id from a pip package name.
 
-    Rule: strip 'google-cloud-' prefix, remove hyphens.
-    Example: 'google-cloud-secret-manager' → 'secretmanager'
+    Strips known GCP package prefixes and removes hyphens.
+    Examples:
+      google-cloud-secret-manager → secretmanager
+      google-ai-generativelanguage → generativelanguage
     """
-    suffix = pip_package.removeprefix("google-cloud-")
-    return suffix.replace("-", "")
+    for prefix in ("google-cloud-", "google-ai-"):
+        if pip_package.startswith(prefix):
+            return pip_package.removeprefix(prefix).replace("-", "")
+    return pip_package.removeprefix("google-").replace("-", "")

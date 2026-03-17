@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from gcp_sdk_detector.scanner import detect_gcp_imports
+from iamspy.scanner import detect_gcp_imports
 
 
 class TestImportDetectionEdgeCases:

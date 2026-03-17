@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from gcp_sdk_detector.models import (
+from iamspy.models import (
     Finding,
     MethodSig,
     PermissionResult,

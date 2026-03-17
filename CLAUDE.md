@@ -8,7 +8,7 @@ GCP SDK IAM Permission Detector — statically analyzes Python source code to de
 
 ## Architecture
 
-Two-phase system: **build time** (offline) and **run time** (analysis). See DESIGN.md for the full design and docs/ for component details.
+Two-phase system: **build time** (offline) and **run time** (analysis). See `docs/architecture.md` for the design and `docs/build-pipeline.md` for the pipeline.
 
 ### Runtime (the hot path)
 
@@ -71,7 +71,7 @@ Example finding from this project: SDK introspection (`build_method_db`) takes 1
 
 ### 2. Design, then build
 
-Write down what you'll change and why before writing code. Update the relevant doc in `docs/` or add to DESIGN.md open questions. Get the design right — the code follows.
+Write down what you'll change and why before writing code. Update the relevant doc in `docs/` or add to `docs/architecture.md` open questions. Get the design right — the code follows.
 
 ### 3. TDD
 

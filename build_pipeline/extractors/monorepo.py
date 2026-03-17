@@ -3,6 +3,8 @@
 Walks the filesystem to find packages, client classes, and method signatures
 without importing anything. This lets us extract data from all 200+ packages
 in the monorepo without pip installing them.
+
+Tests: tests/test_monorepo.py
 """
 
 from __future__ import annotations
@@ -10,6 +12,9 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from iamspy.models import GENERIC_SKIP
+from iamspy.registry import derive_service_id
 
 SKIP_PACKAGES = frozenset({
     "google-cloud-core", "google-cloud-testutils", "google-cloud-common",
@@ -20,13 +25,6 @@ SKIP_PACKAGES = frozenset({
     "google-geo-type", "google-shopping-type", "google-apps-card",
     "google-apps-script-type", "google-cloud-iam-logging",
     "google-cloud-bigquery-logging", "google-resumable-media",
-})
-
-# Skip method names too generic for the scanner
-GENERIC_SKIP = frozenset({
-    "get", "set", "put", "post", "delete", "list", "close", "open",
-    "read", "write", "update", "create", "patch", "run", "start", "stop",
-    "reset", "copy", "move", "exists", "flush",
 })
 
 
@@ -63,7 +61,7 @@ def discover_monorepo_packages(monorepo_root: Path) -> list[MonorepoPackage]:
         if not modules:
             continue
 
-        service_id = _derive_service_id(pkg_dir.name)
+        service_id = derive_service_id(pkg_dir.name)
         results.append(MonorepoPackage(
             pip_package=pkg_dir.name,
             service_id=service_id,
@@ -130,17 +128,27 @@ def extract_methods_from_source(client_path: Path) -> list[dict]:
 
 
 def _count_params(func_node: ast.FunctionDef) -> tuple[int, int, bool]:
-    """Count min/max args from an AST function definition (excluding self)."""
+    """Count min/max args from an AST function definition (excluding self).
+
+    GAPIC methods use keyword-only params after *:
+      def foo(self, request=None, *, parent=None, retry=None, timeout=None): ...
+    These must be counted or max_args comes out wrong (1 instead of 4+).
+    """
     args = func_node.args
-    all_args = args.args[1:]  # skip self
+    pos_args = args.args[1:]  # skip self
+    kw_only = args.kwonlyargs
 
-    num_defaults = len(args.defaults)
-    total = len(all_args)
-    required = total - num_defaults
+    num_pos_defaults = len(args.defaults)
+    required_pos = len(pos_args) - num_pos_defaults
 
+    # kw_defaults is a parallel list with None for required entries
+    required_kw = sum(1 for d in args.kw_defaults if d is None)
+
+    min_args = max(0, required_pos + required_kw)
+    max_args = len(pos_args) + len(kw_only)
     has_kwargs = args.kwarg is not None
 
-    return required, total, has_kwargs
+    return min_args, max_args, has_kwargs
 
 
 # Namespaces under google.* that contain GCP services with IAM permissions.
@@ -188,9 +196,3 @@ def _find_modules(pkg_dir: Path) -> list[str]:
     return sorted(modules)
 
 
-def _derive_service_id(pip_package: str) -> str:
-    """Derive service_id from pip package name."""
-    for prefix in ("google-cloud-", "google-ai-"):
-        if pip_package.startswith(prefix):
-            return pip_package.removeprefix(prefix).replace("-", "")
-    return pip_package.removeprefix("google-").replace("-", "")

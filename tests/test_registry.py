@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from gcp_sdk_detector.models import ServiceEntry
-from gcp_sdk_detector.registry import ServiceRegistry, derive_service_id
+from iamspy.models import ServiceEntry
+from iamspy.registry import ServiceRegistry, derive_service_id
 
 
 class TestDeriveServiceId:

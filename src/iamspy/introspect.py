@@ -1,4 +1,7 @@
-"""SDK introspection — discover installed GCP packages and build method DB."""
+"""SDK introspection — discover installed GCP packages and build method DB.
+
+Tests: tests/test_introspect.py
+"""
 
 from __future__ import annotations
 
@@ -8,8 +11,8 @@ import inspect
 import re
 from dataclasses import dataclass
 
-from gcp_sdk_detector.models import MethodDB, MethodSig
-from gcp_sdk_detector.registry import ServiceRegistry, derive_service_id
+from iamspy.models import GENERIC_SKIP, MethodDB, MethodSig
+from iamspy.registry import ServiceRegistry, derive_service_id
 
 # Packages to skip (infrastructure, not user-facing API surfaces)
 SKIP_PACKAGES = frozenset(
@@ -23,52 +26,6 @@ SKIP_PACKAGES = frozenset(
 # Module path segments to skip
 _SKIP_MODULE_PREFIXES = ("_",)
 _SKIP_MODULE_CONTAINS = ("admin", "bundle", "beta")
-
-# Method names too generic to be useful — high false positive rate
-GENERIC_SKIP = frozenset(
-    {
-        "get",
-        "set",
-        "put",
-        "post",
-        "delete",
-        "list",
-        "close",
-        "open",
-        "read",
-        "write",
-        "update",
-        "create",
-        "patch",
-        "run",
-        "start",
-        "stop",
-        "reset",
-        "copy",
-        "move",
-        "exists",
-        "flush",
-        "send",
-        "keys",
-        "values",
-        "items",
-        "pop",
-        "clear",
-        "__init__",
-        "__repr__",
-        "__str__",
-        "__eq__",
-        "__hash__",
-        "__enter__",
-        "__exit__",
-        "__del__",
-        "__getattr__",
-        "__setattr__",
-        "__getstate__",
-        "__setstate__",
-        "__reduce__",
-    }
-)
 
 
 @dataclass

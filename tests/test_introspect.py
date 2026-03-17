@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 from unittest.mock import patch
 
-from gcp_sdk_detector.introspect import (
+from iamspy.introspect import (
     GENERIC_SKIP,
     DiscoveredPackage,
     build_method_db,
@@ -90,7 +90,7 @@ class TestBuildMethodDb:
         mod.TestClient = TestClient
         return mod
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_builds_db(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -101,7 +101,7 @@ class TestBuildMethodDb:
         assert "dataset" in db
         assert "list_tables" in db
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_skips_private(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -109,7 +109,7 @@ class TestBuildMethodDb:
         db = build_method_db(packages=[pkg], skip_private=True)
         assert "_private_method" not in db
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_includes_private_when_disabled(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -117,7 +117,7 @@ class TestBuildMethodDb:
         db = build_method_db(packages=[pkg], skip_private=False)
         assert "_private_method" in db
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_skips_generic(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -125,7 +125,7 @@ class TestBuildMethodDb:
         db = build_method_db(packages=[pkg], skip_generic=True)
         assert "get" not in db
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_includes_generic_when_disabled(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -133,7 +133,7 @@ class TestBuildMethodDb:
         db = build_method_db(packages=[pkg], skip_generic=False)
         assert "get" in db
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_method_sig_fields(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package(service_id="myservice", display_name="My Service")
@@ -150,7 +150,7 @@ class TestBuildMethodDb:
         assert sig.max_args == 2  # sql + timeout
         assert not sig.has_var_kwargs
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_deduplicates(self, mock_import):
         mock_import.return_value = self._make_mock_module()
         pkg = self._make_package()
@@ -164,7 +164,7 @@ class TestBuildMethodDb:
                 assert key not in seen, f"Duplicate signature: {key}"
                 seen.add(key)
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_handles_import_error(self, mock_import):
         mock_import.side_effect = ImportError("no such module")
         pkg = self._make_package()
@@ -172,7 +172,7 @@ class TestBuildMethodDb:
         db = build_method_db(packages=[pkg])
         assert len(db) == 0
 
-    @patch("gcp_sdk_detector.introspect.importlib.import_module")
+    @patch("iamspy.introspect.importlib.import_module")
     def test_var_kwargs_detection(self, mock_import):
         mod = types.ModuleType("google.cloud.testmod")
 

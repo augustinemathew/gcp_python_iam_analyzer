@@ -11,8 +11,8 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from gcp_sdk_detector.introspect import build_method_db, discover_gcp_packages
-from gcp_sdk_detector.registry import ServiceRegistry
+from iamspy.introspect import build_method_db, discover_gcp_packages
+from iamspy.registry import ServiceRegistry
 
 
 def build_method_database(
