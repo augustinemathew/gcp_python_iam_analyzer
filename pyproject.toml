@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gcp-sdk-detector"
+name = "iamspy"
 version = "0.1.0"
-description = "Statically analyze Python code to detect GCP SDK calls and resolve IAM permissions"
+description = "Spy on your Python code to find exactly which GCP IAM permissions it needs"
 requires-python = ">=3.12"
 dependencies = [
     "tree-sitter>=0.23",
@@ -30,6 +30,7 @@ build = [
 ]
 
 [project.scripts]
+iamspy = "gcp_sdk_detector.__main__:main"
 gcp-sdk-detector = "gcp_sdk_detector.__main__:main"
 
 [tool.setuptools.packages.find]

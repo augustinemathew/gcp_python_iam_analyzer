@@ -339,7 +339,7 @@ def _color_method_key(key: str, fmt: Formatter) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="gcp-sdk-detector",
+        prog="iamspy",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Detect GCP SDK calls in Python code and resolve IAM permissions",
         epilog=textwrap.dedent("""\
