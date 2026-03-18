@@ -111,6 +111,53 @@ def _find_service_permissions(
     return sorted(found)
 
 
+def _pinned_family_permissions(batch: list[dict], prefix_perms: set[str]) -> set[str]:
+    """Return all prefix permissions that belong to parameterized families in this batch.
+
+    A parameterized family is signalled by a REST URI that contains a known
+    resource-type segment followed by a wildcard, e.g.:
+      {parent=.../recommenders/*}/recommendations   → family noun "recommendations"
+      {name=.../recommenders/*/recommendations/*}   → family noun "recommendations"
+      {parent=.../insightTypes/*}/insights          → family noun "insights"
+
+    Every permission whose resource segment contains the family noun is pinned
+    into the hint list so the LLM can enumerate the full family as conditionals.
+    """
+    import re
+
+    # Known type-segment → family noun mappings.
+    # Key: plural segment name that appears before /* in the URI.
+    # Value: the noun used in the IAM permission resource segment.
+    _TYPE_SEGMENTS: dict[str, str] = {
+        "recommenders": "recommendations",
+        "insightTypes": "insights",
+        "insighttypes": "insights",
+    }
+
+    family_nouns: set[str] = set()
+    for m in batch:
+        uri = m.get("rest_uri") or ""
+        # Pattern 1: trailing wildcard then endpoint noun — {.../recommenders/*}/recommendations
+        for noun in re.findall(r"/\*\}/(\w+)", uri):
+            family_nouns.add(noun.lower())
+        # Pattern 2: known type segment followed by wildcard anywhere in path
+        for segment, noun in _TYPE_SEGMENTS.items():
+            if re.search(rf"/{re.escape(segment)}/\*", uri, re.IGNORECASE):
+                family_nouns.add(noun)
+
+    if not family_nouns:
+        return set()
+
+    pinned: set[str] = set()
+    for perm in prefix_perms:
+        parts = perm.split(".")
+        if len(parts) >= 3:
+            resource_seg = parts[1].lower()  # e.g. "computeInstanceMachineTypeRecommendations"
+            if any(noun in resource_seg for noun in family_nouns):
+                pinned.add(perm)
+    return pinned
+
+
 def _find_permissions_hybrid(
     batch: list[dict],
     service_id: str,
@@ -124,9 +171,9 @@ def _find_permissions_hybrid(
     """Hybrid search: prefix lookup + semantic reranking.
 
     1. Prefix lookup — get all permissions for the service
-    2. Semantic search — top 30 from corpus using method context as query
-    3. Merge candidates
-    4. Rerank everything by semantic similarity to the batch
+    2. Pin parameterized family permissions so they always appear in hints
+    3. Semantic search — top 30 from corpus using method context as query
+    4. Merge candidates, rerank; pinned permissions are never dropped
     """
     import numpy as np
 
@@ -136,9 +183,12 @@ def _find_permissions_hybrid(
         if try_prefix in all_perms:
             prefix_results.update(all_perms[try_prefix])
 
+    # Always include the full parameterized family so the LLM can enumerate it.
+    pinned = _pinned_family_permissions(batch, prefix_results)
+
     # If no embedding model, return prefix results only
     if embed_model is None or perm_embeddings is None:
-        return sorted(prefix_results)[:top_k]
+        return sorted(prefix_results)[:top_k + len(pinned)]
 
     # Build query from batch methods
     queries = []
@@ -163,7 +213,14 @@ def _find_permissions_hybrid(
     perm_to_score = {perm_labels[i]: float(scores[i]) for i in range(len(perm_labels))}
     ranked = sorted(candidates, key=lambda p: perm_to_score.get(p, 0), reverse=True)
 
-    return ranked[:top_k]
+    # Pinned family members always appear first; fill remaining slots from ranked
+    result = list(pinned)
+    for p in ranked:
+        if len(result) >= top_k + len(pinned):
+            break
+        if p not in pinned:
+            result.append(p)
+    return result
 
 
 def _load_embedding_index() -> tuple:
@@ -222,10 +279,11 @@ def _load_inputs(
             all_valid_set.update(perm_list)
 
     all_mappings: dict[str, dict] = {}
-    if resume and output_path.exists():
+    if output_path.exists():
         with open(output_path) as f:
             all_mappings = json.load(f)
-        print(f"Loaded {len(all_mappings)} existing mappings", file=sys.stderr)
+        status = "resuming" if resume else "will overwrite filtered service(s)"
+        print(f"Loaded {len(all_mappings)} existing mappings ({status})", file=sys.stderr)
 
     return method_context, registry, valid_perms, all_valid_set, all_mappings
 
@@ -454,7 +512,7 @@ def map_permissions(
 
 
 def call_claude(
-    prompt: str, *, model: str = DEFAULT_MODEL, max_tokens: int = 4096,
+    prompt: str, *, model: str = DEFAULT_MODEL, max_tokens: int = 16000,
     client: anthropic.Anthropic | None = None,
 ) -> str:
     """Send a prompt to Claude and return the text response."""
@@ -529,11 +587,36 @@ Methods to map:
 For EACH method, determine the IAM permission(s) required when called.
 Permission format: {iam_prefix}.{{resource}}.{{action}}
 
+DYNAMIC PERMISSIONS — read carefully:
+
+1. URI TYPE-SELECTOR: Some methods require a permission whose name depends on a resource type in the URL.
+   Signs: wildcard resource-type segment in the REST URI:
+     {{parent=.../recommenders/*}}/recommendations  or  {{parent=.../insightTypes/*}}/insights
+   For these: set "permissions" to [] and put ALL permissions from the hint list that match the
+   family pattern into "conditional". Do not guess a subset — enumerate the full family.
+   The caller needs exactly one, determined by the resource type they pass at runtime.
+
+2. CROSS-RESOURCE AND FEATURE-FLAG PARAMETERS: Some methods accept optional parameters that
+   reference a second GCP resource or enable a feature requiring an extra permission from a
+   different service. Common patterns:
+     - service_account / service_accounts parameter → iam.serviceAccounts.actAs (conditional)
+     - kms_key_name / encryption_configuration / customer_managed_encryption → cloudkms.cryptoKeyVersions.useToEncrypt (conditional)
+     - CMEK on create/update → cloudkms.cryptoKeyVersions.useToDecrypt + useToEncrypt (conditional)
+     - iap / Identity-Aware Proxy configuration with service account → iam.serviceAccounts.actAs (conditional)
+   Primary permission stays in "permissions". Cross-service permission goes in "conditional".
+
+3. MULTI-RESOURCE OPERATIONS: Some methods operate on two distinct resources (e.g. copy, rewrite,
+   load from GCS). The cross-service or destination permission is not always exercised.
+   Put the secondary resource's permission in "conditional", not "permissions".
+   Examples: copy needs storage.objects.get (source, conditional) + storage.objects.create (dest, conditional);
+   load from GCS needs the primary BigQuery permission plus storage.objects.get (conditional).
+
 For EACH method, provide:
-- "permissions": primary required IAM permissions
-- "conditional": permissions only needed in some cases
+- "permissions": primary required IAM permissions ([] if URI type-selector)
+- "conditional": permissions needed only sometimes, ALL family permissions if URI type-selector,
+  cross-service/feature-flag permissions, and secondary resource permissions for multi-resource ops
 - "local_helper": true if this method makes no API call
-- "notes": brief explanation
+- "notes": brief explanation; if URI type-selector, state which URL segment determines the permission
 
 Return ONLY valid JSON. Keys must be ClassName.method_name."""
 
@@ -561,9 +644,23 @@ Methods to map:
 Valid IAM permissions for this service (prefer these):
 {json.dumps(valid_permissions)}
 
+DYNAMIC PERMISSIONS — read carefully:
+
+1. CROSS-RESOURCE AND FEATURE-FLAG PARAMETERS: Some methods accept optional parameters that
+   reference a second GCP resource or enable a feature requiring an extra permission from a
+   different service. Common patterns:
+     - service_account / service_accounts parameter → iam.serviceAccounts.actAs (conditional)
+     - kms_key_name / encryption_configuration / customer_managed_encryption → cloudkms.cryptoKeyVersions.useToEncrypt (conditional)
+     - CMEK on create/update → cloudkms.cryptoKeyVersions.useToDecrypt + useToEncrypt (conditional)
+     - iap / Identity-Aware Proxy configuration with service account → iam.serviceAccounts.actAs (conditional)
+   Primary permission stays in "permissions". Cross-service permission goes in "conditional".
+
+2. MULTI-RESOURCE OPERATIONS: Some methods operate on two distinct resources (e.g. copy, rewrite,
+   load from GCS). Put secondary resource permissions in "conditional", not "permissions".
+
 For EACH method, provide:
 - "permissions": primary required permissions (prefer from the list above)
-- "conditional": permissions needed depending on configuration
+- "conditional": permissions needed depending on configuration or secondary resources
 - "local_helper": true if this method makes no API call
 - "notes": brief explanation
 
