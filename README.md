@@ -45,7 +45,7 @@ Required permissions:
 
 **Those are the exact permissions your service account needs. Nothing more. Nothing less.**
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org) [![Tests](https://img.shields.io/badge/tests-365%20passing-brightgreen.svg)]() [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org) [![Tests](https://img.shields.io/badge/tests-365%20passing-brightgreen.svg)]() [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
