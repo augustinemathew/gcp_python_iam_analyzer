@@ -141,17 +141,19 @@ def cmd_services(args: argparse.Namespace) -> int:
                 "pip_package": entry.pip_package,
                 "display_name": entry.display_name,
                 "iam_prefix": entry.iam_prefix,
+                "api_service": entry.api_service,
                 "modules": entry.modules,
             }
         print(json.dumps(data, indent=2))
     else:
-        print(f"{'service_id':<25} {'display_name':<30} {'iam_prefix':<20} pip_package")
-        print("-" * 100)
+        print(f"{'service_id':<25} {'display_name':<30} {'iam_prefix':<20} {'api_service':<40} pip_package")
+        print("-" * 125)
         for sid in registry.service_ids():
             entry = registry.get(sid)
             if entry is None:
                 continue
-            print(f"{sid:<25} {entry.display_name:<30} {entry.iam_prefix:<20} {entry.pip_package}")
+            api = entry.api_service or "(unknown)"
+            print(f"{sid:<25} {entry.display_name:<30} {entry.iam_prefix:<20} {api:<40} {entry.pip_package}")
         print(f"\n{len(registry)} services")
 
     return 0

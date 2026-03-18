@@ -108,17 +108,19 @@ class TestServiceRegistry:
                 pip_package="google-cloud-bigquery",
                 display_name="BigQuery",
                 iam_prefix="bigquery",
+                api_service="bigquery.googleapis.com",
                 discovery_doc="https://bigquery.googleapis.com/$discovery/rest?version=v2",
                 modules=["google.cloud.bigquery"],
             )
         )
         reg.add(
             ServiceEntry(
-                service_id="storage",
-                pip_package="google-cloud-storage",
-                display_name="Cloud Storage",
-                iam_prefix="storage",
-                modules=["google.cloud.storage"],
+                service_id="kms",
+                pip_package="google-cloud-kms",
+                display_name="Cloud KMS",
+                iam_prefix="cloudkms",
+                api_service="cloudkms.googleapis.com",
+                modules=["google.cloud.kms"],
             )
         )
 
@@ -130,15 +132,36 @@ class TestServiceRegistry:
         bq = reg2.get("bigquery")
         assert bq is not None
         assert bq.display_name == "BigQuery"
+        assert bq.api_service == "bigquery.googleapis.com"
         assert bq.discovery_doc == "https://bigquery.googleapis.com/$discovery/rest?version=v2"
         assert bq.modules == ["google.cloud.bigquery"]
+        kms = reg2.get("kms")
+        assert kms is not None
+        assert kms.api_service == "cloudkms.googleapis.com"
+
+    def test_api_service_roundtrip_divergent(self, data_dir: Path):
+        """api_service survives roundtrip for services where it differs from iam_prefix."""
+        reg = ServiceRegistry()
+        reg.add(ServiceEntry(
+            service_id="resourcemanager",
+            pip_package="google-cloud-resource-manager",
+            display_name="Resource Manager",
+            iam_prefix="resourcemanager",
+            api_service="cloudresourcemanager.googleapis.com",
+        ))
+        path = data_dir / "divergent.json"
+        reg.to_json(path)
+        reg2 = ServiceRegistry.from_json(path)
+        entry = reg2.get("resourcemanager")
+        assert entry is not None
+        assert entry.api_service == "cloudresourcemanager.googleapis.com"
 
     def test_from_json_file_not_found(self, data_dir: Path):
         with pytest.raises(FileNotFoundError):
             ServiceRegistry.from_json(data_dir / "nope.json")
 
     def test_from_json_missing_optional_fields(self, data_dir: Path):
-        """Registry JSON with only required fields."""
+        """Registry JSON with only required fields — all optional fields default to empty."""
         data = {
             "storage": {
                 "pip_package": "google-cloud-storage",
@@ -151,6 +174,7 @@ class TestServiceRegistry:
         reg = ServiceRegistry.from_json(path)
         entry = reg.get("storage")
         assert entry is not None
+        assert entry.api_service == ""
         assert entry.discovery_doc == ""
         assert entry.modules == []
 

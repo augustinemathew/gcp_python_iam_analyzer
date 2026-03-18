@@ -17,30 +17,35 @@ TEST_SERVICES = {
         "pip_package": "google-cloud-bigquery",
         "display_name": "BigQuery",
         "iam_prefix": "bigquery",
+        "api_service": "bigquery.googleapis.com",
         "modules": ["google.cloud.bigquery", "google.cloud.bigquery_v2"],
     },
     "storage": {
         "pip_package": "google-cloud-storage",
         "display_name": "Cloud Storage",
         "iam_prefix": "storage",
+        "api_service": "storage.googleapis.com",
         "modules": ["google.cloud.storage"],
     },
     "kms": {
         "pip_package": "google-cloud-kms",
         "display_name": "Cloud KMS",
         "iam_prefix": "cloudkms",
+        "api_service": "cloudkms.googleapis.com",  # iam_prefix != service_id
         "modules": ["google.cloud.kms", "google.cloud.kms_v1"],
     },
     "pubsub": {
         "pip_package": "google-cloud-pubsub",
         "display_name": "Pub/Sub",
         "iam_prefix": "pubsub",
+        "api_service": "pubsub.googleapis.com",
         "modules": ["google.cloud.pubsub", "google.cloud.pubsub_v1", "google.pubsub_v1"],
     },
     "dlp": {
         "pip_package": "google-cloud-dlp",
         "display_name": "Cloud DLP",
         "iam_prefix": "dlp",
+        "api_service": "dlp.googleapis.com",
         "modules": ["google.cloud.dlp", "google.cloud.dlp_v2"],
     },
 }

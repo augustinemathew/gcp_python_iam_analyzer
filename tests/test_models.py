@@ -213,6 +213,28 @@ class TestServiceEntry:
             display_name="Cloud Storage",
             iam_prefix="storage",
         )
+        assert e.api_service == ""
         assert e.discovery_doc == ""
         assert e.iam_reference == ""
         assert e.modules == []
+
+    def test_api_service(self):
+        e = ServiceEntry(
+            service_id="kms",
+            pip_package="google-cloud-kms",
+            display_name="Cloud KMS",
+            iam_prefix="cloudkms",
+            api_service="cloudkms.googleapis.com",
+        )
+        assert e.api_service == "cloudkms.googleapis.com"
+
+    def test_frozen(self):
+        e = ServiceEntry(
+            service_id="bigquery",
+            pip_package="google-cloud-bigquery",
+            display_name="BigQuery",
+            iam_prefix="bigquery",
+            api_service="bigquery.googleapis.com",
+        )
+        with pytest.raises(AttributeError):
+            e.api_service = "other"  # type: ignore[misc]

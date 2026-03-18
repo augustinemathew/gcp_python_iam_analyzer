@@ -134,6 +134,8 @@ class ServiceEntry:
     pip_package: str
     display_name: str
     iam_prefix: str
+    api_service: str = ""
+    """Canonical googleapis.com name for gcloud services enable, e.g. 'cloudkms.googleapis.com'."""
     discovery_doc: str = ""
     iam_reference: str = ""
     modules: list[str] = field(default_factory=list)
