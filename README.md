@@ -75,6 +75,11 @@ Exact permissions. Before you deploy. No guessing, no reading docs.
 | 📦 **Complete** | 25,011 methods across 205 GCP services |
 | 🛡️ **Zero false positives** | No GCP imports = no findings. Period. |
 
+## Requirements
+
+- Python 3.12+
+- [Google Cloud SDK (`gcloud`)](https://cloud.google.com/sdk/docs/install) — required for the build pipeline (`s02` api_service validation). Not needed to run `iamspy scan`.
+
 ## Install
 
 ```bash

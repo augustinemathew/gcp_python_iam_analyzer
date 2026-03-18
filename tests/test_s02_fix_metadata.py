@@ -224,12 +224,17 @@ class TestResolveApiServices:
 
     def test_discovery_resolves_entries(self):
         registry = self._make_registry()
-        with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc:
+        with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc, \
+             patch("build_pipeline.stages.s02_fix_metadata.validate_with_gcloud") as mock_gcloud:
             mock_disc.return_value = (
                 {"bigquery": "bigquery.googleapis.com", "kms": "cloudkms.googleapis.com"},
                 [],
             )
-            resolve_api_services(registry, project=None, client=None)
+            mock_gcloud.return_value = (
+                {"bigquery": "bigquery.googleapis.com", "kms": "cloudkms.googleapis.com"},
+                {},
+            )
+            resolve_api_services(registry, project="test-project", client=None)
 
         assert registry["bigquery"]["api_service"] == "bigquery.googleapis.com"
         assert registry["kms"]["api_service"] == "cloudkms.googleapis.com"
@@ -240,17 +245,19 @@ class TestResolveApiServices:
                          "display_name": "BigQuery", "api_service": "bigquery.googleapis.com"},
         }
         with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc:
-            resolve_api_services(registry, project=None, client=None)
+            resolve_api_services(registry, project="test-project", client=None)
         mock_disc.assert_not_called()
 
     def test_errors_on_unresolved(self):
         registry = self._make_registry()
-        with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc:
+        with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc, \
+             patch("build_pipeline.stages.s02_fix_metadata.validate_with_gcloud") as mock_gcloud:
             mock_disc.return_value = ({}, ["bigquery", "kms"])
+            mock_gcloud.return_value = ({}, {})
             with pytest.raises(SystemExit):
-                resolve_api_services(registry, project=None, client=None)
+                resolve_api_services(registry, project="test-project", client=None)
 
-    def test_gcloud_validation_called_when_project_provided(self):
+    def test_gcloud_validation_always_called(self):
         registry = self._make_registry()
         with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc, \
              patch("build_pipeline.stages.s02_fix_metadata.validate_with_gcloud") as mock_gcloud:
@@ -265,17 +272,4 @@ class TestResolveApiServices:
             resolve_api_services(registry, project="my-project", client=None)
 
         mock_gcloud.assert_called_once()
-        call_kwargs = mock_gcloud.call_args
-        assert call_kwargs[0][1] == "my-project"
-
-    def test_gcloud_not_called_without_project(self):
-        registry = self._make_registry()
-        with patch("build_pipeline.stages.s02_fix_metadata.resolve_from_discovery") as mock_disc, \
-             patch("build_pipeline.stages.s02_fix_metadata.validate_with_gcloud") as mock_gcloud:
-            mock_disc.return_value = (
-                {"bigquery": "bigquery.googleapis.com", "kms": "cloudkms.googleapis.com"},
-                [],
-            )
-            resolve_api_services(registry, project=None, client=None)
-
-        mock_gcloud.assert_not_called()
+        assert mock_gcloud.call_args[0][1] == "my-project"

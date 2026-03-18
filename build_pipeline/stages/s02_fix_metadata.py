@@ -199,7 +199,7 @@ def _call_gemini_for_api_service(
 def resolve_api_services(
     registry: dict[str, dict],
     *,
-    project: str | None,
+    project: str,
     client=None,
     model: str = DEFAULT_MODEL,
 ) -> None:
@@ -236,37 +236,32 @@ def resolve_api_services(
         print(f"    Remaining after Gemini: {len(remaining_ids)}", file=sys.stderr)
 
     # ③ gcloud validation on all newly resolved candidates
-    if project:
-        print("  Step 3: gcloud validation...", file=sys.stderr)
-        all_candidates = {
-            sid: registry[sid]["api_service"]
-            for sid in to_resolve
-            if registry[sid].get("api_service")
-        }
-        valid, invalid = validate_with_gcloud(all_candidates, project)
-        print(
-            f"    Valid: {len(valid)}, invalid: {len(invalid)}",
-            file=sys.stderr,
-        )
+    print("  Step 3: gcloud validation...", file=sys.stderr)
+    all_candidates = {
+        sid: registry[sid]["api_service"]
+        for sid in to_resolve
+        if registry[sid].get("api_service")
+    }
+    valid, invalid = validate_with_gcloud(all_candidates, project)
+    print(f"    Valid: {len(valid)}, invalid: {len(invalid)}", file=sys.stderr)
 
-        # ④ Re-prompt Gemini for gcloud failures
-        if invalid and client:
-            print("  Step 4: Gemini correction pass...", file=sys.stderr)
-            gcloud_errors = {sid: f"rejected by gcloud: unknown service" for sid in invalid}
-            corrections = _call_gemini_for_api_service(
-                {sid: registry[sid] for sid in invalid}, client, model
+    # ④ Re-prompt Gemini for gcloud failures
+    if invalid and client:
+        print("  Step 4: Gemini correction pass...", file=sys.stderr)
+        gcloud_errors = {sid: "rejected by gcloud: unknown service" for sid in invalid}
+        corrections = _call_gemini_for_api_service(
+            {sid: registry[sid] for sid in invalid}, client, model
+        )
+        if corrections:
+            re_valid, still_invalid = validate_with_gcloud(corrections, project)
+            for sid, api_service in re_valid.items():
+                registry[sid]["api_service"] = api_service
+            for sid in still_invalid:
+                registry[sid]["api_service"] = ""
+            print(
+                f"    Corrected: {len(re_valid)}, still invalid: {len(still_invalid)}",
+                file=sys.stderr,
             )
-            if corrections:
-                re_valid, still_invalid = validate_with_gcloud(corrections, project)
-                for sid, api_service in re_valid.items():
-                    registry[sid]["api_service"] = api_service
-                for sid in still_invalid:
-                    registry[sid]["api_service"] = ""
-                print(
-                    f"    Corrected: {len(re_valid)}, still invalid: {len(still_invalid)}",
-                    file=sys.stderr,
-                )
-            _ = gcloud_errors  # used in build_correction_prompt when called directly
 
     # ⑤ Error if anything remains empty
     empty = [sid for sid in to_resolve if not registry[sid].get("api_service")]
@@ -316,6 +311,22 @@ IMPORTANT:
 - Return ONLY valid JSON, no markdown fences."""
 
 
+def _resolve_project(project: str | None) -> str:
+    """Return project, falling back to the active gcloud project."""
+    if project:
+        return project
+    result = subprocess.run(
+        ["gcloud", "config", "get-value", "project"],
+        capture_output=True, text=True,
+    )
+    active = result.stdout.strip()
+    if not active:
+        print("ERROR: --project not set and no active gcloud project found.", file=sys.stderr)
+        print("  Run: gcloud config set project PROJECT_ID", file=sys.stderr)
+        sys.exit(1)
+    return active
+
+
 def fix_metadata(
     registry_path: Path,
     *,
@@ -333,6 +344,7 @@ def fix_metadata(
         sys.exit(1)
 
     client = genai.Client(api_key=api_key)
+    resolved_project = _resolve_project(project)
 
     with open(registry_path) as f:
         registry = json.load(f)
@@ -421,7 +433,7 @@ def fix_metadata(
 
     # Second pass: resolve api_service
     print("\nResolving api_service...", file=sys.stderr)
-    resolve_api_services(registry, project=project, client=client, model=model)
+    resolve_api_services(registry, project=resolved_project, client=client, model=model)
 
     with open(registry_path, "w") as f:
         json.dump(registry, f, indent=2)
@@ -437,8 +449,11 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--registry", default="service_registry.json")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--project", default=None,
-                        help="GCP project ID for gcloud api_service validation")
+    parser.add_argument(
+        "--project", default=None,
+        help="GCP project ID for gcloud api_service validation "
+             "(default: active gcloud project from `gcloud config get-value project`)",
+    )
     args = parser.parse_args()
 
     fix_metadata(
