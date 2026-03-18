@@ -105,10 +105,11 @@ iamspy --help
 ## Usage
 
 ```bash
-iamspy scan app.py          # single file
-iamspy scan src/            # entire directory
-iamspy scan --compact src/  # one line per finding (like ruff)
-iamspy scan --json app.py   # JSON for CI/tooling
+iamspy scan app.py                         # single file
+iamspy scan src/                           # entire directory
+iamspy scan --compact src/                 # one line per finding (like ruff)
+iamspy scan --json app.py                  # JSON for CI/tooling
+iamspy scan --manifest iam-manifest.yaml   # generate permission manifest
 ```
 
 Search any method without scanning a file:
@@ -173,6 +174,7 @@ Browse [examples/](examples/) — real GCP scripts with expected `iamspy` output
 | | |
 |---|---|
 | [Getting started](docs/getting-started.md) | First scan, reading output, output formats |
+| [Permission manifest](docs/permission-manifest.md) | Generate a YAML manifest for provisioning |
 | [CI integration](docs/ci-integration.md) | GitHub Actions, Cloud Build |
 | [Accuracy](docs/accuracy.md) | How we validated, known limitations |
 | [Architecture](docs/architecture.md) | How the scanner works |
@@ -182,7 +184,7 @@ Browse [examples/](examples/) — real GCP scripts with expected `iamspy` output
 
 ```bash
 pip install -e ".[dev]"
-make test   # 316 tests
+make test   # 365 tests
 make lint
 ```
 

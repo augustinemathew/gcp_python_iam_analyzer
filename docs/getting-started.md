@@ -43,10 +43,11 @@ Recursively finds all `.py` files. Progress bar shown for > 1 file.
 ## Output formats
 
 ```bash
-iamspy scan app.py              # colored terminal (default)
-iamspy scan --compact src/      # one line per finding — easy to grep
-iamspy scan --json app.py       # JSON for scripts and CI
-iamspy scan --show-all app.py   # include local helpers (constructors, path builders)
+iamspy scan app.py                        # colored terminal (default)
+iamspy scan --compact src/                # one line per finding — easy to grep
+iamspy scan --json app.py                 # JSON for scripts and CI
+iamspy scan --show-all app.py             # include local helpers (constructors, path builders)
+iamspy scan --manifest iam-manifest.yaml  # write permission manifest YAML
 ```
 
 **Compact** is useful for large codebases:
@@ -66,6 +67,37 @@ perms = sorted({p for f in findings for p in f['permissions']})
 print('\n'.join(perms))
 "
 ```
+
+**Manifest** generates a structured YAML file listing every permission and API the code needs:
+
+```bash
+iamspy scan --manifest iam-manifest.yaml src/
+```
+
+```yaml
+version: '1'
+generated_by: iamspy scan src/
+generated_at: '2026-03-18T03:36:31Z'
+services:
+  enable:
+  - bigquery.googleapis.com
+  - storage.googleapis.com
+permissions:
+  required:
+  - bigquery.jobs.create
+  - storage.objects.create
+  conditional:
+  - bigquery.tables.create
+  - storage.objects.delete
+```
+
+Add `--trace` to include the source file and line number for each permission:
+
+```bash
+iamspy scan --manifest iam-manifest.yaml --trace src/
+```
+
+See [Permission manifest](permission-manifest.md) for the full format and use cases.
 
 ## Look up a method without scanning
 
