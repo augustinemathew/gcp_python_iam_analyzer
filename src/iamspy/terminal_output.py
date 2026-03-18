@@ -97,14 +97,15 @@ def _print_finding(
         perm_str = fmt.green(", ".join(f.permissions))
         print(f"        {fmt.dim('→')} {perm_str}", file=file)
         all_perms.update(f.permissions)
-        if f.conditional_permissions:
-            cond_str = fmt.yellow(", ".join(f.conditional_permissions))
-            print(f"        {fmt.yellow('⚠')} conditional: {cond_str}", file=file)
-            all_conditional.update(f.conditional_permissions)
-    elif f.status == "unmapped":
-        print(f"        {fmt.dim('→')} {fmt.dim('unmapped')}", file=file)
-    elif f.status == "no_api_call":
-        print(f"        {fmt.dim('→')} {fmt.dim('local helper')}", file=file)
+    if f.conditional_permissions:
+        cond_str = fmt.yellow(", ".join(f.conditional_permissions))
+        print(f"        {fmt.yellow('⚠')} conditional: {cond_str}", file=file)
+        all_conditional.update(f.conditional_permissions)
+    elif not f.permissions:
+        if f.status == "unmapped":
+            print(f"        {fmt.dim('→')} {fmt.dim('unmapped')}", file=file)
+        elif f.status == "no_api_call":
+            print(f"        {fmt.dim('→')} {fmt.dim('local helper')}", file=file)
 
 
 def print_scan_results(
