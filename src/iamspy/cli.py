@@ -89,14 +89,35 @@ def cmd_scan(args: argparse.Namespace) -> int:
     if len(targets) > 1 and not args.json:
         print_progress(len(targets), len(targets))
 
+    if args.manifest:
+        _write_manifest(results, args)
+
     if args.json:
         _print_json_results(results, show_all=args.show_all)
     elif args.compact:
         _print_compact(results, show_all=args.show_all)
-    else:
+    elif not args.manifest:
         print_scan_results(results, show_all=args.show_all)
 
     return 0
+
+
+def _write_manifest(results: list, args: argparse.Namespace) -> None:
+    from iamspy.manifest import ManifestGenerator
+
+    registry_path = Path(args.registry) if hasattr(args, "registry") else _DEFAULT_REGISTRY
+    registry = ServiceRegistry.from_json(registry_path)
+
+    gen = ManifestGenerator(registry)
+    manifest = gen.build(
+        results,
+        scanned_paths=args.paths,
+        include_sources=getattr(args, "trace", False),
+    )
+
+    output = Path(args.manifest)
+    gen.write(manifest, output)
+    print(f"Manifest written to {output}", file=sys.stderr)
 
 
 def _finding_to_dict(f: Finding) -> dict:
@@ -405,6 +426,14 @@ def main():
     scan_p.add_argument("--compact", action="store_true", help="one-line-per-finding output")
     scan_p.add_argument(
         "--show-all", action="store_true", help="include local helpers (no-op methods)"
+    )
+    scan_p.add_argument(
+        "--manifest", metavar="FILE",
+        help="write permission manifest YAML to FILE (suppresses normal output)",
+    )
+    scan_p.add_argument(
+        "--trace", action="store_true",
+        help="include sources section in manifest (file/line for each permission)",
     )
 
     # services
