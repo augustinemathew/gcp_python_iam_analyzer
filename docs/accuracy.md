@@ -43,3 +43,18 @@ The result is a static `iam_permissions.json` checked into the repo. The scanner
 **Import-dependent.** A file with no `google.cloud` imports produces zero findings, by design. If you alias imports in unusual ways (e.g. `from mymodule import gcs_client`) the import won't resolve.
 
 **Conditional permissions are advisory.** A `⚠ conditional` permission is required only in specific circumstances (e.g. `storage.objects.delete` when overwriting an existing object). Whether you need it depends on your workload.
+
+## Known permission mapping gaps
+
+None at this time.
+
+### Notes on recommender service
+
+`RecommenderClient.list_recommendations` and `list_insights` use **dynamic permissions**: the required permission depends on the recommender/insight type passed at runtime (e.g. `recommender.computeInstanceMachineTypeRecommendations.list` for VM rightsizing). IAMSpy surfaces the most common types as conditional permissions — you will need the specific permission matching your recommender type.
+
+`list_recommenders` and `list_insight_types` are public discovery endpoints that require no IAM permission.
+
+**To refresh recommender mappings:**
+```bash
+python -m build_pipeline refresh --service recommender
+```

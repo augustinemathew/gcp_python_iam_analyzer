@@ -374,7 +374,7 @@ Installs a new GCP SDK package and maps its methods:
 
 ### `python -m build_pipeline refresh --service kms`
 
-Re-maps permissions for a specific service. Runs s04 (extract REST URIs) then s06 (LLM mapping) with `--no-resume` so existing mappings are overwritten.
+Re-maps permissions for a specific service. Runs s04 (extract REST URIs) then s06 (LLM mapping) with `--no-resume` to force fresh mapping. Merges results back into `iam_permissions.json` — other services are untouched.
 
 `python -m build_pipeline refresh --all` re-maps all services.
 
@@ -398,7 +398,96 @@ python -m build_pipeline run --no-resume               # don't skip existing map
 
 ---
 
-## 10. Key design decisions
+## 10. Common workflows
+
+### Refresh an existing service
+
+Use this when a service has empty or wrong permission mappings (e.g. after a GCP API update, or when `diff` reports empty permissions).
+
+```bash
+python -m build_pipeline refresh --service recommender
+```
+
+What it does:
+1. Syncs the monorepo (`git pull`)
+2. Re-extracts REST URIs for the service (s04, service-filtered)
+3. Re-maps all methods via LLM (s06, `--no-resume`, service-filtered)
+4. Merges results back into `iam_permissions.json` — other services are untouched
+
+To refresh multiple services at once:
+```bash
+python -m build_pipeline refresh --service kms --service secretmanager
+```
+
+To re-map everything from scratch:
+```bash
+python -m build_pipeline refresh --all
+```
+
+**After refreshing**, run validate and check the diff:
+```bash
+python -m build_pipeline run --stage s07   # validate
+python -m build_pipeline diff              # confirm gaps are gone
+```
+
+---
+
+### Add a new service
+
+Use this when `diff` shows new packages in the monorepo that aren't in the registry.
+
+```bash
+python -m build_pipeline add google-cloud-vision
+```
+
+What it does:
+1. `pip install google-cloud-vision`
+2. Syncs the monorepo
+3. Rebuilds service registry + method DB (s01, s03 — full rebuild, no filter)
+4. Extracts REST URIs (s04)
+5. Maps new methods via LLM (s06, resume=True — skips already-mapped services)
+
+**After adding**, the `iam_prefix` may be wrong (s01 sets it to `service_id` by default). Check it:
+```bash
+python -c "import json; d=json.load(open('service_registry.json')); print(d.get('vision'))"
+```
+
+If `iam_prefix` is wrong, fix it in `service_registry.json`, then re-run s06:
+```bash
+python -m build_pipeline refresh --service vision
+```
+
+Or run s02 (Gemini) to auto-correct all prefixes:
+```bash
+python -m build_pipeline run --stage s02   # requires GEMINI_API_KEY
+```
+
+---
+
+### Check what needs updating
+
+```bash
+python -m build_pipeline diff
+```
+
+Reports:
+- **New services** — packages in the monorepo not yet in the registry
+- **Unmapped methods** — methods in `method_db.json` with no entry in `iam_permissions.json`
+- **Empty permissions** — methods mapped but with `permissions: []` and `conditional: []`
+
+The last two are the inputs to a targeted `refresh`.
+
+---
+
+### Known s06 bug (fixed)
+
+`refresh` runs s06 with `--no-resume`. Previously, s06 started with an empty `all_mappings` dict when `--no-resume` was set, so a service-filtered run would overwrite `iam_permissions.json` with only the filtered service's entries — wiping everything else.
+
+**Fix (applied):** `_load_inputs` now always loads existing mappings from the output file. The `resume` flag controls only whether already-mapped methods are skipped (line: `if resume and key in all_mappings: continue`), not whether the file is loaded. A `refresh --service kms` now correctly merges KMS entries back into the full file.
+
+---
+
+## 11. Key design decisions
 
 | Decision | Why | Evidence |
 |---|---|---|
