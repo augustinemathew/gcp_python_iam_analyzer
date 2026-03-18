@@ -110,7 +110,6 @@ Follows the [Google Python Style Guide](https://google.github.io/styleguide/pygu
 
 ### Current violations to fix
 These functions exceed 40 lines and should be refactored:
-- `s06_permission_mapping.py:map_permissions()` — 204 lines. Split into: load/init, auto-resolve, batch loop, post-process.
 - `stats.py:analyze_artifacts()` — 193 lines. Split into per-artifact analyzers.
 - `stats.py:print_report()` — 86 lines. Split into per-section printers.
 - `s02_fix_metadata.py:fix_metadata()` — 104 lines. Split into: fetch corrections, apply corrections.
@@ -143,6 +142,21 @@ See `docs/build-pipeline.md` for the full design. Key context:
 - Local embeddings (bge-small-en-v1.5, 33M params) replace Gemini API embeddings
 - `data/iam_roles.json` will replace `iam_role_permissions.json` with full role metadata
 - Fallback chain: REST URI → span_name/docstring → embedding search → resource filter → v1 baseline
+
+## Known Gaps and Future Work
+
+### s04: Extract method parameter names
+The biggest remaining accuracy gap. s04 currently extracts docstrings and REST URIs but not method parameter names. Without parameter names, the LLM cannot detect CMEK/service-account patterns in methods that have sparse docstrings (e.g. `pubsub.PublisherClient.create_topic` has `kms_key_name` parameter but its docstring just says "Creates the given topic").
+
+**What to do:** In `s04_method_context.py`, extract the parameter names from the method signature (via AST or inspect) and add them to `method_context.json` as a `parameters` field. Then update the s06 prompt to include parameter names alongside the description.
+
+**Impact:** Unlocks accurate CMEK/service-account conditionals for pubsub, bigquery, spanner, cloudbuild, GKE, and any other service where the method has optional encryption/identity parameters. After implementing, run `python -m build_pipeline refresh` for these services.
+
+### Dynamic permission coverage
+See `docs/rfc-dynamic-permissions.md` for the full classification of dynamic permission patterns (URI type-selector, cross-resource refs, multi-resource ops, feature flags) and what is already implemented. The prompt handles all categories; the remaining gap is signal quality (see s04 above).
+
+### `iam_role_permissions.json` → `iam_roles.json`
+Planned migration to replace the flat permission list with full role metadata (`data/iam_roles.json`). Tracked in `docs/build-pipeline.md`.
 
 ## Git Commits
 
