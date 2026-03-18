@@ -144,6 +144,10 @@ See `docs/build-pipeline.md` for the full design. Key context:
 - `data/iam_roles.json` will replace `iam_role_permissions.json` with full role metadata
 - Fallback chain: REST URI → span_name/docstring → embedding search → resource filter → v1 baseline
 
+## Git Commits
+
+- **Never add `Co-Authored-By` trailers** to commit messages. Write the subject and body only.
+
 ## Dependencies
 
 - Python 3.12+, tree-sitter, aiofiles, pytest, ruff

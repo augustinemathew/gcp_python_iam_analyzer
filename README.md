@@ -78,7 +78,22 @@ Exact permissions. Before you deploy. No guessing, no reading docs.
 ## Requirements
 
 - Python 3.12+
-- [Google Cloud SDK (`gcloud`)](https://cloud.google.com/sdk/docs/install) — required for the build pipeline (`s02` api_service validation). Not needed to run `iamspy scan`.
+- Google Cloud SDK (`gcloud`) — required for the build pipeline. Not needed to run `iamspy scan`.
+
+**Install gcloud** ([full instructions](https://cloud.google.com/sdk/docs/install)):
+
+```bash
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+gcloud init
+```
+
+After installing, authenticate and set a default project:
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+```
 
 ## Install
 
