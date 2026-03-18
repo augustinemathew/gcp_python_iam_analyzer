@@ -301,7 +301,7 @@ def _build_stage_argv(stage_id: str, args: argparse.Namespace) -> list[str]:
             argv.extend(["--service", svc])
 
     project = getattr(args, "project", None)
-    if stage_id == "s05" and project:
+    if stage_id in ("s02", "s05") and project:
         argv.extend(["--project", project])
 
     model = getattr(args, "model", None)
