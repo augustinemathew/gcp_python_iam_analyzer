@@ -751,3 +751,31 @@ class TestImportAwareFiltering:
         )
         result = scanner.scan_source(source, "test.py")
         assert len(result.findings) == 0
+
+    def test_receiver_class_disambiguates_same_method_name(self, data_dir, test_registry):
+        """When two classes share a method name, receiver variable assignment resolves the right one.
+
+        Reproduces the compute.InstancesClient.aggregated_list bug where AcceleratorTypesClient
+        (alphabetically first) was returned instead of InstancesClient.
+        """
+        from iamspy.scanner import GCPCallScanner
+
+        db = _make_db({
+            "aggregated_list": [
+                _sig(service_id="bigquery", class_name="TableClient", display_name="BigQuery", min_args=0, max_args=5, has_var_kwargs=True),
+                _sig(service_id="bigquery", class_name="DatasetClient", display_name="BigQuery", min_args=0, max_args=5, has_var_kwargs=True),
+            ],
+        })
+        resolver = _make_resolver(data_dir, {
+            "bigquery.TableClient.aggregated_list": {"permissions": ["bigquery.tables.list"], "conditional": []},
+            "bigquery.DatasetClient.aggregated_list": {"permissions": ["bigquery.datasets.get"], "conditional": []},
+        })
+        scanner = GCPCallScanner(db, resolver, registry=test_registry)
+        # client is assigned as DatasetClient — should resolve to bigquery.datasets.get
+        source = _src(textwrap.dedent("""\
+            client = bigquery.DatasetClient()
+            results = client.aggregated_list(project="my-project")
+        """), _BQ)
+        result = scanner.scan_source(source, "test.py")
+        assert len(result.findings) == 1
+        assert result.findings[0].permissions == ["bigquery.datasets.get"]

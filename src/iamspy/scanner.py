@@ -62,6 +62,57 @@ def _flatten_attribute(node: Node, src: bytes) -> str:
     return _text(node, src)
 
 
+def _extract_receiver_name(call_node: Node, src: bytes) -> str | None:
+    """For `obj.method(...)`, return 'obj'. For bare `method(...)`, return None."""
+    if not call_node.children:
+        return None
+    func = call_node.children[0]
+    if func.type == "attribute":
+        children = [c for c in func.children if c.type not in (".", "comment")]
+        if children and children[0].type == "identifier":
+            return _text(children[0], src)
+    return None
+
+
+def _build_var_type_map(root: Node, src: bytes) -> dict[str, str]:
+    """Collect {var_name: class_name} from constructor assignments in the AST.
+
+    Handles: `client = SomeClass()` and `client = module.SomeClass()`
+    Only tracks uppercase-starting names (class constructors).
+    """
+    result: dict[str, str] = {}
+    _collect_assignments(root, src, result)
+    return result
+
+
+def _collect_assignments(node: Node, src: bytes, result: dict[str, str]) -> None:
+    if node.type == "assignment":
+        pair = _try_extract_constructor_assignment(node, src)
+        if pair:
+            result[pair[0]] = pair[1]
+    for child in node.children:
+        _collect_assignments(child, src, result)
+
+
+def _try_extract_constructor_assignment(node: Node, src: bytes) -> tuple[str, str] | None:
+    """For `var = Module.ClassName(args)`, return (var_name, class_name). None otherwise."""
+    children = list(node.children)
+    if not children or children[0].type != "identifier":
+        return None
+    var_name = _text(children[0], src)
+    eq_idx = next((i for i, c in enumerate(children) if _text(c, src) == "="), None)
+    if eq_idx is None or eq_idx + 1 >= len(children):
+        return None
+    rhs = children[eq_idx + 1]
+    if rhs.type != "call" or not rhs.children:
+        return None
+    chain = _flatten_attribute(rhs.children[0], src)
+    class_name = chain.rsplit(".", 1)[-1]
+    if not class_name or not class_name[0].isupper():
+        return None
+    return var_name, class_name
+
+
 def _extract_method_name(call_node: Node, src: bytes) -> str | None:
     if not call_node.children:
         return None
@@ -298,7 +349,8 @@ class GCPCallScanner:
         if not imported_services:
             return result
 
-        self._walk(tree.root_node, src, result, imported_services)
+        var_type_map = _build_var_type_map(tree.root_node, src)
+        self._walk(tree.root_node, src, result, imported_services, var_type_map)
         return result
 
     async def scan_files(self, paths: list[Path]) -> list[ScanResult]:
@@ -316,12 +368,17 @@ class GCPCallScanner:
         return list(await asyncio.gather(*[_scan_one(p) for p in paths]))
 
     def _walk(
-        self, node: Node, src: bytes, result: ScanResult, imported_services: set[str]
+        self,
+        node: Node,
+        src: bytes,
+        result: ScanResult,
+        imported_services: set[str],
+        var_type_map: dict[str, str],
     ) -> None:
         if node.type == "call":
-            self._check_call(node, src, result, imported_services)
+            self._check_call(node, src, result, imported_services, var_type_map)
         for child in node.children:
-            self._walk(child, src, result, imported_services)
+            self._walk(child, src, result, imported_services, var_type_map)
 
     def _check_call(
         self,
@@ -329,6 +386,7 @@ class GCPCallScanner:
         src: bytes,
         result: ScanResult,
         imported_services: set[str],
+        var_type_map: dict[str, str],
     ) -> None:
         method_name = _extract_method_name(node, src)
         if method_name is None or method_name not in self.db:
@@ -342,7 +400,9 @@ class GCPCallScanner:
         if not matched:
             return
 
-        perm_result = self._resolve(method_name, matched)
+        receiver_name = _extract_receiver_name(node, src)
+        receiver_class = var_type_map.get(receiver_name) if receiver_name else None
+        perm_result = self._resolve(method_name, matched, receiver_class)
 
         call_text = _text(node, src)
         if len(call_text) > 120:
@@ -361,14 +421,25 @@ class GCPCallScanner:
             )
         )
 
-    def _resolve(self, method_name: str, matched: list[MethodSig]):
-        """Try each matched sig against the resolver, return first hit."""
+    def _resolve(
+        self,
+        method_name: str,
+        matched: list[MethodSig],
+        receiver_class: str | None = None,
+    ):
+        """Try each matched sig against the resolver, return first hit.
+
+        If receiver_class is known (from a tracked variable assignment), try
+        that class first before falling back to the full matched list.
+        """
+        if receiver_class:
+            for sig in matched:
+                if sig.class_name == receiver_class:
+                    result = self.resolver.resolve(sig.service_id, receiver_class, method_name)
+                    if result is not None:
+                        return result
         for sig in matched:
-            result = self.resolver.resolve(
-                service_id=sig.service_id,
-                class_name=sig.class_name,
-                method_name=method_name,
-            )
+            result = self.resolver.resolve(sig.service_id, sig.class_name, method_name)
             if result is not None:
                 return result
         return None
