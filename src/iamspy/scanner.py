@@ -24,7 +24,7 @@ from tree_sitter import Language, Node, Parser
 from iamspy.models import Finding, MethodDB, MethodSig, PermissionResult, Resolution, ScanResult
 from iamspy.registry import ServiceRegistry
 from iamspy.resolver import PermissionResolver
-from iamspy.type_inference import PointsToAnalysis, PointsToSet
+from iamspy.type_inference import PointsToAnalysis, PointsToSet, _flatten_attribute, _text
 
 # Module-level language singleton — Language() is expensive to construct
 _LANGUAGE = Language(tspython.language())
@@ -50,19 +50,6 @@ def build_module_to_service(registry: ServiceRegistry) -> dict[str, str]:
     return mapping
 
 
-
-def _text(node: Node, src: bytes) -> str:
-    return src[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
-
-
-def _flatten_attribute(node: Node, src: bytes) -> str:
-    if node.type == "identifier":
-        return _text(node, src)
-    if node.type == "attribute":
-        children = [c for c in node.children if c.type not in (".", "comment")]
-        if len(children) >= 2:
-            return _flatten_attribute(children[0], src) + "." + _text(children[-1], src)
-    return _text(node, src)
 
 
 @dataclass(frozen=True)

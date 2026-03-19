@@ -25,11 +25,19 @@ class Resolution(StrEnum):
     UNRESOLVED = "unresolved"
 
 
+# Method names that are never GCP API calls — Python builtins, dunders,
+# dict/container protocol methods, and I/O plumbing.
+#
+# CRUD-style names (get, delete, list, create, update, etc.) are NOT skipped.
+# They are real GCP API methods (e.g. InstancesClient.delete, Bucket.exists).
+# The points-to analysis + import filtering handles disambiguation at scan time.
+# Shared by both introspect.py (installed SDK) and monorepo.py (source AST).
 GENERIC_SKIP = frozenset({
-    "get", "set", "put", "post", "delete", "list", "close", "open",
-    "read", "write", "update", "create", "patch", "run", "start", "stop",
-    "reset", "copy", "move", "exists", "flush",
-    "send", "keys", "values", "items", "pop", "clear",
+    # Python container / dict protocol — never API calls
+    "keys", "values", "items", "pop", "clear",
+    # I/O plumbing
+    "close", "open", "flush", "send",
+    # Dunders
     "__init__", "__repr__", "__str__", "__eq__", "__hash__",
     "__enter__", "__exit__", "__del__", "__getattr__", "__setattr__",
     "__getstate__", "__setstate__", "__reduce__",

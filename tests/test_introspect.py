@@ -123,7 +123,11 @@ class TestBuildMethodDb:
         pkg = self._make_package()
 
         db = build_method_db(packages=[pkg], skip_generic=True)
-        assert "get" not in db
+        # CRUD methods like "get" are no longer skipped (points-to analysis
+        # handles disambiguation). Only Python builtins/dunders are skipped.
+        assert "get" in db
+        assert "__init__" not in db
+        assert "keys" not in db
 
     @patch("iamspy.introspect.importlib.import_module")
     def test_includes_generic_when_disabled(self, mock_import):
@@ -198,13 +202,24 @@ class TestBuildMethodDb:
 
 
 class TestGenericSkip:
-    def test_contains_common_builtins(self):
-        for name in ["get", "set", "list", "create", "delete", "update"]:
+    def test_contains_python_builtins(self):
+        for name in ["keys", "values", "items", "pop", "clear"]:
+            assert name in GENERIC_SKIP
+
+    def test_contains_io_plumbing(self):
+        for name in ["close", "open", "flush", "send"]:
             assert name in GENERIC_SKIP
 
     def test_contains_dunder_methods(self):
         for name in ["__init__", "__repr__", "__enter__", "__exit__"]:
             assert name in GENERIC_SKIP
+
+    def test_crud_methods_not_skipped(self):
+        """CRUD methods are real GCP API calls — points-to analysis disambiguates."""
+        for name in ["get", "set", "delete", "list", "create", "update",
+                      "read", "write", "put", "post", "patch", "run",
+                      "start", "stop", "reset", "copy", "move", "exists"]:
+            assert name not in GENERIC_SKIP
 
     def test_does_not_contain_gcp_specific(self):
         for name in ["query", "publish", "encrypt", "get_bucket"]:

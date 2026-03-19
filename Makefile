@@ -17,7 +17,7 @@ test:
 	pytest
 
 test-cov:
-	pytest --cov=gcp_sdk_detector --cov-report=term-missing
+	pytest --cov=iamspy --cov-report=term-missing
 
 clean:
 	rm -rf __pycache__ .pytest_cache .ruff_cache .coverage htmlcov dist *.egg-info
