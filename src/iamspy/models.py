@@ -6,9 +6,25 @@ Tests: tests/test_models.py
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
+
 
 # Method names too generic to be useful — high false positive rate.
 # Shared by both introspect.py (installed SDK) and monorepo.py (source AST).
+class Resolution(StrEnum):
+    """Classification of receiver type resolution at a call site.
+
+    Derived from the points-to set size:
+      EXACT      — pt-set size 1, single unambiguous type
+      AMBIGUOUS  — pt-set size > 1, multiple possible types
+      UNRESOLVED — pt-set size 0, no type information
+    """
+
+    EXACT = "exact"
+    AMBIGUOUS = "ambiguous"
+    UNRESOLVED = "unresolved"
+
+
 GENERIC_SKIP = frozenset({
     "get", "set", "put", "post", "delete", "list", "close", "open",
     "read", "write", "update", "create", "patch", "run", "start", "stop",
@@ -43,7 +59,7 @@ class PermissionResult:
             return "no_api_call"
         if self.permissions or self.conditional_permissions:
             return "mapped"
-        return "mapped"
+        return "unmapped"
 
 
 @dataclass(frozen=True)
@@ -82,6 +98,7 @@ class Finding:
     call_text: str
     matched: list[MethodSig] = field(default_factory=list)
     perm_result: PermissionResult | None = None
+    resolution: Resolution = Resolution.UNRESOLVED
 
     @property
     def status(self) -> str:

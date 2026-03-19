@@ -13,15 +13,18 @@ Tests: tests/test_scanner.py, tests/test_scanner_real.py, tests/test_import_dete
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import aiofiles
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
-from iamspy.models import Finding, MethodDB, MethodSig, ScanResult
+from iamspy.models import Finding, MethodDB, MethodSig, PermissionResult, Resolution, ScanResult
 from iamspy.registry import ServiceRegistry
 from iamspy.resolver import PermissionResolver
+from iamspy.type_inference import PointsToAnalysis, PointsToSet
 
 # Module-level language singleton — Language() is expensive to construct
 _LANGUAGE = Language(tspython.language())
@@ -62,55 +65,62 @@ def _flatten_attribute(node: Node, src: bytes) -> str:
     return _text(node, src)
 
 
-def _extract_receiver_name(call_node: Node, src: bytes) -> str | None:
-    """For `obj.method(...)`, return 'obj'. For bare `method(...)`, return None."""
-    if not call_node.children:
-        return None
-    func = call_node.children[0]
-    if func.type == "attribute":
-        children = [c for c in func.children if c.type not in (".", "comment")]
-        if children and children[0].type == "identifier":
-            return _text(children[0], src)
-    return None
+@dataclass(frozen=True)
+class ReceiverInfo:
+    """Parsed receiver of a method call.
 
-
-def _build_var_type_map(root: Node, src: bytes) -> dict[str, str]:
-    """Collect {var_name: class_name} from constructor assignments in the AST.
-
-    Handles: `client = SomeClass()` and `client = module.SomeClass()`
-    Only tracks uppercase-starting names (class constructors).
+    var:       obj.method()          — query_var("obj")
+    self_attr: self.attr.method()    — query_field("attr")
+    obj_attr:  obj.attr.method()     — query_obj_attr("obj", "attr")
+    none:      method() / self.m()   — no receiver to resolve
     """
-    result: dict[str, str] = {}
-    _collect_assignments(root, src, result)
-    return result
+
+    kind: Literal["var", "self_attr", "obj_attr", "none"]
+    name: str | None = None
+    obj_name: str | None = None
 
 
-def _collect_assignments(node: Node, src: bytes, result: dict[str, str]) -> None:
-    if node.type == "assignment":
-        pair = _try_extract_constructor_assignment(node, src)
-        if pair:
-            result[pair[0]] = pair[1]
-    for child in node.children:
-        _collect_assignments(child, src, result)
+def _extract_receiver(call_node: Node, src: bytes) -> ReceiverInfo:  # noqa: PLR0911
+    """Extract receiver info from a call node.
+
+    obj.method()          → ReceiverInfo("var", "obj")
+    self.attr.method()    → ReceiverInfo("self_attr", "attr")
+    method()              → ReceiverInfo("none")
+    a.b.c.method()        → ReceiverInfo("var", "a")  (outermost identifier)
+    """
+    none = ReceiverInfo("none")
+    if not call_node.children:
+        return none
+    func = call_node.children[0]
+    if func.type != "attribute":
+        return none
+
+    children = [c for c in func.children if c.type not in (".", "comment")]
+    if not children:
+        return none
+
+    receiver_node = children[0]
+
+    # X.attr.method() — receiver_node is `X.attr` (an attribute node)
+    if receiver_node.type == "attribute":
+        attr_children = [c for c in receiver_node.children if c.type not in (".", "comment")]
+        if len(attr_children) == 2 and attr_children[0].type == "identifier":
+            obj = _text(attr_children[0], src)
+            attr = _text(attr_children[1], src)
+            if obj == "self":
+                return ReceiverInfo("self_attr", attr)
+            return ReceiverInfo("obj_attr", attr, obj_name=obj)
+        return none
+
+    # obj.method() — receiver_node is an identifier
+    if receiver_node.type == "identifier":
+        name = _text(receiver_node, src)
+        # self.method() — direct method on self, not self.attr.method()
+        return none if name == "self" else ReceiverInfo("var", name)
+
+    return none
 
 
-def _try_extract_constructor_assignment(node: Node, src: bytes) -> tuple[str, str] | None:
-    """For `var = Module.ClassName(args)`, return (var_name, class_name). None otherwise."""
-    children = list(node.children)
-    if not children or children[0].type != "identifier":
-        return None
-    var_name = _text(children[0], src)
-    eq_idx = next((i for i, c in enumerate(children) if _text(c, src) == "="), None)
-    if eq_idx is None or eq_idx + 1 >= len(children):
-        return None
-    rhs = children[eq_idx + 1]
-    if rhs.type != "call" or not rhs.children:
-        return None
-    chain = _flatten_attribute(rhs.children[0], src)
-    class_name = chain.rsplit(".", 1)[-1]
-    if not class_name or not class_name[0].isupper():
-        return None
-    return var_name, class_name
 
 
 def _extract_method_name(call_node: Node, src: bytes) -> str | None:
@@ -296,6 +306,37 @@ def _handle_import(
                     break
 
 
+def _merge_permission_results(results: list[PermissionResult]) -> PermissionResult:
+    """Union multiple PermissionResults into one (for AMBIGUOUS resolution).
+
+    Deduplicates permissions while preserving order of first appearance.
+    """
+    seen_perms: set[str] = set()
+    seen_cond: set[str] = set()
+    perms: list[str] = []
+    cond: list[str] = []
+    notes_parts: list[str] = []
+
+    for r in results:
+        for p in r.permissions:
+            if p not in seen_perms:
+                seen_perms.add(p)
+                perms.append(p)
+        for c in r.conditional_permissions:
+            if c not in seen_cond:
+                seen_cond.add(c)
+                cond.append(c)
+        if r.notes:
+            notes_parts.append(r.notes)
+
+    return PermissionResult(
+        permissions=perms,
+        conditional_permissions=cond,
+        is_local_helper=all(r.is_local_helper for r in results),
+        notes="; ".join(notes_parts),
+    )
+
+
 class GCPCallScanner:
     """Scans Python source for GCP SDK method calls and resolves IAM permissions.
 
@@ -326,6 +367,11 @@ class GCPCallScanner:
             raise ValueError("registry is required — it drives import detection")
         self._module_to_service = build_module_to_service(registry)
 
+        # Domain restriction: the set of class names the analysis tracks.
+        self._known_classes: set[str] = {
+            sig.class_name for sigs in db.values() for sig in sigs
+        }
+
     def scan_source(self, source: str, filename: str = "<stdin>") -> ScanResult:
         """Parse source and scan for GCP SDK calls. Sync.
 
@@ -349,8 +395,8 @@ class GCPCallScanner:
         if not imported_services:
             return result
 
-        var_type_map = _build_var_type_map(tree.root_node, src)
-        self._walk(tree.root_node, src, result, imported_services, var_type_map)
+        pta = PointsToAnalysis(tree.root_node, src, self._known_classes)
+        self._walk(tree.root_node, src, result, imported_services, pta)
         return result
 
     async def scan_files(self, paths: list[Path]) -> list[ScanResult]:
@@ -373,12 +419,12 @@ class GCPCallScanner:
         src: bytes,
         result: ScanResult,
         imported_services: set[str],
-        var_type_map: dict[str, str],
+        pta: PointsToAnalysis,
     ) -> None:
         if node.type == "call":
-            self._check_call(node, src, result, imported_services, var_type_map)
+            self._check_call(node, src, result, imported_services, pta)
         for child in node.children:
-            self._walk(child, src, result, imported_services, var_type_map)
+            self._walk(child, src, result, imported_services, pta)
 
     def _check_call(
         self,
@@ -386,7 +432,7 @@ class GCPCallScanner:
         src: bytes,
         result: ScanResult,
         imported_services: set[str],
-        var_type_map: dict[str, str],
+        pta: PointsToAnalysis,
     ) -> None:
         method_name = _extract_method_name(node, src)
         if method_name is None or method_name not in self.db:
@@ -400,9 +446,25 @@ class GCPCallScanner:
         if not matched:
             return
 
-        receiver_name = _extract_receiver_name(node, src)
-        receiver_class = var_type_map.get(receiver_name) if receiver_name else None
-        perm_result = self._resolve(method_name, matched, receiver_class)
+        # Query the points-to analysis for the receiver type
+        receiver = _extract_receiver(node, src)
+        pt_set: PointsToSet = frozenset()
+        if receiver.kind == "var" and receiver.name:
+            pt_set = pta.query_var(receiver.name, node)
+        elif receiver.kind == "self_attr" and receiver.name:
+            pt_set = pta.query_field(receiver.name, node)
+        elif receiver.kind == "obj_attr" and receiver.name and receiver.obj_name:
+            pt_set = pta.query_obj_attr(receiver.obj_name, receiver.name, node)
+
+        # Classify resolution confidence
+        if len(pt_set) == 1:
+            resolution = Resolution.EXACT
+        elif len(pt_set) > 1:
+            resolution = Resolution.AMBIGUOUS
+        else:
+            resolution = Resolution.UNRESOLVED
+
+        perm_result = self._resolve(method_name, matched, pt_set)
 
         call_text = _text(node, src)
         if len(call_text) > 120:
@@ -418,6 +480,7 @@ class GCPCallScanner:
                 call_text=call_text,
                 matched=matched,
                 perm_result=perm_result,
+                resolution=resolution,
             )
         )
 
@@ -425,21 +488,42 @@ class GCPCallScanner:
         self,
         method_name: str,
         matched: list[MethodSig],
-        receiver_class: str | None = None,
-    ):
-        """Try each matched sig against the resolver, return first hit.
+        receiver_classes: PointsToSet = frozenset(),
+    ) -> PermissionResult | None:
+        """Resolve a method call to its IAM permissions.
 
-        If receiver_class is known (from a tracked variable assignment), try
-        that class first before falling back to the full matched list.
+        Resolution strategy by points-to set size:
+          EXACT (1 class):       resolve against that single class
+          AMBIGUOUS (>1 class):  resolve each class, union all permissions
+          UNRESOLVED (0 class):  fall back to first-match-wins across matched sigs
         """
-        if receiver_class:
-            for sig in matched:
-                if sig.class_name == receiver_class:
-                    result = self.resolver.resolve(sig.service_id, receiver_class, method_name)
-                    if result is not None:
-                        return result
+        if receiver_classes:
+            results = self._resolve_classes(method_name, matched, receiver_classes)
+            if len(results) == 1:
+                return results[0]
+            if len(results) > 1:
+                return _merge_permission_results(results)
+
+        # UNRESOLVED fallback — try all matched sigs
         for sig in matched:
-            result = self.resolver.resolve(sig.service_id, sig.class_name, method_name)
-            if result is not None:
-                return result
+            r = self.resolver.resolve(sig.service_id, sig.class_name, method_name)
+            if r is not None:
+                return r
         return None
+
+    def _resolve_classes(
+        self,
+        method_name: str,
+        matched: list[MethodSig],
+        receiver_classes: PointsToSet,
+    ) -> list[PermissionResult]:
+        """Resolve each receiver class independently. Returns all hits."""
+        results: list[PermissionResult] = []
+        for cls in receiver_classes:
+            for sig in matched:
+                if sig.class_name == cls:
+                    r = self.resolver.resolve(sig.service_id, cls, method_name)
+                    if r is not None:
+                        results.append(r)
+                        break  # one result per class
+        return results

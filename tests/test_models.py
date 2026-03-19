@@ -33,9 +33,9 @@ class TestPermissionResult:
         assert r.status == "no_api_call"
         assert r.is_local_helper
 
-    def test_empty_mapped(self):
+    def test_empty_unmapped(self):
         r = PermissionResult(permissions=[])
-        assert r.status == "mapped"
+        assert r.status == "unmapped"
         assert not r.is_local_helper
 
     def test_frozen(self):

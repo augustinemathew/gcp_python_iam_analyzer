@@ -48,6 +48,13 @@ TEST_SERVICES = {
         "api_service": "dlp.googleapis.com",
         "modules": ["google.cloud.dlp", "google.cloud.dlp_v2"],
     },
+    "compute": {
+        "pip_package": "google-cloud-compute",
+        "display_name": "Compute Engine",
+        "iam_prefix": "compute",
+        "api_service": "compute.googleapis.com",
+        "modules": ["google.cloud.compute_v1"],
+    },
 }
 
 
