@@ -36,6 +36,9 @@ iamspy = "iamspy.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"iamspy.data" = ["*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

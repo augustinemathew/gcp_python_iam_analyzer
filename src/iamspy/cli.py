@@ -16,26 +16,28 @@ from iamspy.loader import load_method_db
 from iamspy.models import Finding
 from iamspy.registry import ServiceRegistry
 from iamspy.resolver import StaticPermissionResolver
+from iamspy.resources import method_db_path, permissions_path, registry_path
 from iamspy.scanner import GCPCallScanner
 from iamspy.terminal_output import Formatter, print_progress, print_scan_results
-
-# Default paths (relative to where the CLI is run)
-_DEFAULT_REGISTRY = Path(__file__).parent.parent.parent / "service_registry.json"
-_DEFAULT_PERMISSIONS = Path(__file__).parent.parent.parent / "iam_permissions.json"
-_DEFAULT_METHOD_DB = Path(__file__).parent.parent.parent / "method_db.json"
 
 
 def _load_scanner(args: argparse.Namespace) -> GCPCallScanner:
     """Load registry, resolver, method DB, and build scanner."""
-    registry_path = Path(args.registry) if hasattr(args, "registry") else _DEFAULT_REGISTRY
-    perms_path = Path(args.permissions) if hasattr(args, "permissions") else _DEFAULT_PERMISSIONS
-    method_db_path = Path(args.method_db) if hasattr(args, "method_db") else _DEFAULT_METHOD_DB
+    reg_path = Path(args.registry) if hasattr(args, "registry") and args.registry else registry_path()
+    perm_path = (
+        Path(args.permissions) if hasattr(args, "permissions") and args.permissions
+        else permissions_path()
+    )
+    mdb_path = (
+        Path(args.method_db) if hasattr(args, "method_db") and args.method_db
+        else method_db_path()
+    )
 
-    registry = ServiceRegistry.from_json(registry_path)
-    resolver = StaticPermissionResolver(perms_path)
+    registry = ServiceRegistry.from_json(reg_path)
+    resolver = StaticPermissionResolver(perm_path)
 
-    if method_db_path.exists():
-        db = load_method_db(method_db_path)
+    if Path(mdb_path).exists():
+        db = load_method_db(mdb_path)
     else:
         # Fall back to runtime introspection if method_db.json is missing
         from iamspy.introspect import build_method_db, discover_gcp_packages
@@ -105,8 +107,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
 def _write_manifest(results: list, args: argparse.Namespace) -> None:
     from iamspy.manifest import ManifestGenerator
 
-    registry_path = Path(args.registry) if hasattr(args, "registry") else _DEFAULT_REGISTRY
-    registry = ServiceRegistry.from_json(registry_path)
+    reg_path = Path(args.registry) if hasattr(args, "registry") and args.registry else registry_path()
+    registry = ServiceRegistry.from_json(reg_path)
 
     gen = ManifestGenerator(registry)
     manifest = gen.build(
@@ -152,8 +154,8 @@ def _print_compact(results: list, show_all: bool = False):
 
 
 def cmd_services(args: argparse.Namespace) -> int:
-    registry_path = Path(args.registry) if hasattr(args, "registry") else _DEFAULT_REGISTRY
-    registry = ServiceRegistry.from_json(registry_path)
+    reg_path = Path(args.registry) if hasattr(args, "registry") and args.registry else registry_path()
+    registry = ServiceRegistry.from_json(reg_path)
 
     if args.json:
         data = {}
@@ -184,8 +186,11 @@ def cmd_services(args: argparse.Namespace) -> int:
 
 
 def cmd_permissions(args: argparse.Namespace) -> int:
-    perms_path = Path(args.permissions) if hasattr(args, "permissions") else _DEFAULT_PERMISSIONS
-    resolver = StaticPermissionResolver(perms_path)
+    perm_path = (
+        Path(args.permissions) if hasattr(args, "permissions") and args.permissions
+        else permissions_path()
+    )
+    resolver = StaticPermissionResolver(perm_path)
     entries = resolver.all_entries()
 
     # Filter by service
@@ -227,8 +232,11 @@ def cmd_search(args: argparse.Namespace) -> int:
     """Search permission mappings using glob-style patterns."""
     import fnmatch
 
-    perms_path = Path(args.permissions) if hasattr(args, "permissions") else _DEFAULT_PERMISSIONS
-    resolver = StaticPermissionResolver(perms_path)
+    perm_path = (
+        Path(args.permissions) if hasattr(args, "permissions") and args.permissions
+        else permissions_path()
+    )
+    resolver = StaticPermissionResolver(perm_path)
     entries = resolver.all_entries()
 
     pattern = args.pattern
@@ -389,9 +397,9 @@ def main():
               %(prog)s search 'kms.*'                All KMS methods
         """),
     )
-    parser.add_argument("--registry", default=str(_DEFAULT_REGISTRY), help=argparse.SUPPRESS)
-    parser.add_argument("--permissions", default=str(_DEFAULT_PERMISSIONS), help=argparse.SUPPRESS)
-    parser.add_argument("--method-db", default=str(_DEFAULT_METHOD_DB), help=argparse.SUPPRESS)
+    parser.add_argument("--registry", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--permissions", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--method-db", default=None, help=argparse.SUPPRESS)
 
     sub = parser.add_subparsers(dest="command")
 
