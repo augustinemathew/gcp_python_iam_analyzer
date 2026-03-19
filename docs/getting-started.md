@@ -115,4 +115,4 @@ Glob wildcards work on `service.ClassName.method_name`.
 iamspy services
 ```
 
-205 services, including BigQuery, Cloud Storage, KMS, Pub/Sub, Spanner, Vertex AI, and more.
+209 services, including BigQuery, Cloud Storage, KMS, Pub/Sub, Spanner, Vertex AI, and more.

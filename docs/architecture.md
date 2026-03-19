@@ -27,9 +27,9 @@ O(1) lookup in iam_permissions.json  →  Finding
 
 | File | Size | Contents |
 |---|---|---|
-| `service_registry.json` | 33 KB | 205 services — pip package, IAM prefix, importable modules |
+| `service_registry.json` | 33 KB | 209 services — pip package, IAM prefix, importable modules |
 | `method_db.json` | 4.7 MB | 25,011 methods, 24,330 signatures (min/max args, class, service) |
-| `iam_permissions.json` | 3 MB | Method → permission mappings for all 205 services |
+| `iam_permissions.json` | 3 MB | Method → permission mappings for all 209 services |
 
 ## Import detection
 
@@ -63,10 +63,14 @@ See [build-pipeline.md](build-pipeline.md) for full details.
 
 ```
 src/iamspy/
-├── scanner.py      # GCPCallScanner — tree-sitter parse + match + resolve
-├── resolver.py     # StaticPermissionResolver — O(1) JSON lookup
-├── registry.py     # ServiceRegistry — service_id, iam_prefix, modules
-├── models.py       # PermissionResult, MethodSig, Finding, ScanResult
-├── loader.py       # Deserialize method_db.json
-└── cli.py          # scan / search / services subcommands
+├── scanner.py          # GCPCallScanner — tree-sitter parse + match + resolve
+├── type_inference.py   # Andersen's points-to analysis (docs/points-to-analysis.md)
+├── resolver.py         # StaticPermissionResolver — O(1) JSON lookup
+├── registry.py         # ServiceRegistry — service_id, iam_prefix, modules
+├── models.py           # Resolution, PermissionResult, MethodSig, Finding, ScanResult
+├── manifest.py         # ManifestGenerator — YAML permission manifest
+├── loader.py           # Deserialize method_db.json
+├── introspect.py       # Build method_db from installed SDK packages
+├── terminal_output.py  # Colored terminal formatting
+└── cli.py              # scan / search / services / permissions subcommands
 ```

@@ -43,20 +43,20 @@ Required permissions:
   ⚠ storage.objects.update (conditional)
 ```
 
-**Those are the exact permissions your service account needs. Nothing more. Nothing less.**
+**Those are the IAM permissions your service account needs.**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org) [![Tests](https://img.shields.io/badge/tests-365%20passing-brightgreen.svg)]() [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-GCP has 12,879 IAM permissions across 205 services. The Python SDK docs don't tell you which ones each method requires. You find out when you get `PERMISSION_DENIED` in production — or you grant `roles/editor` to the service account and stop debugging at 2am.
+GCP has 12,879 IAM permissions across 209 services. The Python SDK docs don't tell you which ones each method requires. You find out when you get `PERMISSION_DENIED` in production — or you grant `roles/editor` to the service account and stop debugging at 2am.
 
 IAMSpy reads your source code and gives you the answer before either of those happens.
 
 | Before IAMSpy | After IAMSpy |
 |---|---|
 | Deploy → `PERMISSION_DENIED` → add a role → repeat | Know before the first deploy |
-| Grant `roles/editor` to stop the 2am pages | Exact custom role, least-privilege |
+| Grant `roles/editor` to stop the 2am pages | Know the minimum permissions needed |
 | Manually read IAM docs for each SDK call | One command |
 | Discover missing permissions in production | Catch in CI |
 
@@ -86,26 +86,11 @@ permissions:
     - storage.buckets.get
     - storage.objects.create
   conditional:
-    - permission: bigquery.tables.getData
-      reason: "only when querying tables you don't own"
-    - permission: storage.objects.update
-      reason: "only if overwriting an existing object"
-
-roles:
-  suggested:
-    - roles/bigquery.jobUser
-    - roles/secretmanager.secretAccessor
-    - roles/storage.objectCreator
-  custom:
-    title: pipeline-permissions
-    permissions:
-      - bigquery.jobs.create
-      - secretmanager.versions.access
-      - storage.buckets.get
-      - storage.objects.create
+    - bigquery.tables.getData
+    - storage.objects.update
 ```
 
-The manifest is the single source of truth for what your service needs. When a PR adds a new GCP call that requires a new permission, the manifest diff shows it. You review it before it ships.
+When a PR adds a new GCP call that requires a new permission, the manifest diff shows it in code review.
 
 ---
 
@@ -152,7 +137,7 @@ Works offline. No file needed.
 | | |
 |---|---|
 | ⚡ Scan speed | < 50ms per file |
-| 📦 Methods in database | 25,011 across 205 services |
+| 📦 Methods in database | 25,011 across 209 services |
 | 🎯 Accuracy | 100% on Google's [python-docs-samples](https://github.com/GoogleCloudPlatform/python-docs-samples) (3,144 calls, 0 missed) |
 | 🛡️ False positives | Zero — no GCP imports = no findings, always |
 | 🏗️ Database source | 8.8M lines of GCP SDK source code |
@@ -179,7 +164,7 @@ iamspy scan --json src/                    # JSON for CI/tooling
 iamspy scan --manifest iam-manifest.yaml   # generate manifest
 iamspy search '*encrypt*'                  # look up any method
 iamspy permissions --service storage       # all storage mappings
-iamspy services                            # list all 205 services
+iamspy services                            # list all 209 services
 ```
 
 ---
@@ -189,7 +174,7 @@ iamspy services                            # list all 205 services
 | | |
 |---|---|
 | [Getting started](docs/getting-started.md) | First scan, reading output, output formats |
-| [Permission manifest](docs/permission-manifest.md) | YAML manifest + `iamspy apply` provisioning |
+| [Permission manifest](docs/permission-manifest.md) | YAML manifest format and usage |
 | [CI integration](docs/ci-integration.md) | GitHub Actions, Cloud Build |
 | [Accuracy](docs/accuracy.md) | Benchmark methodology, known limitations |
 | [Architecture](docs/architecture.md) | How the scanner works |
