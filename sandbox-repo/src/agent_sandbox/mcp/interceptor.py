@@ -1,44 +1,46 @@
-"""JSON-RPC proxy for MCP tool call interception.
+"""HTTP proxy for remote MCP server interception.
 
-Sits between an agent (client) and a running MCP server. Intercepts every
-``tools/call`` request, inspects tool name + arguments, runs sandbox
-checks, and either passes through or blocks.
+The sandbox is given a list of remote MCP server URLs on startup.
+All traffic to those servers flows through this interceptor, which
+inspects every ``tools/call`` JSON-RPC request before forwarding.
 
-The interceptor reads JSON-RPC from the agent side and forwards to an
-already-running upstream MCP server. It does NOT launch the upstream
-server — it connects to one that's already running via stdio pipes or
-a network connection.
+Local MCP servers (stdio-based) are trusted and NOT intercepted.
+Only remote servers — the actual trust boundary — are proxied.
 
-Usage (stdio pipe mode)::
+Architecture::
 
-    interceptor = MCPInterceptor(sandbox)
-    interceptor.start(
-        agent_in=agent_stdin,
-        agent_out=agent_stdout,
-        upstream_in=server_stdout,  # read responses from server
-        upstream_out=server_stdin,  # send requests to server
+    Agent  ──JSON-RPC/HTTP──▶  MCPInterceptor  ──HTTP──▶  Remote MCP Server
+                                    │
+                              sandbox.check_send()
+                              sandbox.check_exec()
+                                    │
+                              ALLOW → forward
+                              DENY  → 403 + JSON-RPC error
+
+Usage::
+
+    interceptor = MCPInterceptor(
+        sandbox=sandbox,
+        remote_servers=[
+            "https://mcp.example.com",
+            "https://other-mcp.corp.internal",
+        ],
     )
-
-Usage (wrapping an existing subprocess)::
-
-    # If you have an already-running subprocess:
-    interceptor = MCPInterceptor(sandbox)
-    interceptor.start(
-        agent_in=sys.stdin.buffer,
-        agent_out=sys.stdout.buffer,
-        upstream_in=existing_proc.stdout,
-        upstream_out=existing_proc.stdin,
-    )
+    port = interceptor.start()
+    # Agent connects to http://localhost:{port} instead of the real servers
+    # Interceptor forwards allowed requests to the matching remote server
 """
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
-import sys
+import socket
 import threading
+import urllib.parse
 from dataclasses import dataclass, field
-from typing import IO
+from http.server import BaseHTTPRequestHandler
 
 logger = logging.getLogger(__name__)
 
@@ -50,48 +52,13 @@ class MCPStats:
     total_calls: int = 0
     blocked_calls: int = 0
     allowed_calls: int = 0
+    passthrough: int = 0
     inspected_tools: dict[str, int] = field(default_factory=dict)
     blocked_details: list[dict[str, str]] = field(default_factory=list)
+    per_server: dict[str, int] = field(default_factory=dict)
 
 
-def _read_jsonrpc(stream: IO[bytes]) -> dict | None:
-    """Read a single JSON-RPC message from a stream.
-
-    Supports both Content-Length framed (LSP-style) and newline-delimited formats.
-    """
-    line = stream.readline()
-    if not line:
-        return None
-
-    line_str = line.decode("utf-8", errors="replace").strip()
-
-    if line_str.startswith("Content-Length:"):
-        length = int(line_str.split(":", 1)[1].strip())
-        # Read blank separator line
-        stream.readline()
-        body = stream.read(length)
-        if not body:
-            return None
-        return json.loads(body.decode("utf-8", errors="replace"))
-
-    # Newline-delimited JSON
-    if line_str:
-        try:
-            return json.loads(line_str)
-        except json.JSONDecodeError:
-            return None
-    return None
-
-
-def _write_jsonrpc(stream: IO[bytes], message: dict) -> None:
-    """Write a JSON-RPC message to a stream using Content-Length framing."""
-    body = json.dumps(message).encode("utf-8")
-    header = f"Content-Length: {len(body)}\r\n\r\n".encode("utf-8")
-    stream.write(header + body)
-    stream.flush()
-
-
-def _make_error_response(
+def _make_jsonrpc_error(
     request_id: int | str | None, code: int, message: str,
 ) -> dict:
     """Create a JSON-RPC error response."""
@@ -102,174 +69,368 @@ def _make_error_response(
     }
 
 
-class MCPInterceptor:
-    """JSON-RPC proxy that intercepts MCP tool calls for sandbox enforcement.
+def _parse_jsonrpc_body(body: bytes) -> dict | None:
+    """Parse a JSON-RPC message from an HTTP request body."""
+    if not body:
+        return None
+    try:
+        return json.loads(body.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return None
 
-    Reads JSON-RPC from the agent side, inspects ``tools/call`` requests,
-    and forwards allowed requests to an already-running upstream MCP server.
-    Responses from the upstream are forwarded back to the agent.
 
-    The interceptor does NOT manage the upstream server lifecycle —
-    it assumes the upstream is already running and reachable via
-    the provided IO streams.
-    """
+class _InterceptHandler(BaseHTTPRequestHandler):
+    """HTTP handler that intercepts JSON-RPC requests to remote MCP servers."""
 
-    def __init__(
-        self,
-        sandbox: object,
-        summarizer: object | None = None,
-    ) -> None:
-        """Initialize the interceptor.
+    sandbox: object
+    summarizer: object | None
+    stats: MCPStats
+    remote_servers: dict[str, str]  # path prefix → remote URL
+    _lock: threading.Lock
 
-        Args:
-            sandbox: Sandbox instance for check_send/check_exec.
-            summarizer: Optional CallSummarizer for recording tool calls.
-        """
-        self.sandbox = sandbox
-        self._summarizer = summarizer
-        self.stats = MCPStats()
-        self._running = False
+    def do_POST(self) -> None:
+        """Handle POST — the primary transport for MCP JSON-RPC."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length) if content_length > 0 else b""
 
-    def start(
-        self,
-        agent_in: IO[bytes] | None = None,
-        agent_out: IO[bytes] | None = None,
-        upstream_in: IO[bytes] | None = None,
-        upstream_out: IO[bytes] | None = None,
-    ) -> None:
-        """Start intercepting. Blocks until the agent stream closes.
+        # Find which remote server this request targets
+        remote_url = self._resolve_remote()
+        if not remote_url:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"No matching remote MCP server\n")
+            return
 
-        Args:
-            agent_in: Stream to read agent requests from (default: stdin).
-            agent_out: Stream to write responses to (default: stdout).
-            upstream_in: Stream to read upstream responses from.
-            upstream_out: Stream to send requests to the upstream server.
-        """
-        agent_in = agent_in or sys.stdin.buffer
-        agent_out = agent_out or sys.stdout.buffer
-
-        self._upstream_out = upstream_out
-        self._running = True
-
-        # Forward upstream responses to agent in a background thread
-        if upstream_in:
-            response_thread = threading.Thread(
-                target=self._relay_responses,
-                args=(upstream_in, agent_out),
-                daemon=True,
+        with self._lock:
+            self.stats.per_server[remote_url] = (
+                self.stats.per_server.get(remote_url, 0) + 1
             )
-            response_thread.start()
 
-        # Main loop: read from agent, inspect, forward
-        try:
-            while self._running:
-                message = _read_jsonrpc(agent_in)
-                if message is None:
-                    break
-                self._handle_message(message, agent_out)
-        finally:
-            self._running = False
+        # Parse JSON-RPC
+        message = _parse_jsonrpc_body(body)
+        if not message:
+            # Not JSON-RPC — pass through
+            self._forward_raw(remote_url, body)
+            return
 
-    def stop(self) -> None:
-        """Stop the interceptor."""
-        self._running = False
-
-    def _handle_message(self, message: dict, agent_out: IO[bytes]) -> None:
-        """Inspect a JSON-RPC message and decide whether to forward it."""
         method = message.get("method", "")
-
         if method == "tools/call":
-            self._handle_tool_call(message, agent_out)
+            self._handle_tool_call(message, remote_url)
         else:
-            # Non-tool-call messages pass through
-            self._forward_to_upstream(message)
+            # Non-tool-call JSON-RPC passes through
+            with self._lock:
+                self.stats.passthrough += 1
+            self._forward_raw(remote_url, body)
 
-    def _handle_tool_call(
-        self, message: dict, agent_out: IO[bytes],
-    ) -> None:
-        """Inspect a tools/call request and block or forward."""
+    def do_GET(self) -> None:
+        """Handle GET — used by SSE transport for MCP."""
+        remote_url = self._resolve_remote()
+        if not remote_url:
+            self.send_response(404)
+            self.end_headers()
+            return
+        with self._lock:
+            self.stats.passthrough += 1
+        self._forward_get(remote_url)
+
+    def _resolve_remote(self) -> str | None:
+        """Resolve the request path to a remote server URL."""
+        # Try exact path prefix match
+        for prefix, url in self.remote_servers.items():
+            if self.path.startswith(prefix):
+                return url
+        # Single server mode: any path goes to the only server
+        if len(self.remote_servers) == 1:
+            return next(iter(self.remote_servers.values()))
+        return None
+
+    def _handle_tool_call(self, message: dict, remote_url: str) -> None:
+        """Inspect a tools/call and block or forward."""
         params = message.get("params", {})
         tool_name = params.get("name", "")
         arguments = params.get("arguments", {})
         request_id = message.get("id")
 
-        self.stats.total_calls += 1
-        self.stats.inspected_tools[tool_name] = (
-            self.stats.inspected_tools.get(tool_name, 0) + 1
-        )
+        with self._lock:
+            self.stats.total_calls += 1
+            self.stats.inspected_tools[tool_name] = (
+                self.stats.inspected_tools.get(tool_name, 0) + 1
+            )
 
-        # Serialize arguments for content inspection
-        body = json.dumps(arguments)
-        allowed, reason = self.sandbox.check_send("mcp-server", body)
+        # Content inspection
+        body_str = json.dumps(arguments)
+        server_host = urllib.parse.urlparse(remote_url).hostname or remote_url
+        allowed, reason = self.sandbox.check_send(server_host, body_str)
 
-        # Also check exec for shell-like tools
+        # Extra check for shell-like tools
         if tool_name in ("bash", "shell", "terminal", "execute", "run"):
             cmd = arguments.get("command", arguments.get("cmd", ""))
             if cmd:
-                exec_allowed, exec_reason = self.sandbox.check_exec(cmd)
-                if not exec_allowed:
+                exec_ok, exec_reason = self.sandbox.check_exec(cmd)
+                if not exec_ok:
                     allowed = False
                     reason = exec_reason
 
         if not allowed:
-            self.stats.blocked_calls += 1
-            self.stats.blocked_details.append({
-                "tool": tool_name,
-                "reason": reason,
-                "args_preview": body[:200],
-            })
-            logger.warning("BLOCKED MCP call: %s — %s", tool_name, reason)
-
-            error_resp = _make_error_response(
+            with self._lock:
+                self.stats.blocked_calls += 1
+                self.stats.blocked_details.append({
+                    "tool": tool_name,
+                    "server": remote_url,
+                    "reason": reason,
+                    "args_preview": body_str[:200],
+                })
+            logger.warning(
+                "BLOCKED MCP call: %s on %s — %s", tool_name, remote_url, reason,
+            )
+            error_resp = _make_jsonrpc_error(
                 request_id, -32000, f"Blocked by sandbox: {reason}",
             )
-            _write_jsonrpc(agent_out, error_resp)
+            resp_body = json.dumps(error_resp).encode("utf-8")
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(resp_body)))
+            self.end_headers()
+            self.wfile.write(resp_body)
             return
 
-        self.stats.allowed_calls += 1
+        with self._lock:
+            self.stats.allowed_calls += 1
 
-        # Record in summarizer if available
-        if self._summarizer and hasattr(self._summarizer, "record_turn"):
-            self._summarizer.record_turn(
+        # Record in summarizer
+        if self.summarizer and hasattr(self.summarizer, "record_turn"):
+            self.summarizer.record_turn(
                 reasoning="",
                 tool_calls=[{
                     "tool_name": tool_name,
                     "arguments": arguments,
                     "result": "",
                 }],
-                sandbox_decisions=[{"allowed": allowed, "reason": reason}],
+                sandbox_decisions=[{"allowed": True, "reason": reason}],
             )
 
-        self._forward_to_upstream(message)
+        # Forward to remote
+        raw_body = json.dumps(message).encode("utf-8")
+        self._forward_raw(remote_url, raw_body)
 
-    def _forward_to_upstream(self, message: dict) -> None:
-        """Forward a message to the upstream MCP server."""
-        if self._upstream_out:
-            try:
-                _write_jsonrpc(self._upstream_out, message)
-            except (BrokenPipeError, OSError):
-                logger.error("Upstream pipe broken")
-                self._running = False
+    def _forward_raw(self, remote_url: str, body: bytes) -> None:
+        """Forward a raw HTTP POST to the remote server."""
+        parsed = urllib.parse.urlparse(remote_url)
+        path = self.path  # preserve original path
 
-    def _relay_responses(
-        self, upstream_in: IO[bytes], agent_out: IO[bytes],
+        try:
+            if parsed.scheme == "https":
+                conn = http.client.HTTPSConnection(
+                    parsed.hostname, parsed.port or 443, timeout=30,
+                )
+            else:
+                conn = http.client.HTTPConnection(
+                    parsed.hostname, parsed.port or 80, timeout=30,
+                )
+
+            # Forward headers (minus hop-by-hop)
+            headers = {}
+            for key in self.headers:
+                if key.lower() not in ("host", "transfer-encoding"):
+                    headers[key] = self.headers[key]
+            headers["Host"] = parsed.hostname
+
+            conn.request("POST", path, body, headers)
+            resp = conn.getresponse()
+
+            self.send_response(resp.status)
+            for key, val in resp.getheaders():
+                if key.lower() not in ("transfer-encoding",):
+                    self.send_header(key, val)
+            self.end_headers()
+            self.wfile.write(resp.read())
+            conn.close()
+        except Exception as e:
+            self.send_response(502)
+            self.end_headers()
+            self.wfile.write(f"Upstream error: {e}\n".encode())
+
+    def _forward_get(self, remote_url: str) -> None:
+        """Forward a GET request (e.g. SSE) to the remote server."""
+        parsed = urllib.parse.urlparse(remote_url)
+        try:
+            if parsed.scheme == "https":
+                conn = http.client.HTTPSConnection(
+                    parsed.hostname, parsed.port or 443, timeout=30,
+                )
+            else:
+                conn = http.client.HTTPConnection(
+                    parsed.hostname, parsed.port or 80, timeout=30,
+                )
+            headers = {"Host": parsed.hostname}
+            conn.request("GET", self.path, headers=headers)
+            resp = conn.getresponse()
+
+            self.send_response(resp.status)
+            for key, val in resp.getheaders():
+                if key.lower() not in ("transfer-encoding",):
+                    self.send_header(key, val)
+            self.end_headers()
+            self.wfile.write(resp.read())
+            conn.close()
+        except Exception as e:
+            self.send_response(502)
+            self.end_headers()
+            self.wfile.write(f"Upstream error: {e}\n".encode())
+
+    def log_message(self, format: str, *args: object) -> None:
+        """Suppress default logging."""
+        logger.debug(format, *args)
+
+
+class MCPInterceptor:
+    """HTTP proxy that intercepts traffic to remote MCP servers.
+
+    On startup, the sandbox is given a list of remote MCP server URLs.
+    The interceptor starts a local HTTP server. The agent connects to
+    this local server instead of directly to the remote servers.
+    Every ``tools/call`` request is inspected before forwarding.
+
+    Local MCP servers (stdio) are trusted and not intercepted.
+    """
+
+    def __init__(
+        self,
+        sandbox: object,
+        remote_servers: list[str] | None = None,
+        summarizer: object | None = None,
     ) -> None:
-        """Relay responses from upstream back to the agent."""
+        """Initialize the interceptor.
+
+        Args:
+            sandbox: Sandbox instance for check_send/check_exec.
+            remote_servers: List of remote MCP server URLs to intercept.
+            summarizer: Optional CallSummarizer for recording tool calls.
+        """
+        self.sandbox = sandbox
+        self.remote_servers = remote_servers or []
+        self._summarizer = summarizer
+        self.stats = MCPStats()
+        self._server: socket.socket | None = None
+        self._thread: threading.Thread | None = None
+        self._running = False
+        self._lock = threading.Lock()
+        self.host = "127.0.0.1"
+        self.port = 0
+
+    def start(self) -> int:
+        """Start the interceptor proxy. Returns the local port.
+
+        The agent should connect to ``http://127.0.0.1:{port}``
+        instead of directly to the remote MCP servers.
+        """
+        # Build path prefix → URL mapping
+        server_map: dict[str, str] = {}
+        for i, url in enumerate(self.remote_servers):
+            prefix = f"/mcp/{i}"
+            server_map[prefix] = url
+        if len(self.remote_servers) == 1:
+            server_map["/"] = self.remote_servers[0]
+
+        # Configure handler
+        _InterceptHandler.sandbox = self.sandbox
+        _InterceptHandler.summarizer = self._summarizer
+        _InterceptHandler.stats = self.stats
+        _InterceptHandler.remote_servers = server_map
+        _InterceptHandler._lock = self._lock
+
+        # Bind
+        self._server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._server.bind((self.host, self.port))
+        self._server.listen(32)
+        self._server.settimeout(1)
+        self.port = self._server.getsockname()[1]
+
+        self._running = True
+        self._thread = threading.Thread(
+            target=self._serve_loop, daemon=True,
+        )
+        self._thread.start()
+
+        logger.info(
+            "MCP interceptor started on %s:%d for %d remote servers",
+            self.host, self.port, len(self.remote_servers),
+        )
+        return self.port
+
+    def _serve_loop(self) -> None:
+        """Accept and handle connections."""
         while self._running:
             try:
-                message = _read_jsonrpc(upstream_in)
-                if message is None:
-                    break
-                _write_jsonrpc(agent_out, message)
-            except Exception:
+                client_sock, addr = self._server.accept()
+            except socket.timeout:
+                continue
+            except OSError:
                 break
+
+            t = threading.Thread(
+                target=self._handle_connection,
+                args=(client_sock, addr),
+                daemon=True,
+            )
+            t.start()
+
+    def _handle_connection(
+        self, client_sock: socket.socket, addr: tuple[str, int],
+    ) -> None:
+        """Handle a single client connection."""
+        try:
+            _InterceptHandler(
+                request=client_sock,
+                client_address=addr,
+                server=self._server,
+            )
+        except Exception as e:
+            logger.debug("Handler error from %s: %s", addr, e)
+        finally:
+            try:
+                client_sock.close()
+            except Exception:
+                pass
+
+    def stop(self) -> None:
+        """Stop the interceptor."""
+        self._running = False
+        if self._server:
+            try:
+                self._server.close()
+            except Exception:
+                pass
+        if self._thread:
+            self._thread.join(timeout=5)
+        logger.info("MCP interceptor stopped. Stats: %s", self.get_stats())
 
     def get_stats(self) -> dict[str, object]:
         """Get interception statistics."""
-        return {
-            "total_calls": self.stats.total_calls,
-            "blocked": self.stats.blocked_calls,
-            "allowed": self.stats.allowed_calls,
-            "tools": dict(self.stats.inspected_tools),
-            "blocked_details": list(self.stats.blocked_details),
-        }
+        with self._lock:
+            return {
+                "total_calls": self.stats.total_calls,
+                "blocked": self.stats.blocked_calls,
+                "allowed": self.stats.allowed_calls,
+                "passthrough": self.stats.passthrough,
+                "tools": dict(self.stats.inspected_tools),
+                "per_server": dict(self.stats.per_server),
+                "blocked_details": list(self.stats.blocked_details),
+            }
+
+    def get_proxy_url(self) -> str:
+        """Get the local proxy URL agents should connect to."""
+        return f"http://{self.host}:{self.port}"
+
+    def get_server_urls(self) -> dict[str, str]:
+        """Get the mapping of proxy paths to remote server URLs.
+
+        Returns dict like ``{"/mcp/0": "https://remote.example.com"}``.
+        The agent uses ``http://localhost:{port}/mcp/0/...`` to reach
+        that remote server through the interceptor.
+        """
+        result: dict[str, str] = {}
+        for i, url in enumerate(self.remote_servers):
+            result[f"/mcp/{i}"] = url
+        return result
