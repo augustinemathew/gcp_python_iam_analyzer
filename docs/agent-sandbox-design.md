@@ -446,43 +446,72 @@ unique hosts, blocked count, suspicious turns, first taint/block turn numbers.
 ## Future: Small Local Classifier Models
 
 The JSONL output from `CallSummarizer` is designed to be fed into a small
-classification model for real-time risk scoring. Candidate approaches:
+classification model for real-time risk scoring.
+
+### Production Precedent: Wiz Secret Detector
+
+Wiz built a production secret detector using **Llama 3.2-1B + LoRA**, quantized
+to INT8 via llama.cpp. Results:
+- **86% precision, 82% recall** on secret detection
+- **27 tokens/sec on single-threaded ARM CPU**
+- 75% smaller than FP32, 2.3x faster, <1% accuracy loss
+- Deployed in production scanning code repos
+
+This validates the approach: fine-tune a small model on our JSONL data, quantize,
+deploy on CPU with zero GPU dependency.
 
 ### Recommended Models (CPU-only, no GPU required)
 
-| Model | Size | Speed (CPU) | Use Case |
-|-------|------|-------------|----------|
-| **DeBERTa-v3-xsmall** | 22M params | ~5ms/inference | Binary classification (safe/threat) |
-| **MiniLM-L6-v2** | 22M params | ~5ms/inference | Sentence similarity for intent matching |
-| **TinyBERT** | 14.5M params | ~3ms/inference | Fastest option for binary classification |
-| **Phi-3-mini (3.8B, Q4)** | 2.2GB GGUF | ~200ms/token | Full reasoning about suspicious patterns |
-| **Qwen2.5-0.5B (Q4)** | 400MB GGUF | ~50ms/token | Lightweight reasoning |
-| **SmolLM-135M** | 135M params | ~10ms/token | Smallest generative model |
+**Encoder models (best for binary classification):**
 
-### Architecture for Local Classifier
+| Model | Params | Speed (CPU) | Notes |
+|-------|--------|-------------|-------|
+| **ModernBERT-base** | 149M | sub-ms/inference | 2024 BERT replacement, 2T tokens, 8192 ctx, 2-4x faster. Drop-in. |
+| **DeBERTa-v3-base** | 86M | ~5ms/inference | Best GLUE scores among encoders. ONNX available. |
+| **DeBERTa-v3-xsmall** | 22M | ~3ms/inference | Smallest viable encoder for classification. |
+| **TinyBERT** | 14.5M | ~2ms/inference | Fastest option. Two-stage distillation. |
+| **ProtectAI prompt-injection** | 86M (DeBERTa) | ~5ms/inference | Pre-trained for prompt injection detection. ONNX. |
+
+**Decoder models (for generative output / reasoning):**
+
+| Model | Params | Memory | Speed (CPU) | Notes |
+|-------|--------|--------|-------------|-------|
+| **BitNet b1.58 2B4T** | 2B | 0.4GB | 29ms latency | 1-bit weights, 12x energy savings. MIT license. |
+| **Qwen2.5-0.5B** | 500M | ~300MB Q4 | ~50ms/token | Best instruct-following at 500M. |
+| **SmolLM2-135M** | 135M | ~100MB | ~10ms/token | Beats models 10x its size. HuggingFace. |
+| **Llama 3.2-1B** | 1B | ~600MB Q4 | 27 tok/s ARM | Production-proven (Wiz). LoRA fine-tunable. |
+| **SlimLM-125M** | 125M | ~80MB | ~8ms/token | Outperforms SmolLM at equivalent size (ACL 2025). |
+
+### Recommended Architecture
+
+Two-tier approach matching the EDR pattern (fast pre-filter + deep analysis):
 
 ```
-JSONL turn record
+Tier 1: Regex + Heuristic Pre-Filter (current system, ~0.1ms)
     │
-    ▼
-Feature extraction (no model needed):
-    ├── intent_category: enum
-    ├── has_risk_phrases: bool
-    ├── num_actions: int
-    ├── action_categories: set
-    ├── tainted: bool
-    ├── bytes_out: int
-    ├── unique_hosts: int
-    └── blocked_ratio: float
+    ├── CallSummarizer extracts intent, classifies actions
+    ├── Taint + LSH + anomaly checks
+    ├── Verdict: SAFE → pass, BLOCKED → enforce
     │
-    ▼
-DeBERTa-v3-xsmall (22M, ONNX Runtime)
-    ├── Input: concatenated features as text
-    ├── Output: P(threat) ∈ [0, 1]
-    └── Threshold: 0.7 → flag for review
+    └── Verdict: SUSPICIOUS → escalate to Tier 2
+                    │
+                    ▼
+Tier 2: Local Model Classifier (~5ms with encoder, ~200ms with decoder)
     │
-    ▼
-Risk score per turn + session-level aggregate
+    ├── Option A: ModernBERT-base (149M, ONNX Runtime)
+    │   ├── Input: JSONL turn record as text
+    │   ├── Output: P(threat) ∈ [0, 1]
+    │   └── sub-millisecond per classification
+    │
+    ├── Option B: DeBERTa-v3-base prompt-injection detector
+    │   ├── Pre-trained on prompt injection data (ProtectAI)
+    │   ├── Zero-shot or fine-tune on our data
+    │   └── ONNX export available
+    │
+    └── Option C: BitNet b1.58 2B4T (0.4GB, 29ms)
+        ├── Input: full turn context (reasoning + tool calls + decision)
+        ├── Output: structured risk assessment with explanation
+        └── Best for cases requiring reasoning about intent
 ```
 
 ### Training Data Strategy
@@ -491,28 +520,67 @@ Fine-tune on synthetic data generated from the attack scenarios:
 1. Run all 19 attack scenarios (8 disruption + 11 disclosure) through the summarizer
 2. Label each turn: 0 = safe, 1 = threat
 3. Add normal coding session recordings as negative examples
-4. Fine-tune DeBERTa-v3-xsmall with HuggingFace Trainer (~5 minutes on CPU)
-5. Export to ONNX for fast inference
+4. Fine-tune with LoRA (rank 4-16, attention layers only)
+5. For encoders: HuggingFace Trainer + ONNX export (~5 min on CPU)
+6. For decoders: Unsloth for 2x faster LoRA, quantize to INT8 via llama.cpp
 
 ### State of the Art: Threat Detection Techniques
 
-Modern endpoint detection (CrowdStrike, SentinelOne, Microsoft Defender) uses:
+Modern endpoint detection has moved decisively to behavioral analysis.
+Key data points (2024-2026):
 
-- **Behavioral analysis over signatures**: classify process trees, not file hashes.
-  Our taint tracking + anomaly detection follows this pattern.
-- **eBPF-based runtime security** (Falco, Tetragon, Tracee): kernel-level syscall
-  monitoring without ptrace overhead. Our strace approach is similar but userspace.
-- **ML models for syscall sequences**: LSTM/Transformer on syscall traces to detect
-  anomalous patterns. Our shape detector is a lightweight version of this.
-- **Supply chain attack detection**: monitor for unexpected network connections from
-  build tools. Our MITM proxy catches this for agent tool calls.
-- **LLM-specific defenses**: prompt injection detection, tool call validation,
-  output filtering. Our trace analyzer covers the reasoning/intent side.
+**Industry landscape:**
+- **79% of attacks are malware-free** (CrowdStrike 2025 Global Threat Report) —
+  credential theft and living-off-the-land dominate. Signature-based detection
+  is necessary but insufficient.
+- **70% of SOCs rely on AI-driven automation** by 2025.
+- Average breakout time: 48 minutes (CrowdStrike).
+- SentinelOne's Storyline technology constructs visual attack chain narratives —
+  analogous to our timeline summarizer.
 
-The key insight from modern EDR: **behavior > signatures**. Our multi-layer
+**eBPF runtime security (kernel-level, no ptrace):**
+- **Falco** (CNCF graduated): detection-only via syscall monitoring, flexible rules
+- **Tetragon** (Cilium): detection + enforcement via LSM hooks, lowest CPU overhead
+- **Tracee** (Aqua): deep kernel tracing for anomaly detection
+- Comparative study (RITECH 2025): all three achieve **100% detection, 0 false
+  positives**. Tetragon excels in container escape; Falco in DoS detection.
+- Our strace approach is analogous but userspace. Migration path: replace strace
+  with eBPF probes for lower overhead.
+
+**ML for syscall/network anomaly detection:**
+- **LIGHT-HIDS** (arXiv Sep 2025): compressed neural net for syscall-based HIDS,
+  **75x faster** inference than SOTA while improving accuracy. Targets edge
+  deployment on NVIDIA Jetson.
+- **CNN-BiLSTM-AE** (MDPI Electronics Jul 2025): unsupervised approach combining
+  CNN spatial features + BiLSTM temporal features + autoencoder reconstruction.
+- **LightGBM**: 97.16% accuracy on binary malware classification (Nature 2025).
+  Gradient-boosted trees remain competitive with deep learning.
+- Lab classifiers achieve ~95% TPR but **drop to ~60% TPR** in production due to
+  distribution shift (arXiv 2024). Key lesson: train on realistic data, not just
+  sandbox traces.
+
+**LLM-specific threat landscape:**
+- Prompt injection is **OWASP #1 for LLM Applications 2025**. Attack success
+  rates reach 84% in agentic systems.
+- Production CVEs: Microsoft Copilot (CVSS 9.3), GitHub Copilot (CVSS 9.6),
+  Cursor IDE (CVSS 9.8).
+- **Meta's "Agents Rule of Two"**: agents exposed to untrusted content operate
+  in tight sandboxes, isolated from production. Aligns with our design.
+- Only **34.7% of organizations** have deployed dedicated prompt injection
+  defenses (Cisco State of AI Security 2026).
+- OpenAI launched Lockdown Mode (Feb 2026) and acknowledged prompt injection in
+  AI browsers "may never be fully patched."
+- **ProtectAI/deberta-v3-base-prompt-injection-v2**: fine-tuned DeBERTa for
+  prompt injection detection, ONNX support, available on HuggingFace.
+- Supply chain: OWASP elevated Supply Chain Failures to **A03 in 2025 Top 10**.
+  The Shai-Hulud npm worm reached 500+ package versions.
+
+**Key insight from modern EDR: behavior > signatures.** Our multi-layer
 approach (taint + LSH + anomaly + MITM + trace analysis + auto-summarizer)
 mirrors this by combining static signals (secret patterns) with behavioral
-signals (access patterns, network timing, request shapes).
+signals (access patterns, network timing, request shapes). The auto-summarizer's
+JSONL output creates the training data pipeline for the next step: a local ML
+classifier that learns from real agent sessions.
 
 ## File Map
 
