@@ -4,6 +4,10 @@ Handles HTTP CONNECT tunnels by generating per-host certificates signed
 by our CA. Terminates TLS on both sides, reads plaintext request bodies,
 and passes them through the sandbox enforcement layer.
 
+MCP-aware: recognizes JSON-RPC ``tools/call`` requests in HTTP bodies
+and applies tool-specific checks (e.g. check_exec for shell tools).
+Remote MCP servers are intercepted automatically — no separate proxy needed.
+
 Usage:
     proxy = MITMProxy(sandbox, ca, port=8080)
     proxy.start()  # starts in background thread
@@ -14,10 +18,9 @@ Usage:
 from __future__ import annotations
 
 import http.client
-import io
+import json
 import logging
 import re
-import select
 import socket
 import ssl
 import threading
@@ -27,6 +30,8 @@ from http.server import BaseHTTPRequestHandler
 from agent_sandbox.proxy.cert import CertAuthority
 
 logger = logging.getLogger(__name__)
+
+_SHELL_TOOLS = frozenset({"bash", "shell", "terminal", "execute", "run"})
 
 
 @dataclass
@@ -39,6 +44,8 @@ class ProxyStats:
     connect_tunnels: int = 0
     errors: int = 0
     inspected_bytes: int = 0
+    mcp_tool_calls: int = 0
+    mcp_tools: dict[str, int] = field(default_factory=dict)
     blocked_details: list[dict[str, str]] = field(default_factory=list)
 
 
@@ -48,6 +55,7 @@ class _ProxyHandler(BaseHTTPRequestHandler):
     # Set by MITMProxy before starting
     ca: CertAuthority
     sandbox: object  # sandbox.sandbox.Sandbox
+    summarizer: object | None  # optional CallSummarizer
     stats: ProxyStats
     _lock: threading.Lock
 
@@ -123,7 +131,8 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         logger.info("MITM: %s %s://%s%s [%d bytes body]", method, "https", host, path, len(body))
 
         # --- ENFORCEMENT: check with sandbox ---
-        allowed, reason = self.sandbox.check_send(host, body.decode("utf-8", errors="replace"))
+        body_str = body.decode("utf-8", errors="replace")
+        allowed, reason = self._enforce(host, path, body_str)
 
         if not allowed:
             logger.warning("BLOCKED: %s %s://%s%s — %s", method, "https", host, path, reason)
@@ -276,9 +285,8 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             self.stats.inspected_bytes += len(body)
 
         # Enforce
-        allowed, reason = self.sandbox.check_send(
-            host, body.decode("utf-8", errors="replace")
-        )
+        body_str = body.decode("utf-8", errors="replace")
+        allowed, reason = self._enforce(host, self.path, body_str)
 
         if not allowed:
             with self._lock:
@@ -316,6 +324,75 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"Upstream error: {e}\n".encode())
 
+    def _enforce(self, host: str, path: str, body: str) -> tuple[bool, str]:
+        """Run sandbox enforcement, with MCP tool call awareness.
+
+        If the body is a JSON-RPC ``tools/call``, extracts tool name and
+        arguments for targeted checks. Otherwise falls through to the
+        generic check_send.
+        """
+        # Try to detect MCP tool calls in the body
+        mcp_result = self._check_mcp_tool_call(host, body)
+        if mcp_result is not None:
+            return mcp_result
+
+        # Generic enforcement
+        return self.sandbox.check_send(host, body)
+
+    def _check_mcp_tool_call(
+        self, host: str, body: str,
+    ) -> tuple[bool, str] | None:
+        """Check if body is a JSON-RPC tools/call. Returns None if not."""
+        if "tools/call" not in body:
+            return None
+
+        try:
+            msg = json.loads(body)
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+        if msg.get("method") != "tools/call":
+            return None
+
+        params = msg.get("params", {})
+        tool_name = params.get("name", "")
+        arguments = params.get("arguments", {})
+
+        with self._lock:
+            self.stats.mcp_tool_calls += 1
+            self.stats.mcp_tools[tool_name] = (
+                self.stats.mcp_tools.get(tool_name, 0) + 1
+            )
+
+        logger.info("MCP tools/call: %s on %s", tool_name, host)
+
+        # Content check on arguments
+        args_str = json.dumps(arguments)
+        allowed, reason = self.sandbox.check_send(host, args_str)
+
+        # Extra check for shell tools
+        if allowed and tool_name in _SHELL_TOOLS:
+            cmd = arguments.get("command", arguments.get("cmd", ""))
+            if cmd:
+                allowed, reason = self.sandbox.check_exec(cmd)
+
+        # Record in summarizer
+        if self.summarizer and hasattr(self.summarizer, "record_turn"):
+            self.summarizer.record_turn(
+                reasoning="",
+                tool_calls=[{
+                    "tool_name": tool_name,
+                    "arguments": arguments,
+                    "result": "",
+                }],
+                sandbox_decisions=[{
+                    "allowed": allowed,
+                    "reason": reason,
+                }],
+            )
+
+        return allowed, reason
+
     def log_message(self, format: str, *args: object) -> None:
         """Suppress default logging — we use our own logger."""
         logger.debug(format, *args)
@@ -335,11 +412,13 @@ class MITMProxy:
         ca: CertAuthority,
         host: str = "127.0.0.1",
         port: int = 0,
+        summarizer: object | None = None,
     ) -> None:
         self.sandbox = sandbox
         self.ca = ca
         self.host = host
         self.port = port
+        self.summarizer = summarizer
         self.stats = ProxyStats()
         self._server: socket.socket | None = None
         self._thread: threading.Thread | None = None
@@ -358,6 +437,7 @@ class MITMProxy:
         # Configure the handler class
         _ProxyHandler.ca = self.ca
         _ProxyHandler.sandbox = self.sandbox
+        _ProxyHandler.summarizer = self.summarizer
         _ProxyHandler.stats = self.stats
         _ProxyHandler._lock = self._lock
 
@@ -391,7 +471,7 @@ class MITMProxy:
     ) -> None:
         """Handle a single client connection."""
         try:
-            handler = _ProxyHandler(
+            _ProxyHandler(
                 request=client_sock,
                 client_address=addr,
                 server=self._server,
@@ -428,6 +508,8 @@ class MITMProxy:
                 "tunnels": self.stats.connect_tunnels,
                 "errors": self.stats.errors,
                 "inspected_bytes": self.stats.inspected_bytes,
+                "mcp_tool_calls": self.stats.mcp_tool_calls,
+                "mcp_tools": dict(self.stats.mcp_tools),
                 "blocked_details": list(self.stats.blocked_details),
             }
 
