@@ -265,16 +265,22 @@ class CallSummarizer:
     trace analyzer to get alerts. Produces a log that can be:
     - Printed as a human-readable timeline
     - Serialized to JSON for downstream analysis
-    - Fed into a small classifier model for risk scoring
+    - Fed into the LLM classifier for risk scoring (if configured)
     """
 
-    def __init__(self, sandbox: object | None = None) -> None:
+    def __init__(
+        self,
+        sandbox: object | None = None,
+        llm_classifier: object | None = None,
+    ) -> None:
         """Initialize the summarizer.
 
         Args:
             sandbox: Optional Sandbox instance for taint state access.
+            llm_classifier: Optional LLMClassifier for escalating SUSPICIOUS verdicts.
         """
         self._sandbox = sandbox
+        self._classifier = llm_classifier
         self.timeline: list[TurnSummary] = []
         self.session: SessionSummary = SessionSummary()
         self._turn_count = 0
@@ -344,6 +350,10 @@ class CallSummarizer:
         # Determine verdict
         verdict = self._compute_verdict(intent, actions, alerts_raised)
 
+        # Tier 2: escalate SUSPICIOUS to LLM classifier if available
+        if verdict == Verdict.SUSPICIOUS and self._classifier:
+            verdict = self._escalate_to_classifier(intent, actions, tainted, verdict)
+
         duration_ms = (time.perf_counter() - t0) * 1000
 
         summary = TurnSummary(
@@ -361,6 +371,45 @@ class CallSummarizer:
         self._update_session_stats(summary)
 
         return summary
+
+    def _escalate_to_classifier(
+        self,
+        intent: IntentSignal,
+        actions: list[ActionRecord],
+        tainted: bool,
+        current_verdict: Verdict,
+    ) -> Verdict:
+        """Escalate a SUSPICIOUS verdict to the LLM classifier."""
+        from agent_sandbox.core.llm_classifier import SessionContext
+
+        turn_data = {
+            "intent": intent.summary,
+            "targets": intent.targets,
+            "risk_phrases": intent.risk_phrases,
+            "actions": [
+                {
+                    "tool": a.tool_name,
+                    "category": a.category.value,
+                    "target": a.target,
+                    "allowed": a.sandbox_allowed,
+                }
+                for a in actions
+            ],
+        }
+        context = SessionContext(
+            tainted=tainted,
+            files_read=[a.target for a in actions if a.category == ActionCategory.FILE_READ],
+            prior_verdicts=[s.verdict.value for s in self.timeline[-5:]],
+            blocked_count=self.session.blocked_actions,
+            turn_count=self.session.total_turns,
+        )
+        try:
+            assessment = self._classifier.assess_turn(turn_data, context)
+            if assessment.risk_level == "malicious":
+                return Verdict.BLOCKED
+        except Exception:
+            pass  # classifier failure → keep original verdict
+        return current_verdict
 
     def _compute_verdict(
         self,

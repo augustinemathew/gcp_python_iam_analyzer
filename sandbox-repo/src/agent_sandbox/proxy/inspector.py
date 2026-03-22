@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from pathlib import Path
 
-from agent_sandbox.sandbox import AnomalyDetector, LSHEngine
+from agent_sandbox.core.anomaly import AnomalyDetector
+from agent_sandbox.core.lsh import LSHEngine
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ class ProxyInspector:
 
             for value in data.get("sensitive_values", []):
                 self.sensitive_values.append(value)
-                self.lsh.index_value(value)
+                self.lsh.index(value)
 
             # Auto-taint if there are sensitive values
             if self.sensitive_values:
@@ -73,7 +72,7 @@ class ProxyInspector:
     def index_value(self, value: str) -> None:
         """Index a sensitive value for content matching."""
         self.sensitive_values.append(value)
-        self.lsh.index_value(value)
+        self.lsh.index(value)
 
     def mark_tainted(self) -> None:
         """Mark the process as tainted."""
@@ -98,7 +97,7 @@ class ProxyInspector:
         # Tainted + allowlisted = check content
         if body:
             # LSH check
-            found, lsh_reason = self.lsh.check(body)
+            found, _score, lsh_reason = self.lsh.check(body)
             if found:
                 self.blocked_requests.append({"host": host, "reason": lsh_reason})
                 return False, lsh_reason

@@ -8,7 +8,6 @@ enforcement layer to prove the full pipeline works.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import subprocess
@@ -18,10 +17,8 @@ import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 from agent_sandbox.env_scanner import EnvironmentScanner
-from agent_sandbox.sandbox import AnomalyDetector, LSHEngine, Sandbox, TaintState
-
+from agent_sandbox.sandbox import Sandbox
 
 # ---------------------------------------------------------------------------
 # Strace output parser
@@ -317,7 +314,7 @@ def run_test_scenario(
         sys.executable, str(agent_script),
     ]
 
-    proc = subprocess.run(
+    subprocess.run(
         cmd,
         capture_output=True,
         text=True,
@@ -373,7 +370,7 @@ def run_e2e_test() -> bool:
         result = run_test_scenario("exfiltration_attempt", project_root, agent_script, sandbox)
 
         # Step 6: Report results
-        print(f"\n[6] Results:")
+        print("\n[6] Results:")
         print(f"    Syscall events captured: {len(result.events)}")
         print(f"    Project files read: {result.file_reads}")
         print(f"    Taint sources: {result.taint_sources}")

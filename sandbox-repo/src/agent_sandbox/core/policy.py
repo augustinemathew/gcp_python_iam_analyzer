@@ -10,7 +10,9 @@ Decision logic:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import os
+import re
+from dataclasses import dataclass
 from enum import Enum
 
 from .anomaly import AnomalyDetector
@@ -40,11 +42,31 @@ DEFAULT_ALLOWED_HOSTS = frozenset({
     "gitlab.com",
     "bitbucket.org",
     "stackoverflow.com",
+    "docs.python.org",
+    "developer.mozilla.org",
+})
+
+# Pre-compiled patterns for exec checks
+_DESTRUCTIVE_PATTERNS = [
+    re.compile(r"\brm\s+-rf\s+/"),
+    re.compile(r"\brm\s+-rf\s+\.(?:\s|$)"),
+    re.compile(r"\brm\s+-rf\s+\*"),
+    re.compile(r"\bmkfs\b"),
+    re.compile(r"\bdd\s+.*of=/dev/"),
+    re.compile(r":\(\)\s*\{\s*:\|:\s*&\s*\}\s*;"),  # fork bomb
+]
+
+_NETWORK_CMD_PATTERN = re.compile(r"\b(?:curl|wget|nc|ncat|ssh|scp|rsync)\b")
+
+_SYSTEM_PATHS = ["/etc/", "/usr/", "/bin/", "/sbin/", "/var/", "/boot/", "/proc/", "/sys/"]
+
+_CRITICAL_FILES = frozenset({
+    ".git", ".env", "package.json", "pyproject.toml", "Cargo.toml", "go.mod",
 })
 
 
 class PolicyEngine:
-    """Evaluates network requests against taint state, LSH index, and anomaly detectors."""
+    """Evaluates requests against taint state, LSH index, and anomaly detectors."""
 
     def __init__(
         self,
@@ -59,95 +81,74 @@ class PolicyEngine:
         self.allowed_hosts = allowed_hosts or DEFAULT_ALLOWED_HOSTS
         self.decisions: list[PolicyResult] = []
 
+    def _record(self, decision: Decision, reason: str) -> PolicyResult:
+        result = PolicyResult(decision, reason)
+        self.decisions.append(result)
+        return result
+
     def check_network(self, pid: int, host: str, body: str = "") -> PolicyResult:
         """Check if a network request from pid to host should be allowed."""
         taint_label = self.taint.get_process_taint(pid)
 
-        # Clean process: allow
         if taint_label == TaintLabel.NONE:
-            result = PolicyResult(Decision.ALLOW, "process not tainted")
-            self.decisions.append(result)
-            return result
+            return self._record(Decision.ALLOW, "process not tainted")
 
-        # Tainted + non-allowlisted: deny
         if host not in self.allowed_hosts:
-            result = PolicyResult(
+            return self._record(
                 Decision.DENY,
                 f"tainted process ({taint_label}) sending to non-allowlisted host {host}",
             )
-            self.decisions.append(result)
-            return result
 
-        # Tainted + allowlisted: check content
         if body:
             matched, score, lsh_reason = self.lsh.check(body)
             if matched:
-                result = PolicyResult(
-                    Decision.DENY,
-                    f"LSH content match: {lsh_reason}",
-                )
-                self.decisions.append(result)
-                return result
+                return self._record(Decision.DENY, f"LSH content match: {lsh_reason}")
 
             blocked, anomaly_reason = self.anomaly.check(host, body)
             if blocked:
-                result = PolicyResult(Decision.DENY, f"anomaly: {anomaly_reason}")
-                self.decisions.append(result)
-                return result
+                return self._record(Decision.DENY, f"anomaly: {anomaly_reason}")
 
-        result = PolicyResult(Decision.ALLOW, "tainted but clean content to allowlisted host")
-        self.decisions.append(result)
-        return result
+        return self._record(Decision.ALLOW, "tainted but clean content to allowlisted host")
 
     def check_file_write(self, pid: int, path: str, project_root: str) -> PolicyResult:
         """Check if a file write should be allowed."""
-        import os
-
         abs_path = os.path.abspath(path)
         abs_root = os.path.abspath(project_root)
 
         if not abs_path.startswith(abs_root):
-            result = PolicyResult(Decision.DENY, f"write outside project: {path}")
-            self.decisions.append(result)
-            return result
+            return self._record(Decision.DENY, f"write outside project: {path}")
 
-        system_paths = ["/etc/", "/usr/", "/bin/", "/sbin/"]
-        if any(abs_path.startswith(sp) for sp in system_paths):
-            result = PolicyResult(Decision.DENY, f"write to system path: {path}")
-            self.decisions.append(result)
-            return result
+        if any(abs_path.startswith(sp) for sp in _SYSTEM_PATHS):
+            return self._record(Decision.DENY, f"write to system path: {path}")
 
-        result = PolicyResult(Decision.ALLOW, "write within project")
-        self.decisions.append(result)
-        return result
+        return self._record(Decision.ALLOW, "write within project")
+
+    def check_file_delete(self, pid: int, path: str, project_root: str) -> PolicyResult:
+        """Check if a file deletion should be allowed."""
+        abs_path = os.path.abspath(path)
+        abs_root = os.path.abspath(project_root)
+
+        if not abs_path.startswith(abs_root):
+            return self._record(Decision.DENY, f"delete outside project: {path}")
+
+        basename = os.path.basename(path)
+        if basename in _CRITICAL_FILES:
+            return self._record(Decision.DENY, f"delete of critical project file: {basename}")
+
+        return self._record(Decision.ALLOW, "delete within project")
 
     def check_exec(self, pid: int, command: str) -> PolicyResult:
         """Check if a command execution should be allowed."""
-        import re
-
-        destructive = [
-            re.compile(r"\brm\s+-rf\s+/"),
-            re.compile(r"\brm\s+-rf\s+\.(?:\s|$)"),
-            re.compile(r"\bmkfs\b"),
-            re.compile(r":\(\)\s*\{"),  # fork bomb
-        ]
-        for pattern in destructive:
+        for pattern in _DESTRUCTIVE_PATTERNS:
             if pattern.search(command):
-                result = PolicyResult(Decision.DENY, f"destructive command: {command[:80]}")
-                self.decisions.append(result)
-                return result
+                return self._record(Decision.DENY, f"destructive command: {command[:80]}")
 
         taint_label = self.taint.get_process_taint(pid)
         if taint_label != TaintLabel.NONE:
-            network_cmds = re.compile(r"\b(?:curl|wget|nc|ncat|ssh|scp)\b")
-            if network_cmds.search(command):
-                result = PolicyResult(
+            if _NETWORK_CMD_PATTERN.search(command):
+                return self._record(
                     Decision.DENY,
                     f"network command from tainted process: {command[:80]}",
                 )
-                self.decisions.append(result)
-                return result
 
-        result = PolicyResult(Decision.ALLOW, "command allowed")
-        self.decisions.append(result)
-        return result
+        return self._record(Decision.ALLOW, "command allowed")
