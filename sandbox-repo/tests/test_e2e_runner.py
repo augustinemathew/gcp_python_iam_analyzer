@@ -31,8 +31,13 @@ class TestE2ERunner:
         assert benign_tainted.name == "Benign developer (tainted)"
         assert all("FALSE POSITIVE" not in d for d in benign_tainted.details)
 
-        # Summarizer should have recorded turns
-        assert report.total_turns == 4
+        # Summarizer should have recorded turns (7 turns exercise all detectors)
+        assert report.total_turns == 7
+
+        # TraceAnalyzer should have fired alerts
+        assert report.trace_alerts > 0
+        # At least some suspicious turns detected by behavioral analysis
+        assert report.suspicious_turns > 0
 
         # No classifier
         assert report.classifier_assessments == 0

@@ -22,6 +22,10 @@ import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agent_sandbox.trace_analyzer import TraceAnalyzer
 
 
 class Verdict(Enum):
@@ -272,15 +276,20 @@ class CallSummarizer:
         self,
         sandbox: object | None = None,
         llm_classifier: object | None = None,
+        trace_analyzer: TraceAnalyzer | None = None,
     ) -> None:
         """Initialize the summarizer.
 
         Args:
             sandbox: Optional Sandbox instance for taint state access.
             llm_classifier: Optional LLMClassifier for escalating SUSPICIOUS verdicts.
+            trace_analyzer: Optional TraceAnalyzer for behavioral alerting.
+                When provided, each turn is automatically fed to the analyzer
+                and its alerts flow into the verdict.
         """
         self._sandbox = sandbox
         self._classifier = llm_classifier
+        self._trace_analyzer = trace_analyzer
         self.timeline: list[TurnSummary] = []
         self.session: SessionSummary = SessionSummary()
         self._turn_count = 0
@@ -300,7 +309,8 @@ class CallSummarizer:
                 Each represents one tool invocation.
             sandbox_decisions: List of dicts with keys: allowed (bool), reason (str).
                 One per tool call, in the same order.
-            alerts_raised: Number of alerts raised by TraceAnalyzer for this turn.
+            alerts_raised: Number of alerts from an external source. When a
+                TraceAnalyzer is wired in, its alerts are added on top.
 
         Returns:
             TurnSummary for this turn.
@@ -346,6 +356,9 @@ class CallSummarizer:
                 sandbox_allowed=allowed,
                 sandbox_reason=reason,
             ))
+
+        # Feed the TraceAnalyzer and collect its alerts
+        alerts_raised += self._run_trace_analyzer(reasoning, tool_calls, actions)
 
         # Determine verdict
         verdict = self._compute_verdict(intent, actions, alerts_raised)
@@ -431,6 +444,48 @@ class CallSummarizer:
             return Verdict.SUSPICIOUS
 
         return Verdict.SAFE
+
+    def _run_trace_analyzer(
+        self,
+        reasoning: str,
+        tool_calls: list[dict[str, object]],
+        actions: list[ActionRecord],
+    ) -> int:
+        """Feed a turn into the TraceAnalyzer and return the alert count.
+
+        Converts tool_calls dicts into TraceAnalyzer ToolCall objects, syncs
+        taint/blocked state from the sandbox, and returns the number of new
+        alerts so _compute_verdict can incorporate them.
+        """
+        if self._trace_analyzer is None:
+            return 0
+
+        from agent_sandbox.trace_analyzer import ToolCall as TAToolCall
+
+        # Sync sandbox state into the analyzer
+        if self._sandbox and hasattr(self._sandbox, "taint"):
+            if self._sandbox.taint.tainted:
+                self._trace_analyzer.mark_tainted()
+
+        # Convert dict tool_calls to TraceAnalyzer ToolCall objects
+        ta_calls = []
+        for tc in tool_calls:
+            args = tc.get("arguments", {})
+            if not isinstance(args, dict):
+                args = {"value": str(args)}
+            ta_calls.append(TAToolCall(
+                tool_name=str(tc.get("tool_name", "unknown")),
+                arguments={k: str(v) for k, v in args.items()},
+                result=str(tc.get("result", "")),
+            ))
+
+        # Record blocked actions
+        for action in actions:
+            if not action.sandbox_allowed:
+                self._trace_analyzer.mark_blocked()
+
+        new_alerts = self._trace_analyzer.add_turn(reasoning, ta_calls)
+        return len(new_alerts)
 
     def _update_session_stats(self, summary: TurnSummary) -> None:
         """Update aggregate session statistics."""
