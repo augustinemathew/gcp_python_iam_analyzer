@@ -20,7 +20,7 @@ def _create_test_project(root: Path) -> None:
     (root / ".env").write_text(
         "DATABASE_URL=postgres://admin:password@db:5432/prod\n"
         "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n"
-        "STRIPE_SECRET_KEY=sk_live_51H7example1234567890\n"
+        "STRIPE_SECRET_KEY=sk_test_FAKE0000000000000000000000\n"
     )
 
     # Vault token (non-standard format)
