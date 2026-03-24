@@ -40,5 +40,11 @@ data/llm_logs/
 data/pipeline_stats.json
 data/validation_report.json
 
+# Build artifacts
+build/
+
+# ADK session databases
+.adk/
+
 # v2 pipeline intermediate (regenerable from installed packages)
 method_context.json

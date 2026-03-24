@@ -51,6 +51,9 @@ def _load_scanner(args: argparse.Namespace) -> GCPCallScanner:
 # ── scan ─────────────────────────────────────────────────────────────────
 
 
+_EXCLUDED_DIRS = {".venv", "venv", "node_modules", "__pycache__", ".tox", ".git"}
+
+
 def _collect_targets(paths: list[str]) -> tuple[list[Path], int]:
     """Expand paths to .py files. Returns (targets, error) where error=1 on bad path."""
     targets: list[Path] = []
@@ -60,7 +63,10 @@ def _collect_targets(paths: list[str]) -> tuple[list[Path], int]:
             print(f"Error: {p} does not exist", file=sys.stderr)
             return [], 1
         if p.is_dir():
-            targets.extend(sorted(p.rglob("*.py")))
+            targets.extend(sorted(
+                f for f in p.rglob("*.py")
+                if not _EXCLUDED_DIRS.intersection(f.parts)
+            ))
         else:
             targets.append(p)
     return targets, 0
@@ -133,6 +139,8 @@ def _finding_to_dict(f: Finding) -> dict:
         "permissions": f.permissions,
         "conditional": f.conditional_permissions,
         "status": f.status,
+        "resolution": f.resolution.value,
+        "notes": f.perm_result.notes if f.perm_result else "",
     }
 
 

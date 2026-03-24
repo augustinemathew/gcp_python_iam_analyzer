@@ -123,6 +123,7 @@ These functions exceed 40 lines and should be refactored:
 - Mock external boundaries (network, filesystem, importlib)
 - `@pytest.mark.slow` for integration tests
 - Test the sad path
+- **No simulated/mocked E2E tests.** E2E tests must exercise the real system end-to-end. If infrastructure isn't available (Docker, gVisor, etc.), skip the test or wait until the environment is ready. Don't write fake E2E tests that simulate the components they're supposed to test.
 
 ## Working as a Design Partner
 
@@ -158,6 +159,44 @@ See `docs/rfc-dynamic-permissions.md` for the full classification of dynamic per
 ### `iam_role_permissions.json` → `iam_roles.json`
 Planned migration to replace the flat permission list with full role metadata (`data/iam_roles.json`). Tracked in `docs/build-pipeline.md`.
 
+## TypeScript Style (VS Code Extension)
+
+The VS Code extension (`vscode-iamspy/`) follows the [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html).
+
+### Tooling
+- **Linting**: ESLint with `@typescript-eslint` — enforces strict types, DRY, readability
+- **Bundling**: esbuild (not webpack)
+- **Testing**: mocha + sinon for unit tests, `@vscode/test-cli` for integration tests
+- **Type checking**: `tsc --noEmit` with strict mode
+
+### Naming
+- `camelCase` for variables, functions, methods. `PascalCase` for classes, interfaces, types. `UPPER_CASE` for constants.
+
+### Types
+- `strict: true` in tsconfig. No `any` — use `unknown` and narrow.
+- `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns` all enabled.
+- Use `type` imports: `import type { Foo } from './foo.js'`
+
+### Code quality
+- **Functions under 40 lines** — enforced by ESLint `max-lines-per-function`.
+- **Max nesting depth 3** — enforced by ESLint `max-depth`.
+- **Cyclomatic complexity under 10** — enforced by ESLint `complexity`.
+- **DRY**: no duplicate imports, extract shared logic into pure functions.
+- **Readability**: `prefer-const`, `no-var`, `eqeqeq`, `curly` all enforced.
+
+### Architecture principle
+- Separate pure logic from VS Code API. Pure functions go in modules without `import * as vscode` so they're unit-testable with plain mocha (no VS Code instance needed).
+- VS Code-dependent code (providers, commands) is thin glue over pure functions.
+
+### Testing
+- Test file mirrors source: `src/foo.ts` → `test/suite/foo.test.ts`
+- Unit tests: pure functions only, run with `mocha` (fast, no VS Code)
+- Integration tests: `@vscode/test-cli` launches real VS Code with fixture files
+- Mock external boundaries (child_process, filesystem) with sinon
+
+### Design doc
+See `docs/vscode-extension.md` for the full design and architecture.
+
 ## Git Commits
 
 - **Never add `Co-Authored-By` trailers** to commit messages. Write the subject and body only.
@@ -168,3 +207,4 @@ Planned migration to replace the flat permission list with full role metadata (`
 - Build pipeline: google-genai SDK (`gemini-3-flash-preview`), anthropic SDK (Claude for gap-filling)
 - Build pipeline (v2): sentence-transformers, BAAI/bge-small-en-v1.5 (local embeddings)
 - 130+ GCP service packages installed for introspection
+- VS Code extension: TypeScript 5.8+, esbuild, mocha, sinon, ESLint

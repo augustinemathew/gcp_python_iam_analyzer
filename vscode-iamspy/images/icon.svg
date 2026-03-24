@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a73e8"/>
+      <stop offset="100%" style="stop-color:#1557b0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" ry="24" fill="url(#bg)"/>
+
+  <!-- Shield -->
+  <path d="M64 16 L104 34 V64 C104 88 86 106 64 114 C42 106 24 88 24 64 V34 Z"
+        fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <path d="M64 20 L100 36 V64 C100 86 84 102 64 110 C44 102 28 86 28 64 V36 Z"
+        fill="rgba(255,255,255,0.1)"/>
+
+  <!-- Key -->
+  <g transform="translate(64,56)">
+    <circle cx="-14" cy="0" r="12" fill="none" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="-14" cy="0" r="4.5" fill="#1a73e8" stroke="#fff" stroke-width="1"/>
+    <line x1="-2" y1="0" x2="22" y2="0" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="14" y1="0" x2="14" y2="6" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="20" y1="0" x2="20" y2="5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- GCP text -->
+  <text x="64" y="92" text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
+        font-weight="700" font-size="14" fill="rgba(255,255,255,0.9)" letter-spacing="2">GCP</text>
+</svg>

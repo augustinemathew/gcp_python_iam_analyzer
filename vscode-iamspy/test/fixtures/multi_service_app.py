@@ -16,8 +16,6 @@ response = sm.access_secret_version(
 password = response.payload.data.decode("utf-8")
 
 # Query BigQuery with the secret
-
-
 job = bq.query(f"SELECT * FROM analytics.users WHERE token = '{password}'")
 rows = job.result()
 

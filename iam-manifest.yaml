@@ -1,0 +1,38 @@
+version: '1'
+generated_by: iamspy scan /Users/augustine/gcp_ae
+generated_at: '2026-03-20T19:34:22Z'
+services:
+  enable:
+  - bigquery.googleapis.com
+  - cloudkms.googleapis.com
+  - iam.googleapis.com
+  - secretmanager.googleapis.com
+  - storage.googleapis.com
+permissions:
+  required:
+  - bigquery.jobs.create
+  - bigquery.tables.create
+  - bigquery.tables.export
+  - bigquery.tables.get
+  - bigquery.tables.getData
+  - bigquery.tables.updateData
+  - cloudkms.cryptoKeyVersions.useToDecrypt
+  - cloudkms.cryptoKeyVersions.useToEncrypt
+  - cloudkms.cryptoKeys.create
+  - cloudkms.keyRings.create
+  - iam.roles.list
+  - secretmanager.secrets.create
+  - secretmanager.secrets.delete
+  - secretmanager.versions.access
+  - secretmanager.versions.add
+  - storage.buckets.get
+  - storage.objects.create
+  - storage.objects.get
+  - storage.objects.list
+  conditional:
+  - bigquery.tables.create
+  - bigquery.tables.getData
+  - bigquery.tables.updateData
+  - cloudkms.cryptoKeyVersions.useToEncrypt
+  - storage.objects.delete
+  - storage.objects.update

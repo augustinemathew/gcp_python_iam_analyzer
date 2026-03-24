@@ -1,0 +1,11 @@
+.venv/
+src/
+test/
+out/
+node_modules/
+.vscode-test.mjs
+esbuild.mjs
+eslint.config.mjs
+tsconfig.json
+tsconfig.test.json
+*.map

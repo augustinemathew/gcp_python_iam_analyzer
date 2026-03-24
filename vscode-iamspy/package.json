@@ -1,0 +1,74 @@
+{
+  "name": "vscode-iamspy",
+  "displayName": "GCP IAM",
+  "description": "Shows GCP IAM permissions required by Python SDK calls inline in your editor",
+  "version": "0.1.0",
+  "publisher": "iamspy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iamspy/vscode-iamspy"
+  },
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "iamspy.generateManifest",
+        "title": "GCP IAM: Generate Permission Manifest"
+      }
+    ],
+    "configuration": {
+      "title": "IAMSpy",
+      "properties": {
+        "iamspy.cliPath": {
+          "type": "string",
+          "default": "iamspy",
+          "description": "Path to the iamspy CLI executable"
+        },
+        "iamspy.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan Python files on save"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "npm run check-types && npm run lint && node esbuild.mjs",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src/ test/",
+    "lint:fix": "eslint --fix src/ test/",
+    "watch": "node esbuild.mjs --watch",
+    "test:unit": "mocha out/test/suite/**/*.test.js",
+    "test:integration": "vscode-test",
+    "test": "npm run compile && npm run test:unit",
+    "package": "npm run compile && npx @vscode/vsce package",
+    "pretest": "tsc -p tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.15.0",
+    "@types/sinon": "^17.0.4",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.27.0",
+    "mocha": "^11.5.0",
+    "sinon": "^20.0.0",
+    "typescript": "^5.8.0"
+  }
+}
