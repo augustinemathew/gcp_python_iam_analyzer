@@ -132,32 +132,60 @@ runsc run --rootless --network=none agent-container
 **When to use**: Custom kernel configurations, GPU workloads, or when you
 need direct control over the gVisor configuration flags.
 
+## Prior Art: kubernetes-sigs/agent-sandbox
+
+The Kubernetes SIG launched `kubernetes-sigs/agent-sandbox` at KubeCon
+Atlanta (Nov 2025) — a K8s controller for managing gVisor-sandboxed pods
+specifically for AI agent code execution. It provides a CRD API for
+declarative sandbox management.
+
+Our system differs in two ways:
+1. **Policy language with CEL** — their sandbox is binary (allow/deny at
+   container level); ours expresses fine-grained per-tool argument rules.
+2. **Protocol-aware proxy** — they handle network at L3/L4; we inspect
+   HTTP paths and MCP tool calls at L7.
+
+We should evaluate building on their controller for the GKE deployment
+path rather than reimplementing pod lifecycle management.
+
 ## Layer 1: gVisor Filesystem Mediation
 
-### Architecture: Sentry + Gofer
+### Architecture: Sentry + Gofer + Directfs
 
 ```
 Agent process                gVisor internals              Host OS
 ─────────────               ────────────────              ────────
 open("/tmp/f")  ──ptrace──►  Sentry
-                             (userspace kernel)
+                             (userspace kernel,
+                              ~200 syscalls in Go)
                              │
-                             │ 9P/LISAFS protocol
+                             │ directfs: Sentry uses donated FDs
+                             │   with openat(2) + seccomp O_NOFOLLOW
+                             │ fallback: LISAFS RPC to Gofer
                              ▼
                              Gofer ──────────────────────► Host FS
-                             (file proxy)                   (only
-                              · validates paths              mounted
-                              · enforces ro/rw               paths)
-                              · sandboxed itself
+                             (file proxy, seccomp-ed)       (only
+                              · donates FDs at startup       mounted
+                              · validates paths              paths)
+                              · enforces ro/rw
 ```
 
 Key points:
-- **Sentry** intercepts all syscalls. The agent process never talks to the
-  real kernel for file operations.
-- **Gofer** is a separate process that performs actual host filesystem I/O
-  on behalf of Sentry. It only has access to explicitly mounted paths.
-- The agent cannot escape the mount namespace — there is no host path to
-  escape to.
+- **Sentry** intercepts all syscalls via ptrace or KVM. The agent process
+  never talks to the real kernel. Sentry itself is seccomp-restricted to
+  ~70 host syscalls.
+- **Gofer** is a separate process that mediates host filesystem I/O.
+  It only has access to explicitly mounted paths.
+- **Directfs** (now default): Gofer donates file descriptors at startup.
+  Sentry uses `openat(2)` with seccomp-enforced `O_NOFOLLOW` to traverse
+  the donated FD trees directly, avoiding per-syscall RPC overhead.
+- **LISAFS** protocol (successor to 9P) is the fallback when directfs
+  is disabled.
+- The agent cannot escape the mount namespace — there is no host path
+  to escape to.
+- gVisor also supports **EROFS** images that are memory-mapped directly
+  into the Sentry, bypassing host FS syscalls entirely (useful for
+  read-only application code).
 
 ### Translating Policy → OCI Mounts
 
@@ -207,8 +235,36 @@ hard boundary; the PolicyEngine provides the fine-grained rules.
 
 ## Layer 2: Network Proxy
 
-gVisor's netstack handles TCP/IP but doesn't do application-layer
-filtering. We need a sidecar proxy for HTTP/MCP inspection.
+### gVisor Network Modes
+
+gVisor's `--network` flag controls network isolation:
+
+| Mode      | Description                          | Use case                    |
+|-----------|--------------------------------------|-----------------------------|
+| `sandbox` | Netstack (userspace TCP/IP in Go)    | Default, strongest isolation|
+| `host`    | Passthrough to host kernel stack     | Weaker, adds ~15 syscalls   |
+| `none`    | Loopback only, no external network   | Maximum isolation           |
+
+**Recommended: `--network=none` + sidecar proxy.** The agent container
+gets no network at all. A separate sidecar container (outside gVisor)
+handles all external communication, forwarding only policy-approved
+requests. This gives us:
+- Zero network attack surface from the agent container
+- All traffic must pass through the proxy — no bypass possible
+- The proxy runs outside gVisor with full network access
+
+```
+┌─── gVisor (--network=none) ───┐     ┌─── Normal container ───┐
+│                                │     │                         │
+│  Agent ──► unix socket ────────┼────►│  Envoy proxy ──► Internet
+│            (only escape hatch) │     │  (policy enforced)      │
+│                                │     │                         │
+└────────────────────────────────┘     └─────────────────────────┘
+```
+
+gVisor's netstack does not natively filter by host/port. For L3/L4
+filtering, use Kubernetes NetworkPolicy or host iptables on the veth.
+For L7 (HTTP paths, MCP tools), we need the proxy.
 
 ### Architecture
 
@@ -419,3 +475,31 @@ gcloud run deploy agent-sandbox \
 - Direct `runsc` on Compute Engine
 - Custom OCI config.json from policy compiler
 - Full control over filesystem, seccomp, and capabilities
+
+## Why gVisor over seccomp-bpf
+
+| Aspect                  | seccomp-bpf                         | gVisor                                  |
+|-------------------------|--------------------------------------|-----------------------------------------|
+| Approach                | Kernel-level syscall filter          | Userspace kernel reimplementation       |
+| Host kernel exposure    | ~300 syscalls pass through           | Sentry uses ~70 restricted syscalls     |
+| Filesystem mediation    | Cannot filter by path (FDs only)     | Gofer mediates all access by path       |
+| Network isolation       | Cannot inspect packets               | Full userspace TCP/IP stack             |
+| Single-bug impact       | One allowed syscall bug = host owned | Multiple layers must be breached        |
+| Performance             | Nanoseconds per syscall              | Microseconds (directfs reduces this)    |
+| Compatibility           | All syscalls available               | ~200 of ~340 reimplemented              |
+
+**For AI agents executing untrusted code, gVisor is the right choice.**
+seccomp-bpf is a policy on the real kernel — allowed syscalls still run
+with the full kernel attack surface. gVisor is a separate kernel — even
+"allowed" syscalls execute in a sandboxed Go process. gVisor also applies
+seccomp to itself as defense in depth.
+
+## References
+
+- [gVisor Architecture](https://gvisor.dev/docs/architecture_guide/intro/)
+- [gVisor Filesystem Guide](https://gvisor.dev/docs/user_guide/filesystem/)
+- [gVisor Networking Security](https://gvisor.dev/blog/2020/04/02/gvisor-networking-security/)
+- [Directfs Blog Post](https://gvisor.dev/blog/2023/06/27/directfs/)
+- [OCI Runtime Spec](https://github.com/opencontainers/runtime-spec/blob/main/config.md)
+- [kubernetes-sigs/agent-sandbox](https://github.com/kubernetes-sigs/agent-sandbox)
+- [GKE Sandbox Docs](https://cloud.google.com/kubernetes-engine/docs/how-to/sandbox-pods)
