@@ -20,7 +20,7 @@ llm = [
 ]
 
 [project.scripts]
-agent-sandbox = "agent_sandbox.sandbox:main"
+agent-sandbox = "agent_sandbox.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

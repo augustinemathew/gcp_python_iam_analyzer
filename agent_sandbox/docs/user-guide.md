@@ -1,10 +1,49 @@
 # Agent Sandbox — User Guide
 
-Run any agent executable inside a gVisor sandbox with declarative YAML policies
-that control filesystem access, network endpoints, HTTP methods/paths, and MCP
-tool calls.
+Run any executable inside a gVisor sandbox governed by a YAML policy.
+The policy controls filesystem access, network endpoints, HTTP methods/paths,
+and MCP tool calls.
 
-## Quick start
+## Quick start (CLI)
+
+```bash
+# Minimal: policy + command
+agent-sandbox -p policy.yaml -- python3 agent.py
+
+# With workspace (mounted read-only at /workspace inside the container)
+agent-sandbox -p policy.yaml -w ./src -- python3 /workspace/agent.py
+
+# With writable output directory (mounted at /output)
+agent-sandbox -p policy.yaml -w ./src -o ./results -- python3 /workspace/run.py
+
+# Inspect what the sandbox will do (no execution)
+agent-sandbox -p policy.yaml --describe
+```
+
+### CLI flags
+
+```
+agent-sandbox -p POLICY [options] -- COMMAND [ARGS...]
+
+Required:
+  -p, --policy PATH        YAML policy file
+
+Workspace:
+  -w, --workspace DIR      Host dir → read-only mount (default: /workspace)
+  --workspace-mount PATH   Override container mount point
+  -o, --output DIR         Host dir → read-write mount (default: /output)
+  --output-mount PATH      Override container mount point
+
+Runtime:
+  -t, --timeout SECONDS    Kill after N seconds (default: 300)
+  --image IMAGE            Container image (default: gvisor-python:latest)
+
+Debug:
+  --describe               Print compiled config (iptables, Envoy, mounts) and exit
+  --dry-run                Print docker command and exit
+```
+
+## Quick start (Python API)
 
 ```python
 from agent_sandbox.policy import load_policy
@@ -18,9 +57,6 @@ print(result.stdout)
 print(result.stderr)
 print(result.returncode)
 ```
-
-That's it. The sandbox handles gVisor, Envoy, iptables, privilege separation,
-and cleanup automatically.
 
 ## Prerequisites
 
@@ -46,8 +82,8 @@ docker build -t gvisor-python:latest -f Dockerfile.sandbox .
 
 ## Writing a policy
 
-A policy is a YAML file with three sections: **file**, **network**, and
-**defaults**.
+A policy is a YAML file with three sections: **defaults**, **file**, and
+**network**.
 
 ### Minimal policy — no network
 
@@ -68,8 +104,12 @@ file:
     - "/usr/bin/python3"
 ```
 
+```bash
+agent-sandbox -p offline.yaml -w ./project -- python3 /workspace/agent.py
+```
+
 The agent can read `/workspace`, write to `/tmp`, execute `python3`, and
-nothing else. No network access at all (`--network=none`).
+nothing else. No network access (`--network=none`).
 
 ### API-calling agent
 
@@ -106,9 +146,13 @@ network:
     - host: "metadata.google.internal"
 ```
 
+```bash
+agent-sandbox -p llm.yaml -w ./project -o ./output -- python3 /workspace/agent.py
+```
+
 The agent can POST to two LLM APIs and nothing else. GET, PUT, DELETE
-are blocked. Other paths on those hosts are blocked. All other hosts are
-blocked. Cloud metadata endpoints are explicitly denied.
+are blocked. Other paths on those hosts are blocked. All other hosts
+are blocked.
 
 ### Agent with MCP tools
 
@@ -157,36 +201,65 @@ MCP tool rules support two forms:
 
 The `when` expression receives `args` (a map of the tool's arguments).
 
-## Launching executables
+## Launching different executables
 
-### Python script
+### From the CLI
 
-```python
-result = sb.run(["python3", "/workspace/agent.py"])
+```bash
+# Python agent
+agent-sandbox -p policy.yaml -w ./src -- python3 /workspace/agent.py
+
+# Node.js agent
+agent-sandbox -p policy.yaml -w ./src -- node /workspace/agent.js
+
+# Go binary
+agent-sandbox -p policy.yaml -w ./src -- /workspace/my-agent --config /workspace/config.json
+
+# Shell script
+agent-sandbox -p policy.yaml -w ./src -- /bin/sh /workspace/run.sh
+
+# With writable output dir
+agent-sandbox -p policy.yaml -w ./src -o ./results -- python3 /workspace/agent.py --out /output/report.json
 ```
 
-### Node.js agent
+### From the Python API
 
 ```python
-result = sb.run(["node", "/workspace/agent.js"])
-```
-
-### Any binary
-
-```python
-result = sb.run(["/workspace/my-agent", "--config", "/workspace/config.json"])
-```
-
-### With a working directory
-
-```python
+# With workspace only (read-only)
 result = sb.run(
-    ["python3", "agent.py"],
-    workdir="/path/to/project",  # mounted read-only at /workspace
+    ["python3", "/workspace/agent.py"],
+    workdir="/path/to/project",
+)
+
+# With workspace + writable output
+result = sb.run(
+    ["python3", "/workspace/agent.py", "--out", "/output/report.json"],
+    workdir="/path/to/project",
+    output_dir="/path/to/results",
+)
+
+# Custom mount points
+result = sb.run(
+    ["python3", "/code/agent.py"],
+    workdir="/path/to/project",
+    workdir_mount="/code",           # mount at /code instead of /workspace
+    output_dir="/path/to/results",
+    output_mount="/results",         # mount at /results instead of /output
 )
 ```
 
-The `workdir` is bind-mounted read-only at `/workspace` inside the container.
+### Workspace and output mounts
+
+| Flag | Container path | Access | Purpose |
+|---|---|---|---|
+| `-w` / `--workspace` | `/workspace` | Read-only | Agent source code, configs |
+| `-o` / `--output` | `/output` | Read-write | Agent results, logs, artifacts |
+
+The container paths can be overridden with `--workspace-mount` and `--output-mount`.
+
+The output directory is created on the host if it doesn't exist. Files
+written by the agent to `/output` persist on the host after the container
+exits.
 
 ## How enforcement works
 
@@ -209,7 +282,11 @@ The `workdir` is bind-mounted read-only at `/workspace` inside the container.
 │    ├── Route rules: unlisted path → 403                      │
 │    └── Lua filter: unlisted HTTP method → 403                │
 │                                                              │
-│  Filesystem: read-only root, tmpfs at writable paths         │
+│  Mounts:                                                     │
+│    /workspace  ← host workspace (read-only)                  │
+│    /output     ← host output dir (read-write)                │
+│    /tmp/**     ← tmpfs (from policy file.write rules)        │
+│    /           ← read-only rootfs                            │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -300,10 +377,16 @@ mcp:
 
 ## Inspecting compiled enforcement
 
-```python
-policy = load_policy("my-policy.yaml")
-sb = GVisorSandbox(policy)
+### CLI
 
+```bash
+# Print iptables script, Envoy config, seccomp profile, mount flags
+agent-sandbox -p policy.yaml --describe
+```
+
+### Python API
+
+```python
 config = sb.describe()
 print(config["network_init"])   # iptables script
 print(config["envoy_config"])   # Envoy YAML (if L7 rules exist)
@@ -342,5 +425,7 @@ not raised.
   API paths (`/v1/messages`, not `/**`).
 - **CEL guards on MCP.** Use `when` expressions to prevent destructive tool
   calls (`!args.query.contains("DROP")`).
-- **Inspect before running.** Use `sb.describe()` to see the compiled iptables
-  script and Envoy config before launching the agent.
+- **Inspect before running.** Use `agent-sandbox --describe` to see the
+  compiled iptables script and Envoy config before launching the agent.
+- **Use `-o` for output.** Don't try to write to the read-only workspace —
+  mount a separate output directory with `-o ./results`.
