@@ -34,10 +34,21 @@ Example policy::
         - host: localhost
           port: 3000
           mcp:
-            tools: [read_file]
+            tools:
+              - name: read_file
+              - name: write_file
+                when: 'args.path.startsWith("/tmp/")'
+              - name: run_sql
+                when: '!args.query.contains("DROP")'
             resources: ["file:///workspace/**"]
       deny:
         - host: "*.evil.com"
+
+Tool rules support two forms:
+  - Simple string: ``"read_file"`` — tool allowed unconditionally.
+  - Object with CEL: ``{name: "write_file", when: "expr"}`` — tool allowed
+    only when the CEL expression evaluates to true.  The expression receives
+    ``args`` (a map of the tool's arguments) as input.
 """
 
 from __future__ import annotations
@@ -66,10 +77,18 @@ class HttpRules:
 
 
 @dataclass(frozen=True)
+class McpToolRule:
+    """A single MCP tool rule, optionally with a CEL guard on arguments."""
+
+    name: str
+    when: str | None = None  # CEL expression evaluated against tool args.
+
+
+@dataclass(frozen=True)
 class McpRules:
     """Protocol-specific rules for an MCP endpoint."""
 
-    tools: list[str] = field(default_factory=list)
+    tools: list[McpToolRule] = field(default_factory=list)
     resources: list[str] = field(default_factory=list)
 
 
@@ -134,8 +153,15 @@ def _parse_http_rules(raw: dict[str, Any]) -> HttpRules:
 
 
 def _parse_mcp_rules(raw: dict[str, Any]) -> McpRules:
+    raw_tools = raw.get("tools", [])
+    tools: list[McpToolRule] = []
+    for entry in raw_tools:
+        if isinstance(entry, str):
+            tools.append(McpToolRule(name=entry))
+        elif isinstance(entry, dict):
+            tools.append(McpToolRule(name=entry["name"], when=entry.get("when")))
     return McpRules(
-        tools=raw.get("tools", []),
+        tools=tools,
         resources=raw.get("resources", []),
     )
 
