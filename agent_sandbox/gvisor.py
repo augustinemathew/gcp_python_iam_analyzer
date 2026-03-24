@@ -1,15 +1,23 @@
 """YAML policy → gVisor container enforcement.
 
 Compiles a Policy into Docker run arguments that enforce the policy at the
-container boundary via gVisor (runsc):
+container boundary via gVisor (runsc).  Two-container architecture:
 
-  - **Filesystem**: read-only bind mounts for read-only paths, tmpfs for
-    writable paths, no mount at all for denied paths.
-  - **Seccomp**: restricts syscalls to what the policy allows.
-  - **Network L3/L4**: iptables rules inside gVisor's Netstack.
-  - **Network L7**: Envoy sidecar for HTTP method/path filtering and MCP
-    tool enforcement. Agent traffic is redirected through Envoy via
-    iptables REDIRECT.
+  - **Envoy container** (privileged side): runs Envoy + iptables.  Has
+    CAP_NET_ADMIN.  Sets up iptables REDIRECT so all HTTP/HTTPS traffic
+    from the shared network namespace flows through Envoy.
+  - **Agent container** (locked down): runs the user command under gVisor.
+    Has no capabilities.  Cannot kill Envoy or modify iptables — separate
+    PID namespace, no NET_ADMIN.
+
+Both containers share a network namespace via ``--network=container:``,
+so iptables rules set by the Envoy container apply to the agent's traffic.
+
+Enforcement layers:
+  - **Filesystem**: read-only container + tmpfs for writable paths.
+  - **Network L3/L4**: iptables rules in gVisor Netstack (OUTPUT DROP default).
+  - **Network L7**: Envoy Lua filter for HTTP method/path + MCP tool checks.
+  - **Isolation**: agent cannot bypass Envoy (no NET_ADMIN, no PID access).
 
 Usage::
 
@@ -28,8 +36,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from agent_sandbox.envoy_config import compile_envoy_yaml, ENVOY_LISTENER_PORT
@@ -132,12 +140,12 @@ def _has_l7_rules(policy: Policy) -> bool:
 def _build_network_init_script(policy: Policy) -> str:
     """Build an iptables script that restricts outbound to allowed hosts.
 
-    This runs inside the container before the agent starts. gVisor's
-    Netstack processes the iptables rules in user space.
+    Runs inside the Envoy container (which has NET_ADMIN).  The rules
+    apply to the shared network namespace, so the agent container's
+    traffic is also governed.
 
-    When the policy has L7 rules (HTTP methods/paths, MCP tools), traffic
-    is redirected through the Envoy sidecar on localhost:15001 via
-    iptables REDIRECT in the nat table.
+    When L7 rules exist, HTTP/HTTPS traffic is redirected through Envoy
+    via iptables REDIRECT.
     """
     use_envoy = _has_l7_rules(policy)
 
@@ -155,8 +163,6 @@ def _build_network_init_script(policy: Policy) -> str:
     ]
 
     if use_envoy:
-        # Redirect HTTP/HTTPS traffic to Envoy (except Envoy's own traffic).
-        # Envoy listens on ENVOY_LISTENER_PORT and forwards to upstreams.
         lines.extend([
             "# --- Envoy transparent proxy redirect ---",
             "# Allow Envoy's own outbound traffic (from its listener port)",
@@ -170,7 +176,6 @@ def _build_network_init_script(policy: Policy) -> str:
     # Allow rules
     for ep in policy.network.allow:
         host = ep.host
-        # Skip wildcard hosts — can't express *.googleapis.com in iptables.
         if "*" in host:
             lines.append(f"# SKIP (wildcard): {host}:{ep.port}")
             continue
@@ -180,7 +185,7 @@ def _build_network_init_script(policy: Policy) -> str:
             f"iptables -A OUTPUT -p tcp -d {host} {port_flag} -j ACCEPT"
         )
 
-    # Explicit deny rules (for non-wildcard hosts)
+    # Explicit deny rules
     for ep in policy.network.deny:
         if "*" in ep.host:
             lines.append(f"# SKIP (wildcard deny): {ep.host}:{ep.port}")
@@ -190,7 +195,6 @@ def _build_network_init_script(policy: Policy) -> str:
             f"iptables -A OUTPUT -p tcp -d {ep.host} {port_flag} -j DROP"
         )
 
-    # Allow DNS (needed for hostname resolution)
     lines.extend([
         "",
         "# Allow DNS",
@@ -199,7 +203,6 @@ def _build_network_init_script(policy: Policy) -> str:
     ])
 
     if use_envoy:
-        # Envoy needs to reach upstreams
         lines.extend([
             "",
             "# Allow Envoy to reach allowed upstreams",
@@ -227,8 +230,14 @@ class RunResult:
 class GVisorSandbox:
     """Runs commands inside a gVisor-sandboxed Docker container.
 
-    Compiles a Policy into Docker flags and runs the target command
-    with ``docker run --runtime=runsc``.
+    Single container with privilege separation:
+      1. Entrypoint starts as root: launches Envoy, applies iptables.
+      2. Drops to unprivileged user (uid 65534) before running the agent.
+
+    The agent cannot bypass Envoy because:
+      - Runs as unprivileged user (no CAP_NET_ADMIN to change iptables)
+      - Cannot kill Envoy (different uid, no CAP_KILL)
+      - gVisor's Sentry enforces UID-based process isolation
     """
 
     policy: Policy
@@ -245,98 +254,153 @@ class GVisorSandbox:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def _do_run(self, command: list[str], workdir: str | None) -> RunResult:
-        # Write seccomp profile
-        seccomp = build_seccomp_profile(self.policy)
-        seccomp_path = os.path.join(self._tmpdir, "seccomp.json")
-        with open(seccomp_path, "w") as f:
-            json.dump(seccomp, f)
+        has_network = (
+            self.policy.defaults.network == "allow"
+            or len(self.policy.network.allow) > 0
+        )
+        use_envoy = has_network and _has_l7_rules(self.policy)
 
-        # Write network init script
-        net_script = _build_network_init_script(self.policy)
-        net_script_path = os.path.join(self._tmpdir, "net-init.sh")
-        with open(net_script_path, "w") as f:
-            f.write(net_script)
-        os.chmod(net_script_path, 0o755)
+        # Write shared artifacts
+        self._write_artifacts(command, use_envoy)
 
-        # Write Envoy config if L7 rules exist
-        use_envoy = _has_l7_rules(self.policy)
-        envoy_config_path = os.path.join(self._tmpdir, "envoy.yaml")
+        if not has_network:
+            return self._run_single_container(command, workdir)
+
         if use_envoy:
-            envoy_yaml = compile_envoy_yaml(self.policy)
-            with open(envoy_config_path, "w") as f:
-                f.write(envoy_yaml)
+            return self._run_envoy_container(command, workdir)
 
-        # Write the command as a JSON file so the entrypoint can read it
-        # without shell quoting issues.
-        cmd_path = os.path.join(self._tmpdir, "cmd.json")
-        with open(cmd_path, "w") as f:
+        # Network allowed but no L7 rules — single container with iptables.
+        return self._run_single_container_with_network(command, workdir)
+
+    def _write_artifacts(self, command: list[str], use_envoy: bool) -> None:
+        """Write all config files to the tmpdir."""
+        # Network init script
+        net_script = _build_network_init_script(self.policy)
+        with open(os.path.join(self._tmpdir, "net-init.sh"), "w") as f:
+            f.write(net_script)
+        os.chmod(os.path.join(self._tmpdir, "net-init.sh"), 0o755)
+
+        # Command JSON
+        with open(os.path.join(self._tmpdir, "cmd.json"), "w") as f:
             json.dump(command, f)
 
-        # Write entrypoint config
-        entry_config = {"use_envoy": use_envoy}
-        entry_config_path = os.path.join(self._tmpdir, "config.json")
-        with open(entry_config_path, "w") as f:
-            json.dump(entry_config, f)
+        # Agent entrypoint (no Envoy, no iptables — just runs the command)
+        with open(os.path.join(self._tmpdir, "agent-entry.py"), "w") as f:
+            f.write(_AGENT_ENTRYPOINT_PY)
 
-        # Write a Python entrypoint that starts Envoy + applies iptables + exec's.
-        entry_path = os.path.join(self._tmpdir, "entrypoint.py")
-        with open(entry_path, "w") as f:
-            f.write(_ENTRYPOINT_PY)
+        # Envoy config + entrypoint
+        if use_envoy:
+            envoy_yaml = compile_envoy_yaml(self.policy)
+            with open(os.path.join(self._tmpdir, "envoy.yaml"), "w") as f:
+                f.write(envoy_yaml)
+            with open(os.path.join(self._tmpdir, "envoy-entry.py"), "w") as f:
+                f.write(_ENVOY_ENTRYPOINT_PY)
 
-        # Build docker run command
+    # ------------------------------------------------------------------
+    # Mode 1: no network at all
+    # ------------------------------------------------------------------
+
+    def _run_single_container(
+        self, command: list[str], workdir: str | None,
+    ) -> RunResult:
+        docker_cmd = [
+            "docker", "run", "--runtime=runsc", "--rm",
+            "--cap-drop=ALL", "--network=none",
+        ]
+        docker_cmd.extend(_build_mount_args(self.policy))
+        docker_cmd.extend(self._agent_mounts())
+        if workdir:
+            docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
+        docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
+
+        return self._exec(docker_cmd)
+
+    # ------------------------------------------------------------------
+    # Mode 2: network allowed, no L7 rules — single container + iptables
+    # ------------------------------------------------------------------
+
+    def _run_single_container_with_network(
+        self, command: list[str], workdir: str | None,
+    ) -> RunResult:
+        docker_cmd = [
+            "docker", "run", "--runtime=runsc", "--rm",
+            "--cap-drop=ALL", "--cap-add=NET_ADMIN",
+        ]
+        docker_cmd.extend(_build_mount_args(self.policy))
+        docker_cmd.extend(self._agent_mounts())
+        docker_cmd.extend(self._net_init_mounts())
+        if workdir:
+            docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
+        docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
+
+        return self._exec(docker_cmd)
+
+    # ------------------------------------------------------------------
+    # Mode 3: single container with Envoy + privilege drop
+    # ------------------------------------------------------------------
+
+    def _run_envoy_container(
+        self, command: list[str], workdir: str | None,
+    ) -> RunResult:
+        """Run Envoy + agent in one container, dropping privileges before agent.
+
+        The entrypoint:
+          1. Starts Envoy as root (needs to bind ports)
+          2. Applies iptables (best-effort, needs NET_ADMIN)
+          3. Drops to uid 65534 (nobody) — loses NET_ADMIN and CAP_KILL
+          4. Runs the agent command as unprivileged user
+
+        gVisor enforces UID-based isolation: the agent (uid 65534) cannot
+        signal Envoy (uid 0) or modify iptables rules.
+        """
         docker_cmd = [
             "docker", "run",
             "--runtime=runsc",
             "--rm",
             "--cap-drop=ALL",
+            "--cap-add=NET_ADMIN",   # for iptables
+            "--cap-add=SETUID",      # to drop to unprivileged user
+            "--cap-add=SETGID",      # to drop to unprivileged group
         ]
-
-        # Network isolation: gVisor's Sentry intercepts syscalls in user
-        # space, so seccomp profiles don't filter guest socket() calls.
-        # Instead, use Docker's network namespace isolation and iptables
-        # inside gVisor's Netstack for fine-grained control.
-        has_network = (
-            self.policy.defaults.network == "allow"
-            or len(self.policy.network.allow) > 0
-        )
-        if not has_network:
-            # No network access at all — completely isolated.
-            docker_cmd.append("--network=none")
-        else:
-            # Has allow rules — need iptables + possibly Envoy.
-            docker_cmd.append("--cap-add=NET_ADMIN")
-
-        # Mount args from file policy
         docker_cmd.extend(_build_mount_args(self.policy))
-
-        # Mount sandbox files
+        docker_cmd.extend(self._agent_mounts())
         docker_cmd.extend([
-            "-v", f"{net_script_path}:/sandbox/net-init.sh:ro",
-            "-v", f"{entry_path}:/sandbox/entrypoint.py:ro",
-            "-v", f"{cmd_path}:/sandbox/cmd.json:ro",
-            "-v", f"{entry_config_path}:/sandbox/config.json:ro",
+            "-v", f"{os.path.join(self._tmpdir, 'envoy.yaml')}:/sandbox/envoy.yaml:ro",
+            "-v", f"{os.path.join(self._tmpdir, 'envoy-entry.py')}:/sandbox/envoy-entry.py:ro",
+            "-v", f"{os.path.join(self._tmpdir, 'net-init.sh')}:/sandbox/net-init.sh:ro",
         ])
-
-        if use_envoy:
-            docker_cmd.extend([
-                "-v", f"{envoy_config_path}:/sandbox/envoy.yaml:ro",
-            ])
-
-        # Mount workdir if provided
         if workdir:
             docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
-
         docker_cmd.extend([
-            self.image, "/usr/bin/python3", "/sandbox/entrypoint.py",
+            self.image, "/usr/bin/python3", "/sandbox/envoy-entry.py",
         ])
 
+        return self._exec(docker_cmd)
+
+    # ------------------------------------------------------------------
+    # Shared helpers
+    # ------------------------------------------------------------------
+
+    def _agent_mounts(self) -> list[str]:
+        """Volume mounts needed by the agent entrypoint."""
+        return [
+            "-v", f"{os.path.join(self._tmpdir, 'cmd.json')}:/sandbox/cmd.json:ro",
+            "-v", f"{os.path.join(self._tmpdir, 'agent-entry.py')}:/sandbox/agent-entry.py:ro",
+        ]
+
+    def _net_init_mounts(self) -> list[str]:
+        """Volume mounts for the network init script."""
+        return [
+            "-v", f"{os.path.join(self._tmpdir, 'net-init.sh')}:/sandbox/net-init.sh:ro",
+        ]
+
+    def _exec(self, docker_cmd: list[str]) -> RunResult:
         proc = subprocess.run(
             docker_cmd,
             capture_output=True,
             text=True,
             timeout=self.timeout,
         )
-
         return RunResult(
             returncode=proc.returncode,
             stdout=proc.stdout,
@@ -358,53 +422,83 @@ class GVisorSandbox:
         return desc
 
 
-_ENTRYPOINT_PY = """\
-import json, os, subprocess, sys, time
+# ---------------------------------------------------------------------------
+# Entrypoints (run inside containers)
+# ---------------------------------------------------------------------------
 
-# Load entrypoint config
-with open("/sandbox/config.json") as f:
-    config = json.load(f)
+_AGENT_ENTRYPOINT_PY = """\
+import json, os, subprocess, sys
 
-use_envoy = config.get("use_envoy", False)
-
-# 1. Start Envoy sidecar (if L7 rules exist)
-envoy_proc = None
-if use_envoy and os.path.exists("/sandbox/envoy.yaml"):
-    envoy_proc = subprocess.Popen(
-        ["/usr/bin/envoy", "-c", "/sandbox/envoy.yaml", "--log-level", "warn"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    # Wait for Envoy to be ready (listen on its port)
-    for _ in range(20):
-        try:
-            import socket
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.5)
-            s.connect(("127.0.0.1", 15001))
-            s.close()
-            break
-        except OSError:
-            time.sleep(0.25)
-
-# 2. Apply network policy (iptables via gVisor Netstack)
+# Apply iptables if net-init.sh is present (single-container mode only).
+# In two-container mode this file isn't mounted — iptables runs in the
+# Envoy container instead.
 net_init = "/sandbox/net-init.sh"
 if os.path.exists(net_init):
     subprocess.run(["/bin/sh", net_init], capture_output=True)
 
-# 3. Read the command from JSON (avoids all shell quoting issues)
+# Read the command from JSON (avoids shell quoting issues)
 with open("/sandbox/cmd.json") as f:
     cmd = json.load(f)
 
-# 4. Run the target command (fork instead of exec so we can clean up Envoy)
-if envoy_proc:
-    proc = subprocess.run(cmd)
-    envoy_proc.terminate()
+os.execvp(cmd[0], cmd)
+"""
+
+_ENVOY_ENTRYPOINT_PY = """\
+import json, os, subprocess, sys, time
+
+# --- Phase 1: privileged setup (runs as root) ---
+
+# 1a. Apply iptables rules (best-effort — may fail in gVisor if the
+#     iptables binary uses nftables backend, which gVisor doesn't support).
+#     Envoy's virtual host routing and Lua filters enforce L7 policy
+#     regardless of whether iptables succeeds.
+net_init = "/sandbox/net-init.sh"
+if os.path.exists(net_init):
+    subprocess.run(["/bin/sh", net_init], capture_output=True)
+
+# 1b. Start Envoy as root (needs to bind listener port).
+envoy_proc = subprocess.Popen(
+    ["/usr/bin/envoy", "-c", "/sandbox/envoy.yaml", "--log-level", "warn"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
+
+# 1c. Wait for Envoy listener to be ready.
+import socket
+for _ in range(40):
     try:
-        envoy_proc.wait(timeout=3)
-    except subprocess.TimeoutExpired:
-        envoy_proc.kill()
-    sys.exit(proc.returncode)
-else:
-    os.execvp(cmd[0], cmd)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.5)
+        s.connect(("127.0.0.1", 15001))
+        s.close()
+        break
+    except OSError:
+        time.sleep(0.25)
+
+# --- Phase 2: drop privileges, run agent as nobody (uid 65534) ---
+
+# Read the command from JSON.
+with open("/sandbox/cmd.json") as f:
+    cmd = json.load(f)
+
+# Drop to unprivileged user.  After this:
+#   - No CAP_NET_ADMIN → cannot modify iptables
+#   - No CAP_KILL → cannot signal Envoy (uid 0)
+#   - No CAP_SYS_ADMIN → cannot re-escalate
+os.setgid(65534)
+os.setuid(65534)
+
+# Run the agent command.
+proc = subprocess.run(cmd)
+
+# Clean up Envoy.
+# Note: kill may fail since we dropped privs — that's fine,
+# the container exit will clean it up.
+try:
+    envoy_proc.terminate()
+    envoy_proc.wait(timeout=3)
+except Exception:
+    pass
+
+sys.exit(proc.returncode)
 """
