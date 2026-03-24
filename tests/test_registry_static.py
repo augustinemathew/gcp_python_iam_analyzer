@@ -60,7 +60,7 @@ def test_api_service_format(registry_data: dict):
         and not entry.get("api_service", "").endswith(".googleapis.com")
     ]
     assert not malformed, (
-        f"Malformed api_service values (must end with .googleapis.com):\n"
+        "Malformed api_service values (must end with .googleapis.com):\n"
         + "\n".join(f"  {m}" for m in malformed)
     )
 

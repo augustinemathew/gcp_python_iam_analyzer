@@ -219,6 +219,7 @@ class TestSecretManager:
 # ── Cloud KMS ────────────────────────────────────────────────────────────
 
 
+@pytest.mark.slow
 class TestCloudKMS:
     def test_encrypt(self, scanner):
         source = _src('client.encrypt(request={"name": n, "plaintext": b"data"})', _KMS)

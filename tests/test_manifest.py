@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 import yaml
 
 from iamspy.manifest import ManifestGenerator
 from iamspy.models import Finding, MethodSig, PermissionResult, ScanResult
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

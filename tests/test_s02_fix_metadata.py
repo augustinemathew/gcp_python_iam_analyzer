@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -51,14 +50,14 @@ class TestResolveFromDiscovery:
 
     def test_resolves_matching_iam_prefix(self):
         with patch("urllib.request.urlopen", return_value=self._mock_urlopen(DISCOVERY_RESPONSE)):
-            resolved, unresolved = resolve_from_discovery(REGISTRY_ENTRIES)
+            resolved, _unresolved = resolve_from_discovery(REGISTRY_ENTRIES)
 
         assert resolved["bigquery"] == "bigquery.googleapis.com"
         assert resolved["kms"] == "cloudkms.googleapis.com"  # matched via iam_prefix
 
     def test_unresolved_when_no_match(self):
         with patch("urllib.request.urlopen", return_value=self._mock_urlopen(DISCOVERY_RESPONSE)):
-            resolved, unresolved = resolve_from_discovery(REGISTRY_ENTRIES)
+            _resolved, unresolved = resolve_from_discovery(REGISTRY_ENTRIES)
 
         # resourcemanager iam_prefix is "resourcemanager" — not in discovery (would need "cloudresourcemanager")
         assert "resourcemanager" in unresolved

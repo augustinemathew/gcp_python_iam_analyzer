@@ -3,15 +3,10 @@
 from __future__ import annotations
 
 import pytest
-
 from agent_sandbox.errors import PolicyLoadError
 from agent_sandbox.policy import (
     Defaults,
     FileRules,
-    HttpRules,
-    McpRules,
-    NetworkEndpoint,
-    Policy,
     load_policy,
 )
 

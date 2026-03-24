@@ -5,10 +5,8 @@ from __future__ import annotations
 import sys
 
 import pytest
-
 from agent_sandbox.policy import load_policy
 from agent_sandbox.sandbox import Sandbox, _policy_to_dict
-
 
 POLICY_YAML = """\
 version: "1"

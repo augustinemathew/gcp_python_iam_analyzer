@@ -301,11 +301,10 @@ def _build_stage_argv(stage_id: str, args: argparse.Namespace) -> list[str]:
             argv.extend(["--service", svc])
 
     project = getattr(args, "project", None)
-    if stage_id in ("s02", "s05"):
-        # s02 and s05 resolve project from gcloud if not explicitly passed,
-        # so only forward when explicitly set to avoid double-resolution noise.
-        if project:
-            argv.extend(["--project", project])
+    # s02 and s05 resolve project from gcloud if not explicitly passed,
+    # so only forward when explicitly set to avoid double-resolution noise.
+    if stage_id in ("s02", "s05") and project:
+        argv.extend(["--project", project])
 
     model = getattr(args, "model", None)
     if stage_id == "s06" and model:

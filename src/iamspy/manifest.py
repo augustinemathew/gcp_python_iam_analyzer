@@ -6,7 +6,7 @@ Tests: tests/test_manifest.py
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -83,7 +83,7 @@ class ManifestGenerator:
         manifest: dict = {
             "version": "1",
             "generated_by": f"iamspy scan {' '.join(scanned_paths)}",
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "services": {
                 "enable": sorted(api_services),
             },

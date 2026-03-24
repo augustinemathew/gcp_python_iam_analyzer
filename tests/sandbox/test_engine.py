@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from agent_sandbox.engine import PolicyEngine
 from agent_sandbox.errors import PolicyViolation
 from agent_sandbox.policy import load_policy
@@ -66,7 +65,7 @@ class TestFileRead:
         engine.check_file_read("/home/user/src/main.py")
 
     def test_denied_by_default(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="file.read"):
+        with pytest.raises(PolicyViolation, match=r"file\.read"):
             engine.check_file_read("/etc/hostname")
 
     def test_denied_by_explicit_deny(self, engine: PolicyEngine):
@@ -79,7 +78,7 @@ class TestFileWrite:
         engine.check_file_write("/tmp/out/result.json")
 
     def test_denied_write(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="file.write"):
+        with pytest.raises(PolicyViolation, match=r"file\.write"):
             engine.check_file_write("/home/user/src/main.py")
 
     def test_deny_overrides_allow(self, engine: PolicyEngine):
@@ -93,7 +92,7 @@ class TestFileExecute:
         engine.check_file_execute("/usr/bin/python3.11")
 
     def test_denied_execute(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="file.execute"):
+        with pytest.raises(PolicyViolation, match=r"file\.execute"):
             engine.check_file_execute("/usr/bin/curl")
 
 
@@ -105,19 +104,19 @@ class TestNetwork:
         engine.check_network("storage.googleapis.com", 443)
 
     def test_denied_by_default(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="network.connect"):
+        with pytest.raises(PolicyViolation, match=r"network\.connect"):
             engine.check_network("unknown-host.com", 80)
 
     def test_denied_by_explicit_deny(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="network.connect"):
+        with pytest.raises(PolicyViolation, match=r"network\.connect"):
             engine.check_network("malware.evil.com", 443)
 
     def test_imds_blocked(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="network.connect"):
+        with pytest.raises(PolicyViolation, match=r"network\.connect"):
             engine.check_network("169.254.169.254", 80)
 
     def test_wrong_port_denied(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="network.connect"):
+        with pytest.raises(PolicyViolation, match=r"network\.connect"):
             engine.check_network("api.example.com", 80)
 
 
@@ -126,11 +125,11 @@ class TestHttp:
         engine.check_http("api.example.com", 443, "POST", "/v1/messages")
 
     def test_denied_method(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="http.method"):
+        with pytest.raises(PolicyViolation, match=r"http\.method"):
             engine.check_http("api.example.com", 443, "DELETE", "/v1/messages")
 
     def test_denied_path(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="http.path"):
+        with pytest.raises(PolicyViolation, match=r"http\.path"):
             engine.check_http("api.example.com", 443, "GET", "/admin/users")
 
     def test_no_http_rules_allows_any_request(self, engine: PolicyEngine):
@@ -143,14 +142,14 @@ class TestMcp:
         engine.check_mcp("localhost", 3000, tool="read_file")
 
     def test_denied_tool(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="mcp.tool"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.tool"):
             engine.check_mcp("localhost", 3000, tool="delete_file")
 
     def test_allowed_resource(self, engine: PolicyEngine):
         engine.check_mcp("localhost", 3000, resource="file:///workspace/main.py")
 
     def test_denied_resource(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="mcp.resource"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.resource"):
             engine.check_mcp("localhost", 3000, resource="file:///etc/passwd")
 
     def test_no_mcp_rules_allows(self, engine: PolicyEngine):
@@ -169,7 +168,7 @@ class TestMcpCel:
         )
 
     def test_cel_guard_fails(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.tool_args"):
             engine.check_mcp(
                 "localhost", 3000,
                 tool="write_file",
@@ -184,7 +183,7 @@ class TestMcpCel:
         )
 
     def test_cel_sql_guard_blocks_drop(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.tool_args"):
             engine.check_mcp(
                 "localhost", 3000,
                 tool="run_sql",
@@ -192,7 +191,7 @@ class TestMcpCel:
             )
 
     def test_cel_sql_guard_blocks_delete(self, engine: PolicyEngine):
-        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.tool_args"):
             engine.check_mcp(
                 "localhost", 3000,
                 tool="run_sql",
@@ -209,7 +208,7 @@ class TestMcpCel:
 
     def test_cel_with_no_args_provided(self, engine: PolicyEngine):
         # write_file has a when guard, but no args passed → CEL gets empty map.
-        with pytest.raises(PolicyViolation, match="mcp.cel"):
+        with pytest.raises(PolicyViolation, match=r"mcp\.cel"):
             engine.check_mcp(
                 "localhost", 3000,
                 tool="write_file",

@@ -6,22 +6,19 @@ They are integration tests that actually launch containers.
 
 from __future__ import annotations
 
-import json
 import subprocess
 
 import pytest
-
-from agent_sandbox.envoy_config import compile_envoy_config, compile_envoy_yaml
+from agent_sandbox.envoy_config import compile_envoy_config
 from agent_sandbox.gvisor import (
     GVisorSandbox,
     RunResult,
-    build_seccomp_profile,
     _build_mount_args,
     _build_network_init_script,
     _has_l7_rules,
+    build_seccomp_profile,
 )
 from agent_sandbox.policy import load_policy
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -300,7 +297,7 @@ class TestEnvoyConfig:
         hcm = config["static_resources"]["listeners"][0]["filter_chains"][0]["filters"][0]
         vhosts = hcm["typed_config"]["route_config"]["virtual_hosts"]
         # Find api.anthropic.com vhost
-        api_vh = [vh for vh in vhosts if "api.anthropic.com" in vh.get("domains", [])][0]
+        api_vh = next(vh for vh in vhosts if "api.anthropic.com" in vh.get("domains", []))
         # Last route should be a 403 direct response (catch-all for disallowed paths)
         last_route = api_vh["routes"][-1]
         assert last_route["direct_response"]["status"] == 403

@@ -248,7 +248,6 @@ def resolve_api_services(
     # ④ Re-prompt Gemini for gcloud failures
     if invalid and client:
         print("  Step 4: Gemini correction pass...", file=sys.stderr)
-        gcloud_errors = {sid: "rejected by gcloud: unknown service" for sid in invalid}
         corrections = _call_gemini_for_api_service(
             {sid: registry[sid] for sid in invalid}, client, model
         )
@@ -327,40 +326,11 @@ def _resolve_project(project: str | None) -> str:
     return active
 
 
-def fix_metadata(
-    registry_path: Path,
-    *,
-    model: str = DEFAULT_MODEL,
-    dry_run: bool = False,
-    project: str | None = None,
-) -> dict[str, dict]:
-    """Fix iam_prefix, display_name, and api_service in service_registry.json."""
-    from google import genai
+def _fetch_corrections(services: list[dict], client, model: str) -> dict[str, dict]:
+    """Call Gemini in batches to get iam_prefix/display_name corrections."""
     from google.genai.types import GenerateContentConfig
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("ERROR: GEMINI_API_KEY not set", file=sys.stderr)
-        sys.exit(1)
-
-    client = genai.Client(api_key=api_key)
-    resolved_project = _resolve_project(project)
-
-    with open(registry_path) as f:
-        registry = json.load(f)
-
-    services = [
-        {
-            "service_id": sid,
-            "pip_package": entry["pip_package"],
-            "iam_prefix": entry["iam_prefix"],
-            "display_name": entry["display_name"],
-        }
-        for sid, entry in sorted(registry.items())
-    ]
-
     all_fixes: dict[str, dict] = {}
-
     for i in range(0, len(services), BATCH_SIZE):
         batch = services[i : i + BATCH_SIZE]
         print(
@@ -368,7 +338,6 @@ def fix_metadata(
             file=sys.stderr,
             end="",
         )
-
         prompt = build_prompt(batch)
         try:
             response = client.models.generate_content(
@@ -384,27 +353,15 @@ def fix_metadata(
             print(f" {len(fixes)} corrections", file=sys.stderr)
         except Exception as e:
             print(f" ERROR: {e}", file=sys.stderr)
+    return all_fixes
 
-    if dry_run:
-        print("\nDry run — changes NOT applied:", file=sys.stderr)
-        for sid, fix in sorted(all_fixes.items()):
-            current = registry.get(sid, {})
-            print(f"  {sid}:", file=sys.stderr)
-            if "iam_prefix" in fix and fix["iam_prefix"] != current.get("iam_prefix"):
-                print(
-                    f"    iam_prefix: {current.get('iam_prefix')} → {fix['iam_prefix']}",
-                    file=sys.stderr,
-                )
-            if "display_name" in fix and fix["display_name"] != current.get("display_name"):
-                print(
-                    f"    display_name: {current.get('display_name')} → {fix['display_name']}",
-                    file=sys.stderr,
-                )
-        return all_fixes
 
-    # Apply fixes
+def _apply_corrections(
+    registry: dict[str, dict], fixes: dict[str, dict], registry_path: Path
+) -> int:
+    """Apply corrections to registry and write to disk. Returns count of changed services."""
     applied = 0
-    for sid, fix in all_fixes.items():
+    for sid, fix in fixes.items():
         if sid not in registry:
             continue
         changed = False
@@ -428,7 +385,60 @@ def fix_metadata(
     with open(registry_path, "w") as f:
         json.dump(registry, f, indent=2)
         f.write("\n")
+    return applied
 
+
+def fix_metadata(
+    registry_path: Path,
+    *,
+    model: str = DEFAULT_MODEL,
+    dry_run: bool = False,
+    project: str | None = None,
+) -> dict[str, dict]:
+    """Fix iam_prefix, display_name, and api_service in service_registry.json."""
+    from google import genai
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("ERROR: GEMINI_API_KEY not set", file=sys.stderr)
+        sys.exit(1)
+
+    client = genai.Client(api_key=api_key)
+    resolved_project = _resolve_project(project)
+
+    with open(registry_path) as f:
+        registry = json.load(f)
+
+    services = [
+        {
+            "service_id": sid,
+            "pip_package": entry["pip_package"],
+            "iam_prefix": entry["iam_prefix"],
+            "display_name": entry["display_name"],
+        }
+        for sid, entry in sorted(registry.items())
+    ]
+
+    all_fixes = _fetch_corrections(services, client, model)
+
+    if dry_run:
+        print("\nDry run — changes NOT applied:", file=sys.stderr)
+        for sid, fix in sorted(all_fixes.items()):
+            current = registry.get(sid, {})
+            print(f"  {sid}:", file=sys.stderr)
+            if "iam_prefix" in fix and fix["iam_prefix"] != current.get("iam_prefix"):
+                print(
+                    f"    iam_prefix: {current.get('iam_prefix')} → {fix['iam_prefix']}",
+                    file=sys.stderr,
+                )
+            if "display_name" in fix and fix["display_name"] != current.get("display_name"):
+                print(
+                    f"    display_name: {current.get('display_name')} → {fix['display_name']}",
+                    file=sys.stderr,
+                )
+        return all_fixes
+
+    applied = _apply_corrections(registry, all_fixes, registry_path)
     print(f"\nApplied {applied} corrections to {registry_path}", file=sys.stderr)
 
     # Second pass: resolve api_service
