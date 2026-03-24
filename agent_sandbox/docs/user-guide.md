@@ -1,431 +1,202 @@
-# Agent Sandbox — User Guide
+# User Guide
 
 Run any executable inside a gVisor sandbox governed by a YAML policy.
-The policy controls filesystem access, network endpoints, HTTP methods/paths,
-and MCP tool calls.
 
-## Quick start (CLI)
+## Install
 
 ```bash
-# Minimal: policy + command
-agent-sandbox -p policy.yaml -- python3 agent.py
+# 1. Install gVisor as a Docker runtime
+#    https://gvisor.dev/docs/user_guide/install/
+sudo runsc install
+sudo systemctl reload docker
 
-# With workspace (mounted read-only at /workspace inside the container)
-agent-sandbox -p policy.yaml -w ./src -- python3 /workspace/agent.py
+# 2. Build the container image (must contain python3, envoy, iptables, sh)
+docker build -t gvisor-python:latest -f Dockerfile.sandbox .
 
-# With writable output directory (mounted at /output)
-agent-sandbox -p policy.yaml -w ./src -o ./results -- python3 /workspace/run.py
-
-# Inspect what the sandbox will do (no execution)
-agent-sandbox -p policy.yaml --describe
+# 3. Install the CLI
+pip install -e .
 ```
 
-### CLI flags
+## Quick start
+
+### 1. Write a policy
+
+```yaml
+# my-policy.yaml
+version: "1"
+name: my-agent
+
+defaults:
+  file: deny
+  network: deny
+
+file:
+  write:
+    - "/tmp/**"
+
+network:
+  allow:
+    - host: api.anthropic.com
+      port: 443
+      http:
+        methods: [POST]
+        paths: ["/v1/messages"]
+  deny:
+    - host: "169.254.169.254"
+```
+
+### 2. Run an agent
+
+```bash
+# Python agent with workspace
+agent-sandbox -p my-policy.yaml -w ./src -- python3 /workspace/agent.py
+
+# With writable output directory
+agent-sandbox -p my-policy.yaml -w ./src -o ./results -- python3 /workspace/agent.py
+
+# Node.js agent
+agent-sandbox -p my-policy.yaml -w ./src -- node /workspace/agent.js
+
+# Any binary
+agent-sandbox -p my-policy.yaml -- /path/to/my-agent --config config.json
+```
+
+### 3. Check what will happen (before running)
+
+```bash
+agent-sandbox -p my-policy.yaml --describe
+```
+
+## CLI reference
 
 ```
 agent-sandbox -p POLICY [options] -- COMMAND [ARGS...]
-
-Required:
-  -p, --policy PATH        YAML policy file
-
-Workspace:
-  -w, --workspace DIR      Host dir → read-only mount (default: /workspace)
-  --workspace-mount PATH   Override container mount point
-  -o, --output DIR         Host dir → read-write mount (default: /output)
-  --output-mount PATH      Override container mount point
-
-Runtime:
-  -t, --timeout SECONDS    Kill after N seconds (default: 300)
-  --image IMAGE            Container image (default: gvisor-python:latest)
-
-Debug:
-  --describe               Print compiled config (iptables, Envoy, mounts) and exit
-  --dry-run                Print docker command and exit
 ```
 
-## Quick start (Python API)
+| Flag | Short | Description |
+|---|---|---|
+| `--policy PATH` | `-p` | YAML policy file (required) |
+| `--workspace DIR` | `-w` | Host dir mounted read-only at `/workspace` |
+| `--output DIR` | `-o` | Host dir mounted read-write at `/output` |
+| `--workspace-mount PATH` | | Override workspace container path |
+| `--output-mount PATH` | | Override output container path |
+| `--timeout SECONDS` | `-t` | Kill after N seconds (default: 300) |
+| `--image IMAGE` | | Container image (default: gvisor-python:latest) |
+| `--describe` | | Print compiled config and exit |
+| `--dry-run` | | Print docker command and exit |
+
+## Python API
 
 ```python
 from agent_sandbox.policy import load_policy
 from agent_sandbox.gvisor import GVisorSandbox
 
 policy = load_policy("my-policy.yaml")
-sb = GVisorSandbox(policy)
+sb = GVisorSandbox(policy, image="gvisor-python:latest", timeout=300)
+
+# Basic run
 result = sb.run(["python3", "agent.py"])
 
-print(result.stdout)
-print(result.stderr)
-print(result.returncode)
-```
-
-## Prerequisites
-
-| Dependency | Version | Purpose |
-|---|---|---|
-| Docker | 20.10+ | Container runtime |
-| gVisor (runsc) | latest | Kernel-level syscall sandbox |
-| Envoy | 1.28+ | L7 HTTP/MCP proxy (baked into container image) |
-| Python | 3.12+ | Host-side orchestration |
-
-Install gVisor as a Docker runtime:
-```bash
-# https://gvisor.dev/docs/user_guide/install/
-sudo runsc install
-sudo systemctl reload docker
-```
-
-Build the container image (one-time):
-```bash
-# The image must contain: python3, envoy, iptables, sh
-docker build -t gvisor-python:latest -f Dockerfile.sandbox .
-```
-
-## Writing a policy
-
-A policy is a YAML file with three sections: **defaults**, **file**, and
-**network**.
-
-### Minimal policy — no network
-
-```yaml
-version: "1"
-name: offline-agent
-
-defaults:
-  file: deny
-  network: deny
-
-file:
-  read:
-    - "/workspace/**"
-  write:
-    - "/tmp/**"
-  execute:
-    - "/usr/bin/python3"
-```
-
-```bash
-agent-sandbox -p offline.yaml -w ./project -- python3 /workspace/agent.py
-```
-
-The agent can read `/workspace`, write to `/tmp`, execute `python3`, and
-nothing else. No network access (`--network=none`).
-
-### API-calling agent
-
-```yaml
-version: "1"
-name: llm-agent
-
-defaults:
-  file: deny
-  network: deny
-
-file:
-  read:
-    - "/workspace/**"
-  write:
-    - "/tmp/**"
-
-network:
-  allow:
-    - host: api.anthropic.com
-      port: 443
-      http:
-        methods: [POST]
-        paths: ["/v1/messages"]
-
-    - host: api.openai.com
-      port: 443
-      http:
-        methods: [POST]
-        paths: ["/v1/chat/completions"]
-
-  deny:
-    - host: "169.254.169.254"     # block cloud IMDS
-    - host: "metadata.google.internal"
-```
-
-```bash
-agent-sandbox -p llm.yaml -w ./project -o ./output -- python3 /workspace/agent.py
-```
-
-The agent can POST to two LLM APIs and nothing else. GET, PUT, DELETE
-are blocked. Other paths on those hosts are blocked. All other hosts
-are blocked.
-
-### Agent with MCP tools
-
-```yaml
-version: "1"
-name: mcp-agent
-
-defaults:
-  file: deny
-  network: deny
-
-file:
-  read:
-    - "/workspace/**"
-  write:
-    - "/tmp/agent-out/**"
-
-network:
-  allow:
-    - host: api.anthropic.com
-      port: 443
-      http:
-        methods: [POST]
-        paths: ["/v1/messages"]
-
-    - host: localhost
-      port: 3000
-      mcp:
-        tools:
-          - read_file
-          - search
-          - name: write_file
-            when: 'args.path.startsWith("/tmp/")'
-          - name: run_sql
-            when: '!args.query.contains("DROP")'
-        resources:
-          - "file:///workspace/**"
-```
-
-MCP tool rules support two forms:
-
-| Form | Example | Meaning |
-|---|---|---|
-| Simple string | `read_file` | Tool allowed unconditionally |
-| Object with CEL | `{name: write_file, when: 'expr'}` | Tool allowed only when the CEL expression is true |
-
-The `when` expression receives `args` (a map of the tool's arguments).
-
-## Launching different executables
-
-### From the CLI
-
-```bash
-# Python agent
-agent-sandbox -p policy.yaml -w ./src -- python3 /workspace/agent.py
-
-# Node.js agent
-agent-sandbox -p policy.yaml -w ./src -- node /workspace/agent.js
-
-# Go binary
-agent-sandbox -p policy.yaml -w ./src -- /workspace/my-agent --config /workspace/config.json
-
-# Shell script
-agent-sandbox -p policy.yaml -w ./src -- /bin/sh /workspace/run.sh
-
-# With writable output dir
-agent-sandbox -p policy.yaml -w ./src -o ./results -- python3 /workspace/agent.py --out /output/report.json
-```
-
-### From the Python API
-
-```python
-# With workspace only (read-only)
-result = sb.run(
-    ["python3", "/workspace/agent.py"],
-    workdir="/path/to/project",
-)
-
-# With workspace + writable output
+# With workspace + output
 result = sb.run(
     ["python3", "/workspace/agent.py", "--out", "/output/report.json"],
-    workdir="/path/to/project",
-    output_dir="/path/to/results",
+    workdir="/path/to/project",          # → /workspace (read-only)
+    output_dir="/path/to/results",       # → /output (read-write)
 )
 
 # Custom mount points
 result = sb.run(
     ["python3", "/code/agent.py"],
     workdir="/path/to/project",
-    workdir_mount="/code",           # mount at /code instead of /workspace
+    workdir_mount="/code",               # override default /workspace
     output_dir="/path/to/results",
-    output_mount="/results",         # mount at /results instead of /output
+    output_mount="/results",             # override default /output
 )
+
+# Inspect result
+print(result.stdout)
+print(result.stderr)
+print(result.returncode)   # 0=ok, 1=error, 137=OOM, 143=timeout
+
+# Inspect compiled config
+config = sb.describe()
+print(config["network_init"])    # iptables script
+print(config["envoy_config"])    # Envoy YAML (if L7 rules)
 ```
 
-### Workspace and output mounts
+## Common policy patterns
 
-| Flag | Container path | Access | Purpose |
-|---|---|---|---|
-| `-w` / `--workspace` | `/workspace` | Read-only | Agent source code, configs |
-| `-o` / `--output` | `/output` | Read-write | Agent results, logs, artifacts |
-
-The container paths can be overridden with `--workspace-mount` and `--output-mount`.
-
-The output directory is created on the host if it doesn't exist. Files
-written by the agent to `/output` persist on the host after the container
-exits.
-
-## How enforcement works
-
-```
-┌── gVisor container (docker run --runtime=runsc) ─────────────┐
-│                                                              │
-│  Phase 1: ROOT (entrypoint, pid 1)                           │
-│    ├── Start Envoy on :15001                                 │
-│    ├── iptables REDIRECT 80/443 → :15001 (best-effort)       │
-│    ├── os.setuid(65534)               ← PRIVILEGE DROP       │
-│    │                                                         │
-│  Phase 2: NOBODY (uid 65534)                                 │
-│    └── exec(agent_command)                                   │
-│         ├── Cannot setuid(0)         → PermissionError       │
-│         ├── Cannot modify iptables   → no NET_ADMIN          │
-│         └── Cannot re-escalate       → caps dropped          │
-│                                                              │
-│  Envoy (root, pid 2)                                         │
-│    ├── Virtual hosts: unknown host → 403                     │
-│    ├── Route rules: unlisted path → 403                      │
-│    └── Lua filter: unlisted HTTP method → 403                │
-│                                                              │
-│  Mounts:                                                     │
-│    /workspace  ← host workspace (read-only)                  │
-│    /output     ← host output dir (read-write)                │
-│    /tmp/**     ← tmpfs (from policy file.write rules)        │
-│    /           ← read-only rootfs                            │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Three modes, selected automatically based on the policy:
-
-| Policy has... | Mode | Capabilities |
-|---|---|---|
-| `network: deny`, no allow rules | `--network=none` | `--cap-drop=ALL` |
-| Allow rules, no `http`/`mcp` | iptables only | `NET_ADMIN` |
-| Allow rules with `http` or `mcp` | Envoy + privilege drop | `NET_ADMIN`, `SETUID`, `SETGID` |
-
-## Policy reference
-
-### `defaults`
+### Offline agent (no network)
 
 ```yaml
-defaults:
-  file: deny    # deny | allow
-  network: deny # deny | allow
-```
-
-Start with `deny` for both. `allow` is available but means you're opting out
-of that enforcement layer.
-
-### `file`
-
-```yaml
+version: "1"
+name: offline
+defaults: { file: deny, network: deny }
 file:
-  read:     ["/path/**"]         # glob patterns for read access
-  write:    ["/tmp/workspace/**"] # writable paths (get tmpfs mounts)
-  execute:  ["/usr/bin/python3"]  # executable paths
-  deny:     ["/etc/shadow"]       # explicit denials (override reads)
+  write: ["/tmp/**"]
 ```
 
-When `defaults.file: deny`, the entire container filesystem is read-only.
-Write paths get tmpfs overlays (256 MB each). File rules use glob patterns.
-
-### `network`
+### LLM API agent
 
 ```yaml
+version: "1"
+name: llm-caller
+defaults: { file: deny, network: deny }
+file:
+  write: ["/tmp/**"]
 network:
   allow:
-    - host: api.example.com       # exact hostname
-      port: 443                   # optional port
-      http:                       # optional L7 rules (triggers Envoy)
-        methods: [GET, POST]
-        paths: ["/v1/**"]
-      mcp:                        # optional MCP rules (triggers Envoy)
-        tools: [...]
-        resources: [...]
+    - host: api.anthropic.com
+      port: 443
+      http: { methods: [POST], paths: ["/v1/messages"] }
+    - host: api.openai.com
+      port: 443
+      http: { methods: [POST], paths: ["/v1/chat/completions"] }
   deny:
-    - host: "169.254.169.254"     # block specific hosts
-    - host: "*.evil.com"          # wildcards in deny rules
+    - host: "169.254.169.254"
+    - host: "metadata.google.internal"
 ```
 
-- If **no** allow rules exist and `defaults.network: deny`, the container
-  runs with `--network=none` (complete isolation).
-- If allow rules exist **without** `http`/`mcp`, iptables filters by
-  host/port only.
-- If allow rules have `http` or `mcp`, Envoy starts as a transparent proxy
-  and the agent drops to uid 65534 before executing.
-
-### `http` rules
+### Agent with MCP tools
 
 ```yaml
-http:
-  methods: [GET, POST]       # allowed HTTP methods (uppercase)
-  paths:                     # allowed URL paths
-    - "/v1/messages"
-    - "/v1/models"
+version: "1"
+name: mcp-agent
+defaults: { file: deny, network: deny }
+file:
+  write: ["/tmp/**"]
+network:
+  allow:
+    - host: api.anthropic.com
+      port: 443
+      http: { methods: [POST], paths: ["/v1/messages"] }
+    - host: localhost
+      port: 3000
+      mcp:
+        tools:
+          - read_file
+          - name: write_file
+            when: 'args.path.startsWith("/tmp/")'
+          - name: run_sql
+            when: '!args.query.contains("DROP")'
+        resources: ["file:///workspace/**"]
+  deny:
+    - host: "169.254.169.254"
 ```
-
-Requests to unlisted methods or paths get a `403 Forbidden`.
-
-### `mcp` rules
-
-```yaml
-mcp:
-  tools:
-    - read_file                                    # unconditional
-    - name: write_file                             # conditional (CEL)
-      when: 'args.path.startsWith("/workspace/")'
-    - name: run_sql
-      when: '!args.query.contains("DROP")'
-  resources:
-    - "file:///workspace/**"                       # allowed resource URIs
-```
-
-## Inspecting compiled enforcement
-
-### CLI
-
-```bash
-# Print iptables script, Envoy config, seccomp profile, mount flags
-agent-sandbox -p policy.yaml --describe
-```
-
-### Python API
-
-```python
-config = sb.describe()
-print(config["network_init"])   # iptables script
-print(config["envoy_config"])   # Envoy YAML (if L7 rules exist)
-print(config["seccomp"])        # seccomp profile
-print(config["mounts"])         # Docker mount flags
-```
-
-## Error handling
-
-```python
-result = sb.run(["python3", "agent.py"])
-
-if result.returncode != 0:
-    print(f"Agent failed (exit {result.returncode})")
-    print(result.stderr)
-```
-
-| Exit code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | Agent error |
-| 137 | OOM killed (SIGKILL) |
-| 143 | SIGTERM (timeout or container killed) |
-
-The sandbox raises `RuntimeError` if Docker/gVisor setup fails (image not
-found, runtime not installed, etc.). Agent errors are returned in `RunResult`,
-not raised.
 
 ## Tips
 
-- **Start restrictive.** Begin with `defaults: {file: deny, network: deny}`
-  and add only what the agent needs.
-- **Block IMDS.** Always deny `169.254.169.254` and `metadata.google.internal`
-  to prevent credential theft from cloud VMs.
-- **Use path restrictions.** Don't just allowlist a host — restrict to specific
-  API paths (`/v1/messages`, not `/**`).
-- **CEL guards on MCP.** Use `when` expressions to prevent destructive tool
-  calls (`!args.query.contains("DROP")`).
-- **Inspect before running.** Use `agent-sandbox --describe` to see the
-  compiled iptables script and Envoy config before launching the agent.
-- **Use `-o` for output.** Don't try to write to the read-only workspace —
-  mount a separate output directory with `-o ./results`.
+- **Start with `deny`/`deny`.** Add only what the agent needs.
+- **Always block IMDS** — deny `169.254.169.254` and `metadata.google.internal`.
+- **Restrict paths, not just hosts** — `/v1/messages` not `/**`.
+- **Use `-o` for output** — don't write to the read-only workspace.
+- **Inspect first** — `--describe` shows iptables + Envoy config before execution.
+- **CEL guards on MCP** — `!args.query.contains("DROP")` prevents destructive calls.
+
+## Further reading
+
+- [Policy YAML reference](policy-reference.md) — complete field-by-field spec
+- [Architecture](architecture.md) — runtime flow, module map, execution modes
+- [Isolation model](isolation-model.md) — privilege separation, known limits, future options
+- [Design](design.md) — three-layer design, GCP deployment, threat matrix
+- [Decisions](decisions.md) — why we chose gVisor, Envoy, single container, etc.

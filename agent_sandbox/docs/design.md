@@ -494,7 +494,16 @@ with the full kernel attack surface. gVisor is a separate kernel — even
 "allowed" syscalls execute in a sandboxed Go process. gVisor also applies
 seccomp to itself as defense in depth.
 
-## References
+## Related docs
+
+- [Architecture](architecture.md) — runtime flow, module map, three execution modes
+- [Isolation model](isolation-model.md) — privilege separation analysis, gVisor
+  limitations, unikernel/Firecracker assessment, production path
+- [Policy reference](policy-reference.md) — complete YAML field-by-field spec
+- [Decisions](decisions.md) — ADRs: why gVisor, why Envoy, why single container
+- [User guide](user-guide.md) — quick start, CLI reference, common patterns
+
+## External references
 
 - [gVisor Architecture](https://gvisor.dev/docs/architecture_guide/intro/)
 - [gVisor Filesystem Guide](https://gvisor.dev/docs/user_guide/filesystem/)
