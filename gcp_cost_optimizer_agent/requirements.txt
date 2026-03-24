@@ -1,0 +1,3 @@
+google-cloud-aiplatform[agent_engines,ag2]>=1.93
+google-cloud-asset>=3.0
+google-cloud-compute>=1.0

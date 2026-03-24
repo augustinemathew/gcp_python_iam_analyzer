@@ -1,0 +1,12 @@
+version: '1'
+generated_by: iamspy scan /Users/augustine/gcp_cost_optimizer_agent
+generated_at: '2026-03-21T01:38:02Z'
+services:
+  enable:
+  - cloudasset.googleapis.com
+  - compute.googleapis.com
+permissions:
+  required:
+  - cloudasset.assets.listResource
+  - compute.instances.list
+  conditional: []
