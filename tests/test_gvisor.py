@@ -415,3 +415,130 @@ class TestEnvoyL7Enforcement:
         result = self._run_l7("POST", "/any/path", "localhost:3000")
         # Should be forwarded (503 from no real backend)
         assert "status:503" in result.stdout or "status:200" in result.stdout
+
+
+_E2E_GOOGLE_POLICY = """\
+version: "1"
+name: google-e2e
+defaults:
+  file: deny
+  network: deny
+network:
+  allow:
+    - host: localhost
+      port: 8080
+      http:
+        methods: [GET, POST]
+        paths: ["/v1/models", "/v1/chat"]
+"""
+
+# Mock Google API server + Envoy client test code.  Runs inside gVisor:
+#   1. Starts a mock HTTP server on :8080
+#   2. Envoy sidecar (started by entrypoint) proxies :15001 → :8080
+#   3. Client makes requests through Envoy and verifies L7 enforcement
+_E2E_CODE = '''
+import http.client, http.server, json, socket, threading, time, sys
+
+class MockGoogleAPI(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/v1/models":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "models": [{"name": "gemini-2.5-flash", "status": "active"}]
+            }).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if self.path == "/v1/chat":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length else b""
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "response": "Hello from mock Google API",
+                "received": json.loads(body) if body else None,
+            }).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
+
+server = http.server.HTTPServer(("127.0.0.1", 8080), MockGoogleAPI)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+
+for _ in range(10):
+    try:
+        s = socket.socket(); s.settimeout(0.3)
+        s.connect(("127.0.0.1", 8080)); s.close(); break
+    except OSError:
+        time.sleep(0.2)
+
+for _ in range(30):
+    try:
+        s = socket.socket(); s.settimeout(0.3)
+        s.connect(("127.0.0.1", 15001)); s.close(); break
+    except OSError:
+        time.sleep(0.5)
+else:
+    print("envoy_not_ready"); sys.exit(1)
+
+# Allowed: GET /v1/models
+conn = http.client.HTTPConnection("127.0.0.1", 15001, timeout=5)
+conn.request("GET", "/v1/models", headers={"Host": "localhost:8080"})
+resp = conn.getresponse()
+body = json.loads(resp.read())
+print(f"get_models:{resp.status}:{body['models'][0]['name']}")
+conn.close()
+
+# Allowed: POST /v1/chat
+conn = http.client.HTTPConnection("127.0.0.1", 15001, timeout=5)
+conn.request("POST", "/v1/chat", body=json.dumps({"msg": "hi"}),
+             headers={"Host": "localhost:8080", "Content-Type": "application/json"})
+resp = conn.getresponse()
+body = json.loads(resp.read())
+print(f"post_chat:{resp.status}:{body['response']}")
+conn.close()
+
+# Blocked: GET /v1/secret (path not allowed)
+conn = http.client.HTTPConnection("127.0.0.1", 15001, timeout=5)
+conn.request("GET", "/v1/secret", headers={"Host": "localhost:8080"})
+resp = conn.getresponse()
+resp.read()
+print(f"get_secret:{resp.status}")
+conn.close()
+
+server.shutdown()
+'''
+
+
+@requires_gvisor
+class TestEnvoyE2E:
+    """End-to-end: client → Envoy → real upstream, all inside gVisor."""
+
+    def test_full_request_succeeds(self) -> None:
+        """Allowed GET /v1/models returns 200 with real response body."""
+        policy = load_policy(_E2E_GOOGLE_POLICY)
+        sb = GVisorSandbox(policy, timeout=30)
+        result = sb.run(["/usr/bin/python3", "-c", _E2E_CODE])
+        assert "get_models:200:gemini-2.5-flash" in result.stdout
+
+    def test_full_post_succeeds(self) -> None:
+        """Allowed POST /v1/chat returns 200 with response body."""
+        policy = load_policy(_E2E_GOOGLE_POLICY)
+        sb = GVisorSandbox(policy, timeout=30)
+        result = sb.run(["/usr/bin/python3", "-c", _E2E_CODE])
+        assert "post_chat:200:Hello from mock Google API" in result.stdout
+
+    def test_blocked_path_returns_403(self) -> None:
+        """Disallowed GET /v1/secret returns 403 — never reaches upstream."""
+        policy = load_policy(_E2E_GOOGLE_POLICY)
+        sb = GVisorSandbox(policy, timeout=30)
+        result = sb.run(["/usr/bin/python3", "-c", _E2E_CODE])
+        assert "get_secret:403" in result.stdout
