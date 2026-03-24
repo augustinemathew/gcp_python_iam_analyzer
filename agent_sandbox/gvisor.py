@@ -1,23 +1,21 @@
 """YAML policy → gVisor container enforcement.
 
 Compiles a Policy into Docker run arguments that enforce the policy at the
-container boundary via gVisor (runsc).  Two-container architecture:
+container boundary via gVisor (runsc).  Single container with privilege
+separation:
 
-  - **Envoy container** (privileged side): runs Envoy + iptables.  Has
-    CAP_NET_ADMIN.  Sets up iptables REDIRECT so all HTTP/HTTPS traffic
-    from the shared network namespace flows through Envoy.
-  - **Agent container** (locked down): runs the user command under gVisor.
-    Has no capabilities.  Cannot kill Envoy or modify iptables — separate
-    PID namespace, no NET_ADMIN.
+  1. Entrypoint starts as root — launches Envoy, applies iptables.
+  2. Drops to uid 65534 (nobody) before running the agent command.
 
-Both containers share a network namespace via ``--network=container:``,
-so iptables rules set by the Envoy container apply to the agent's traffic.
+The agent cannot re-escalate (setuid(0) → PermissionError), cannot modify
+iptables (no CAP_NET_ADMIN after uid drop), and runs as an unprivileged user.
 
 Enforcement layers:
   - **Filesystem**: read-only container + tmpfs for writable paths.
-  - **Network L3/L4**: iptables rules in gVisor Netstack (OUTPUT DROP default).
-  - **Network L7**: Envoy Lua filter for HTTP method/path + MCP tool checks.
-  - **Isolation**: agent cannot bypass Envoy (no NET_ADMIN, no PID access).
+  - **Network L3/L4**: iptables rules in gVisor Netstack (best-effort).
+  - **Network L7**: Envoy sidecar with Lua filter for HTTP method/path
+    and MCP tool enforcement.
+  - **Privilege separation**: agent runs as uid 65534 after Envoy starts.
 
 Usage::
 
