@@ -87,7 +87,9 @@ class TestLoadPolicy:
         mcp_ep = policy.network.allow[1]
         assert mcp_ep.host == "localhost"
         assert mcp_ep.mcp is not None
-        assert mcp_ep.mcp.tools == ["read_file"]
+        assert len(mcp_ep.mcp.tools) == 1
+        assert mcp_ep.mcp.tools[0].name == "read_file"
+        assert mcp_ep.mcp.tools[0].when is None
         assert mcp_ep.mcp.resources == ["file:///workspace/**"]
 
     def test_network_deny_rules(self):

@@ -1,0 +1,47 @@
+version: "1"
+name: adk-agent-sandbox
+
+defaults:
+  file: deny
+  network: deny
+
+file:
+  read:
+    - "/tmp/**"
+    - "/home/user/gcp_python_iam_analyzer/**"
+  write:
+    - "/tmp/agent-workspace/**"
+  execute:
+    - "/usr/bin/python*"
+    - "/usr/local/bin/python*"
+
+network:
+  allow:
+    # Gemini API (ADK's default LLM backend)
+    - host: "generativelanguage.googleapis.com"
+      port: 443
+      http:
+        methods: [POST]
+
+    # Vertex AI (alternative backend)
+    - host: "*.aiplatform.googleapis.com"
+      port: 443
+      http:
+        methods: [POST]
+
+    # MCP server for file tools
+    - host: localhost
+      port: 8080
+      mcp:
+        tools:
+          - read_file
+          - name: write_file
+            when: 'args.path.startsWith("/tmp/agent-workspace/")'
+          - name: run_query
+            when: '!args.sql.contains("DROP") && !args.sql.contains("DELETE") && !args.sql.contains("TRUNCATE")'
+        resources:
+          - "file:///tmp/agent-workspace/**"
+
+  deny:
+    - host: "169.254.169.254"  # block cloud IMDS
+    - host: "metadata.google.internal"

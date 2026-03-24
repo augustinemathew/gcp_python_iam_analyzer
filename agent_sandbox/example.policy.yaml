@@ -36,7 +36,13 @@ network:
     - host: localhost
       port: 3000
       mcp:
-        tools: [read_file, write_file, search]
+        tools:
+          - read_file
+          - search
+          - name: write_file
+            when: 'args.path.startsWith("/workspace/")'
+          - name: run_sql
+            when: '!args.query.contains("DROP") && !args.query.contains("DELETE")'
         resources:
           - "file:///workspace/**"
           - "file:///tmp/**"

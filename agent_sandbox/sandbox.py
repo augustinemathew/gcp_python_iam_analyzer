@@ -211,7 +211,13 @@ def _endpoint_to_dict(ep) -> dict:
     if ep.mcp:
         m: dict = {}
         if ep.mcp.tools:
-            m["tools"] = ep.mcp.tools
+            tools_out: list = []
+            for t in ep.mcp.tools:
+                if t.when:
+                    tools_out.append({"name": t.name, "when": t.when})
+                else:
+                    tools_out.append(t.name)
+            m["tools"] = tools_out
         if ep.mcp.resources:
             m["resources"] = ep.mcp.resources
         d["mcp"] = m

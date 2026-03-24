@@ -6,18 +6,26 @@ The engine takes a Policy and answers yes/no for each operation:
   - check_file_execute(path)
   - check_network(host, port)
   - check_http(host, port, method, path)
-  - check_mcp(host, port, tool, resource)
+  - check_mcp(host, port, tool, resource, args)
 
 All check_* methods raise PolicyViolation on deny, return None on allow.
+
+MCP tool rules support CEL (Common Expression Language) guards via the
+``when`` field.  When a tool call matches a rule with a ``when`` expression,
+the expression is evaluated with ``args`` bound to the tool's arguments map.
+If the expression returns false, the call is denied.
 """
 
 from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
+from typing import Any
+
+import celpy
 
 from agent_sandbox.errors import PolicyViolation
-from agent_sandbox.policy import NetworkEndpoint, Policy
+from agent_sandbox.policy import McpToolRule, NetworkEndpoint, Policy
 
 
 class PolicyEngine:
@@ -112,12 +120,17 @@ class PolicyEngine:
         port: int | None,
         tool: str | None = None,
         resource: str | None = None,
+        args: dict[str, Any] | None = None,
     ) -> None:
-        """Check both network access and MCP-specific rules."""
+        """Check both network access and MCP-specific rules.
+
+        If the matching tool rule has a ``when`` CEL expression, *args* is
+        evaluated against it.  The expression receives ``args`` as a map.
+        """
         self.check_network(host, port)
         endpoint = self._find_allow_endpoint(host, port)
         if endpoint and endpoint.mcp:
-            _enforce_mcp(endpoint, tool, resource)
+            _enforce_mcp(endpoint, tool, resource, args)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -170,16 +183,24 @@ def _enforce_mcp(
     endpoint: NetworkEndpoint,
     tool: str | None,
     resource: str | None,
+    args: dict[str, Any] | None = None,
 ) -> None:
     rules = endpoint.mcp
     if not rules:
         return
-    if tool and rules.tools and tool not in rules.tools:
-        raise PolicyViolation(
-            "mcp.tool",
-            f"tool {tool!r} not in allowed tools {rules.tools} "
-            f"for {endpoint.host}:{endpoint.port}",
-        )
+
+    if tool and rules.tools:
+        tool_rule = _find_tool_rule(rules.tools, tool)
+        if tool_rule is None:
+            tool_names = [t.name for t in rules.tools]
+            raise PolicyViolation(
+                "mcp.tool",
+                f"tool {tool!r} not in allowed tools {tool_names} "
+                f"for {endpoint.host}:{endpoint.port}",
+            )
+        if tool_rule.when:
+            _evaluate_cel_guard(tool_rule, args or {}, endpoint)
+
     if resource and rules.resources:
         if not any(fnmatch.fnmatch(resource, r) for r in rules.resources):
             raise PolicyViolation(
@@ -187,3 +208,39 @@ def _enforce_mcp(
                 f"resource {resource!r} not in allowed resources "
                 f"{rules.resources} for {endpoint.host}:{endpoint.port}",
             )
+
+
+def _find_tool_rule(
+    tool_rules: list[McpToolRule], tool_name: str
+) -> McpToolRule | None:
+    for rule in tool_rules:
+        if rule.name == tool_name:
+            return rule
+    return None
+
+
+def _evaluate_cel_guard(
+    rule: McpToolRule,
+    args: dict[str, Any],
+    endpoint: NetworkEndpoint,
+) -> None:
+    """Evaluate a CEL ``when`` expression against tool arguments."""
+    assert rule.when is not None
+    try:
+        env = celpy.Environment()
+        ast = env.compile(rule.when)
+        prog = env.program(ast)
+        activation = {"args": celpy.json_to_cel(args)}
+        result = prog.evaluate(activation)
+    except Exception as e:
+        raise PolicyViolation(
+            "mcp.cel",
+            f"CEL evaluation failed for tool {rule.name!r}: {e}",
+        ) from e
+
+    if not result:
+        raise PolicyViolation(
+            "mcp.tool_args",
+            f"tool {rule.name!r} arguments failed CEL guard "
+            f"{rule.when!r} for {endpoint.host}:{endpoint.port}",
+        )

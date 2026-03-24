@@ -37,7 +37,13 @@ network:
     - host: localhost
       port: 3000
       mcp:
-        tools: [read_file, search]
+        tools:
+          - read_file
+          - search
+          - name: write_file
+            when: 'args.path.startsWith("/tmp/")'
+          - name: run_sql
+            when: '!args.query.contains("DROP") && !args.query.contains("DELETE")'
         resources: ["file:///workspace/**"]
     - host: "*.googleapis.com"
       port: 443
@@ -150,6 +156,64 @@ class TestMcp:
     def test_no_mcp_rules_allows(self, engine: PolicyEngine):
         # *.googleapis.com has no mcp rules.
         engine.check_mcp("storage.googleapis.com", 443, tool="anything")
+
+
+class TestMcpCel:
+    """CEL expression guards on MCP tool arguments."""
+
+    def test_cel_guard_passes(self, engine: PolicyEngine):
+        engine.check_mcp(
+            "localhost", 3000,
+            tool="write_file",
+            args={"path": "/tmp/output.txt", "content": "hello"},
+        )
+
+    def test_cel_guard_fails(self, engine: PolicyEngine):
+        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+            engine.check_mcp(
+                "localhost", 3000,
+                tool="write_file",
+                args={"path": "/etc/passwd", "content": "pwned"},
+            )
+
+    def test_cel_sql_guard_allows_select(self, engine: PolicyEngine):
+        engine.check_mcp(
+            "localhost", 3000,
+            tool="run_sql",
+            args={"query": "SELECT * FROM users WHERE id = 1"},
+        )
+
+    def test_cel_sql_guard_blocks_drop(self, engine: PolicyEngine):
+        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+            engine.check_mcp(
+                "localhost", 3000,
+                tool="run_sql",
+                args={"query": "DROP TABLE users"},
+            )
+
+    def test_cel_sql_guard_blocks_delete(self, engine: PolicyEngine):
+        with pytest.raises(PolicyViolation, match="mcp.tool_args"):
+            engine.check_mcp(
+                "localhost", 3000,
+                tool="run_sql",
+                args={"query": "DELETE FROM users WHERE 1=1"},
+            )
+
+    def test_tool_without_cel_ignores_args(self, engine: PolicyEngine):
+        # read_file has no `when` guard — args are irrelevant.
+        engine.check_mcp(
+            "localhost", 3000,
+            tool="read_file",
+            args={"path": "/etc/shadow"},  # Not checked by CEL.
+        )
+
+    def test_cel_with_no_args_provided(self, engine: PolicyEngine):
+        # write_file has a when guard, but no args passed → CEL gets empty map.
+        with pytest.raises(PolicyViolation, match="mcp.cel"):
+            engine.check_mcp(
+                "localhost", 3000,
+                tool="write_file",
+            )
 
 
 class TestDefaultAllow:
