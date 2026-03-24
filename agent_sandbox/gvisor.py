@@ -215,6 +215,28 @@ def _build_network_init_script(policy: Policy) -> str:
 # Sandbox runner
 # ---------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class _WorkspaceMounts:
+    """Resolved workspace/output paths for bind-mounting."""
+
+    workdir: str | None = None
+    workdir_mount: str = "/workspace"
+    output_dir: str | None = None
+    output_mount: str = "/output"
+
+    def docker_args(self) -> list[str]:
+        """Return docker volume/workdir flags."""
+        args: list[str] = []
+        if self.workdir:
+            args.extend([
+                "-v", f"{self.workdir}:{self.workdir_mount}:ro",
+                "-w", self.workdir_mount,
+            ])
+        if self.output_dir:
+            args.extend(["-v", f"{self.output_dir}:{self.output_mount}:rw"])
+        return args
+
+
 @dataclass
 class RunResult:
     """Result of running a command inside the gVisor sandbox."""
@@ -243,15 +265,36 @@ class GVisorSandbox:
     timeout: int = 300
     _tmpdir: str = field(default="", init=False)
 
-    def run(self, command: list[str], workdir: str | None = None) -> RunResult:
-        """Run *command* inside the sandbox, return captured output."""
+    def run(
+        self,
+        command: list[str],
+        workdir: str | None = None,
+        workdir_mount: str = "/workspace",
+        output_dir: str | None = None,
+        output_mount: str = "/output",
+    ) -> RunResult:
+        """Run *command* inside the sandbox, return captured output.
+
+        Args:
+            command: The command and arguments to execute.
+            workdir: Host directory to mount read-only inside the container.
+            workdir_mount: Container path for the workspace mount.
+            output_dir: Host directory to mount read-write for agent output.
+            output_mount: Container path for the output mount.
+        """
         self._tmpdir = tempfile.mkdtemp(prefix="gvisor-sandbox-")
+        mounts = _WorkspaceMounts(
+            workdir=workdir,
+            workdir_mount=workdir_mount,
+            output_dir=output_dir,
+            output_mount=output_mount,
+        )
         try:
-            return self._do_run(command, workdir)
+            return self._do_run(command, mounts)
         finally:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
 
-    def _do_run(self, command: list[str], workdir: str | None) -> RunResult:
+    def _do_run(self, command: list[str], mounts: _WorkspaceMounts) -> RunResult:
         has_network = (
             self.policy.defaults.network == "allow"
             or len(self.policy.network.allow) > 0
@@ -262,13 +305,13 @@ class GVisorSandbox:
         self._write_artifacts(command, use_envoy)
 
         if not has_network:
-            return self._run_single_container(command, workdir)
+            return self._run_single_container(command, mounts)
 
         if use_envoy:
-            return self._run_envoy_container(command, workdir)
+            return self._run_envoy_container(command, mounts)
 
         # Network allowed but no L7 rules — single container with iptables.
-        return self._run_single_container_with_network(command, workdir)
+        return self._run_single_container_with_network(command, mounts)
 
     def _write_artifacts(self, command: list[str], use_envoy: bool) -> None:
         """Write all config files to the tmpdir."""
@@ -299,7 +342,7 @@ class GVisorSandbox:
     # ------------------------------------------------------------------
 
     def _run_single_container(
-        self, command: list[str], workdir: str | None,
+        self, command: list[str], mounts: _WorkspaceMounts,
     ) -> RunResult:
         docker_cmd = [
             "docker", "run", "--runtime=runsc", "--rm",
@@ -307,8 +350,7 @@ class GVisorSandbox:
         ]
         docker_cmd.extend(_build_mount_args(self.policy))
         docker_cmd.extend(self._agent_mounts())
-        if workdir:
-            docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
+        docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
 
         return self._exec(docker_cmd)
@@ -318,7 +360,7 @@ class GVisorSandbox:
     # ------------------------------------------------------------------
 
     def _run_single_container_with_network(
-        self, command: list[str], workdir: str | None,
+        self, command: list[str], mounts: _WorkspaceMounts,
     ) -> RunResult:
         docker_cmd = [
             "docker", "run", "--runtime=runsc", "--rm",
@@ -327,8 +369,7 @@ class GVisorSandbox:
         docker_cmd.extend(_build_mount_args(self.policy))
         docker_cmd.extend(self._agent_mounts())
         docker_cmd.extend(self._net_init_mounts())
-        if workdir:
-            docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
+        docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
 
         return self._exec(docker_cmd)
@@ -338,7 +379,7 @@ class GVisorSandbox:
     # ------------------------------------------------------------------
 
     def _run_envoy_container(
-        self, command: list[str], workdir: str | None,
+        self, command: list[str], mounts: _WorkspaceMounts,
     ) -> RunResult:
         """Run Envoy + agent in one container, dropping privileges before agent.
 
@@ -367,8 +408,7 @@ class GVisorSandbox:
             "-v", f"{os.path.join(self._tmpdir, 'envoy-entry.py')}:/sandbox/envoy-entry.py:ro",
             "-v", f"{os.path.join(self._tmpdir, 'net-init.sh')}:/sandbox/net-init.sh:ro",
         ])
-        if workdir:
-            docker_cmd.extend(["-v", f"{workdir}:/workspace:ro", "-w", "/workspace"])
+        docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([
             self.image, "/usr/bin/python3", "/sandbox/envoy-entry.py",
         ])
