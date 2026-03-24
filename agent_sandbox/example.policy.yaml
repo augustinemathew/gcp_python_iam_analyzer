@@ -1,0 +1,46 @@
+version: "1"
+name: example-agent
+
+defaults:
+  file: deny
+  network: deny
+
+file:
+  read:
+    - "/tmp/**"
+    - "/home/user/project/src/**"
+  write:
+    - "/tmp/workspace/**"
+  execute:
+    - "/usr/bin/python3"
+    - "/usr/bin/git"
+  deny:
+    - "/etc/shadow"
+    - "/etc/passwd"
+
+network:
+  allow:
+    - host: api.anthropic.com
+      port: 443
+      http:
+        methods: [POST]
+        paths:
+          - "/v1/messages"
+          - "/v1/complete"
+
+    - host: "*.googleapis.com"
+      port: 443
+      http:
+        methods: [GET, POST]
+
+    - host: localhost
+      port: 3000
+      mcp:
+        tools: [read_file, write_file, search]
+        resources:
+          - "file:///workspace/**"
+          - "file:///tmp/**"
+
+  deny:
+    - host: "*.evil.com"
+    - host: "169.254.169.254"  # block IMDS
