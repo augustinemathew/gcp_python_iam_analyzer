@@ -6,8 +6,10 @@ container boundary via gVisor (runsc):
   - **Filesystem**: read-only bind mounts for read-only paths, tmpfs for
     writable paths, no mount at all for denied paths.
   - **Seccomp**: restricts syscalls to what the policy allows.
-  - **Network**: iptables rules inside a network namespace to restrict
-    outbound connections to allowed host:port pairs.
+  - **Network L3/L4**: iptables rules inside gVisor's Netstack.
+  - **Network L7**: Envoy sidecar for HTTP method/path filtering and MCP
+    tool enforcement. Agent traffic is redirected through Envoy via
+    iptables REDIRECT.
 
 Usage::
 
@@ -30,6 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agent_sandbox.envoy_config import compile_envoy_yaml, ENVOY_LISTENER_PORT
 from agent_sandbox.policy import Policy
 
 
@@ -118,12 +121,26 @@ def _build_mount_args(policy: Policy) -> list[str]:
     return args
 
 
+def _has_l7_rules(policy: Policy) -> bool:
+    """Return True if the policy has any HTTP or MCP rules needing Envoy."""
+    return any(
+        ep.http or ep.mcp
+        for ep in policy.network.allow
+    )
+
+
 def _build_network_init_script(policy: Policy) -> str:
     """Build an iptables script that restricts outbound to allowed hosts.
 
     This runs inside the container before the agent starts. gVisor's
     Netstack processes the iptables rules in user space.
+
+    When the policy has L7 rules (HTTP methods/paths, MCP tools), traffic
+    is redirected through the Envoy sidecar on localhost:15001 via
+    iptables REDIRECT in the nat table.
     """
+    use_envoy = _has_l7_rules(policy)
+
     lines = [
         "#!/bin/sh",
         "set -e",
@@ -137,11 +154,23 @@ def _build_network_init_script(policy: Policy) -> str:
         "",
     ]
 
+    if use_envoy:
+        # Redirect HTTP/HTTPS traffic to Envoy (except Envoy's own traffic).
+        # Envoy listens on ENVOY_LISTENER_PORT and forwards to upstreams.
+        lines.extend([
+            "# --- Envoy transparent proxy redirect ---",
+            "# Allow Envoy's own outbound traffic (from its listener port)",
+            f"iptables -t nat -A OUTPUT -p tcp --sport {ENVOY_LISTENER_PORT} -j RETURN",
+            "# Redirect HTTP (80) and HTTPS (443) to Envoy",
+            f"iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-port {ENVOY_LISTENER_PORT}",
+            f"iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to-port {ENVOY_LISTENER_PORT}",
+            "",
+        ])
+
     # Allow rules
     for ep in policy.network.allow:
         host = ep.host
         # Skip wildcard hosts — can't express *.googleapis.com in iptables.
-        # Those need DNS-level enforcement (future: Envoy sidecar).
         if "*" in host:
             lines.append(f"# SKIP (wildcard): {host}:{ep.port}")
             continue
@@ -168,6 +197,15 @@ def _build_network_init_script(policy: Policy) -> str:
         "iptables -A OUTPUT -p udp --dport 53 -j ACCEPT",
         "iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT",
     ])
+
+    if use_envoy:
+        # Envoy needs to reach upstreams
+        lines.extend([
+            "",
+            "# Allow Envoy to reach allowed upstreams",
+            "iptables -A OUTPUT -p tcp --dport 80 -j ACCEPT",
+            "iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT",
+        ])
 
     return "\n".join(lines) + "\n"
 
@@ -220,14 +258,27 @@ class GVisorSandbox:
             f.write(net_script)
         os.chmod(net_script_path, 0o755)
 
+        # Write Envoy config if L7 rules exist
+        use_envoy = _has_l7_rules(self.policy)
+        envoy_config_path = os.path.join(self._tmpdir, "envoy.yaml")
+        if use_envoy:
+            envoy_yaml = compile_envoy_yaml(self.policy)
+            with open(envoy_config_path, "w") as f:
+                f.write(envoy_yaml)
+
         # Write the command as a JSON file so the entrypoint can read it
         # without shell quoting issues.
         cmd_path = os.path.join(self._tmpdir, "cmd.json")
         with open(cmd_path, "w") as f:
             json.dump(command, f)
 
-        # Write a Python entrypoint that applies network rules then exec's.
-        # Using Python avoids all shell quoting problems.
+        # Write entrypoint config
+        entry_config = {"use_envoy": use_envoy}
+        entry_config_path = os.path.join(self._tmpdir, "config.json")
+        with open(entry_config_path, "w") as f:
+            json.dump(entry_config, f)
+
+        # Write a Python entrypoint that starts Envoy + applies iptables + exec's.
         entry_path = os.path.join(self._tmpdir, "entrypoint.py")
         with open(entry_path, "w") as f:
             f.write(_ENTRYPOINT_PY)
@@ -252,7 +303,7 @@ class GVisorSandbox:
             # No network access at all — completely isolated.
             docker_cmd.append("--network=none")
         else:
-            # Has allow rules — need iptables for per-host filtering.
+            # Has allow rules — need iptables + possibly Envoy.
             docker_cmd.append("--cap-add=NET_ADMIN")
 
         # Mount args from file policy
@@ -263,7 +314,13 @@ class GVisorSandbox:
             "-v", f"{net_script_path}:/sandbox/net-init.sh:ro",
             "-v", f"{entry_path}:/sandbox/entrypoint.py:ro",
             "-v", f"{cmd_path}:/sandbox/cmd.json:ro",
+            "-v", f"{entry_config_path}:/sandbox/config.json:ro",
         ])
+
+        if use_envoy:
+            docker_cmd.extend([
+                "-v", f"{envoy_config_path}:/sandbox/envoy.yaml:ro",
+            ])
 
         # Mount workdir if provided
         if workdir:
@@ -288,27 +345,66 @@ class GVisorSandbox:
 
     def describe(self) -> dict[str, Any]:
         """Return the compiled enforcement config (for inspection/debugging)."""
-        return {
+        desc: dict[str, Any] = {
             "seccomp": build_seccomp_profile(self.policy),
             "mounts": _build_mount_args(self.policy),
             "network_init": _build_network_init_script(self.policy),
             "image": self.image,
             "runtime": "runsc",
+            "envoy": _has_l7_rules(self.policy),
         }
+        if _has_l7_rules(self.policy):
+            desc["envoy_config"] = compile_envoy_yaml(self.policy)
+        return desc
 
 
 _ENTRYPOINT_PY = """\
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 
-# Apply network policy (iptables via gVisor Netstack)
+# Load entrypoint config
+with open("/sandbox/config.json") as f:
+    config = json.load(f)
+
+use_envoy = config.get("use_envoy", False)
+
+# 1. Start Envoy sidecar (if L7 rules exist)
+envoy_proc = None
+if use_envoy and os.path.exists("/sandbox/envoy.yaml"):
+    envoy_proc = subprocess.Popen(
+        ["/usr/bin/envoy", "-c", "/sandbox/envoy.yaml", "--log-level", "warn"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    # Wait for Envoy to be ready (listen on its port)
+    for _ in range(20):
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.5)
+            s.connect(("127.0.0.1", 15001))
+            s.close()
+            break
+        except OSError:
+            time.sleep(0.25)
+
+# 2. Apply network policy (iptables via gVisor Netstack)
 net_init = "/sandbox/net-init.sh"
 if os.path.exists(net_init):
     subprocess.run(["/bin/sh", net_init], capture_output=True)
 
-# Read the command from JSON (avoids all shell quoting issues)
+# 3. Read the command from JSON (avoids all shell quoting issues)
 with open("/sandbox/cmd.json") as f:
     cmd = json.load(f)
 
-# exec into the target command
-os.execvp(cmd[0], cmd)
+# 4. Run the target command (fork instead of exec so we can clean up Envoy)
+if envoy_proc:
+    proc = subprocess.run(cmd)
+    envoy_proc.terminate()
+    try:
+        envoy_proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        envoy_proc.kill()
+    sys.exit(proc.returncode)
+else:
+    os.execvp(cmd[0], cmd)
 """

@@ -11,12 +11,14 @@ import subprocess
 
 import pytest
 
+from agent_sandbox.envoy_config import compile_envoy_config, compile_envoy_yaml
 from agent_sandbox.gvisor import (
     GVisorSandbox,
     RunResult,
     build_seccomp_profile,
     _build_mount_args,
     _build_network_init_script,
+    _has_l7_rules,
 )
 from agent_sandbox.policy import load_policy
 
@@ -71,6 +73,27 @@ network:
   allow:
     - host: api.anthropic.com
       port: 443
+"""
+
+_L7_POLICY = """\
+version: "1"
+name: l7-test
+defaults:
+  file: deny
+  network: deny
+network:
+  allow:
+    - host: api.anthropic.com
+      port: 443
+      http:
+        methods: [POST]
+        paths: ["/v1/messages", "/v1/complete"]
+    - host: localhost
+      port: 3000
+      mcp:
+        tools:
+          - read_file
+          - search
 """
 
 
@@ -248,3 +271,147 @@ class TestGVisorSandboxRun:
         assert "seccomp" in desc
         assert desc["runtime"] == "runsc"
         assert desc["image"] == "gvisor-python:latest"
+
+
+# ---------------------------------------------------------------------------
+# Envoy config unit tests (no Docker required)
+# ---------------------------------------------------------------------------
+
+class TestEnvoyConfig:
+    def test_compile_produces_valid_yaml(self) -> None:
+        policy = load_policy(_L7_POLICY)
+        config = compile_envoy_config(policy)
+        assert "static_resources" in config
+        assert len(config["static_resources"]["clusters"]) == 2
+        assert len(config["static_resources"]["listeners"]) == 1
+
+    def test_virtual_hosts_include_deny_all(self) -> None:
+        policy = load_policy(_L7_POLICY)
+        config = compile_envoy_config(policy)
+        hcm = config["static_resources"]["listeners"][0]["filter_chains"][0]["filters"][0]
+        vhosts = hcm["typed_config"]["route_config"]["virtual_hosts"]
+        names = [vh["name"] for vh in vhosts]
+        assert "deny_all" in names
+
+    def test_path_restricted_routes(self) -> None:
+        """Paths in policy → direct_response 403 for non-matching paths."""
+        policy = load_policy(_L7_POLICY)
+        config = compile_envoy_config(policy)
+        hcm = config["static_resources"]["listeners"][0]["filter_chains"][0]["filters"][0]
+        vhosts = hcm["typed_config"]["route_config"]["virtual_hosts"]
+        # Find api.anthropic.com vhost
+        api_vh = [vh for vh in vhosts if "api.anthropic.com" in vh.get("domains", [])][0]
+        # Last route should be a 403 direct response (catch-all for disallowed paths)
+        last_route = api_vh["routes"][-1]
+        assert last_route["direct_response"]["status"] == 403
+
+    def test_lua_filter_present_for_l7(self) -> None:
+        policy = load_policy(_L7_POLICY)
+        config = compile_envoy_config(policy)
+        hcm = config["static_resources"]["listeners"][0]["filter_chains"][0]["filters"][0]
+        filters = hcm["typed_config"]["http_filters"]
+        filter_names = [f["name"] for f in filters]
+        assert "envoy.filters.http.lua" in filter_names
+
+    def test_no_lua_filter_without_l7(self) -> None:
+        policy = load_policy(_NETWORK_POLICY)
+        config = compile_envoy_config(policy)
+        hcm = config["static_resources"]["listeners"][0]["filter_chains"][0]["filters"][0]
+        filters = hcm["typed_config"]["http_filters"]
+        filter_names = [f["name"] for f in filters]
+        assert "envoy.filters.http.lua" not in filter_names
+
+    def test_has_l7_rules(self) -> None:
+        assert _has_l7_rules(load_policy(_L7_POLICY))
+        assert not _has_l7_rules(load_policy(_DENY_ALL_POLICY))
+        assert not _has_l7_rules(load_policy(_NETWORK_POLICY))
+
+    def test_describe_includes_envoy(self) -> None:
+        policy = load_policy(_L7_POLICY)
+        sb = GVisorSandbox(policy)
+        desc = sb.describe()
+        assert desc["envoy"] is True
+        assert "envoy_config" in desc
+
+
+# ---------------------------------------------------------------------------
+# Envoy L7 integration tests (require Docker + runsc + Envoy in image)
+# ---------------------------------------------------------------------------
+
+# Helper: run a Python script inside gVisor that talks to the Envoy sidecar
+_ENVOY_WAIT = """\
+import socket, time, sys
+for i in range(30):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.3)
+        s.connect(("127.0.0.1", 15001))
+        s.close()
+        break
+    except OSError:
+        time.sleep(0.5)
+else:
+    print("envoy_not_ready")
+    sys.exit(1)
+"""
+
+
+def _l7_test_code(method: str, path: str, host: str) -> str:
+    """Generate Python code that makes an HTTP request via Envoy."""
+    return _ENVOY_WAIT + f"""
+import http.client
+try:
+    conn = http.client.HTTPConnection("127.0.0.1", 15001, timeout=5)
+    conn.request("{method}", "{path}", headers={{"Host": "{host}"}})
+    resp = conn.getresponse()
+    body = resp.read().decode()
+    print(f"status:{{resp.status}}")
+    print(f"body:{{body[:200]}}")
+    conn.close()
+except Exception as e:
+    print(f"error:{{e}}")
+"""
+
+
+@requires_gvisor
+class TestEnvoyL7Enforcement:
+    """Test Envoy L7 enforcement inside gVisor containers."""
+
+    def _run_l7(self, method: str, path: str, host: str) -> RunResult:
+        policy = load_policy(_L7_POLICY)
+        sb = GVisorSandbox(policy, timeout=30)
+        code = _l7_test_code(method, path, host)
+        return sb.run(["/usr/bin/python3", "-c", code])
+
+    def test_allowed_path_forwarded(self) -> None:
+        result = self._run_l7("POST", "/v1/messages", "api.anthropic.com")
+        # 503 = forwarded to cluster but no real backend (STATIC 0.0.0.0)
+        assert "status:503" in result.stdout or "status:200" in result.stdout
+
+    def test_blocked_path_returns_403(self) -> None:
+        result = self._run_l7("POST", "/v2/secret", "api.anthropic.com")
+        assert "status:403" in result.stdout
+        assert "path not allowed" in result.stdout
+
+    def test_blocked_method_rejected(self) -> None:
+        result = self._run_l7("GET", "/v1/messages", "api.anthropic.com")
+        # Envoy Lua filter blocks disallowed methods — either returns 403
+        # or drops the connection (both are valid enforcement).
+        blocked = (
+            "status:403" in result.stdout
+            or "closed connection" in result.stdout
+            or "error:" in result.stdout
+        )
+        assert blocked, f"Expected blocked request, got: {result.stdout}"
+        assert "status:200" not in result.stdout
+
+    def test_unknown_host_returns_403(self) -> None:
+        result = self._run_l7("GET", "/", "evil.example.com")
+        assert "status:403" in result.stdout
+        assert "host not allowed" in result.stdout
+
+    def test_allowed_host_no_path_restriction(self) -> None:
+        """localhost:3000 has MCP rules but no HTTP path restrictions."""
+        result = self._run_l7("POST", "/any/path", "localhost:3000")
+        # Should be forwarded (503 from no real backend)
+        assert "status:503" in result.stdout or "status:200" in result.stdout
