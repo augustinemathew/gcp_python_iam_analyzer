@@ -104,8 +104,11 @@ class OverwatchEngine:
         manifest = scanner.scan()
 
         # Seed taint labels on files containing secrets.
+        # Scanner returns relative paths — convert to absolute for matching.
+        import os
         for path in manifest.sensitive_files:
-            self._taint.taint_file(path, TaintLabel.CREDENTIAL)
+            abs_path = os.path.join(workspace_path, path)
+            self._taint.taint_file(abs_path, TaintLabel.CREDENTIAL)
 
         # Seed LSH with extracted secret values.
         for value in manifest.sensitive_values:
