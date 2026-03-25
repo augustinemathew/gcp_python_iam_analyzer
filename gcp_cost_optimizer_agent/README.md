@@ -1,142 +1,135 @@
 # GCP Cost Optimizer Agent
 
-An AG2-based agent deployed to Vertex AI Agent Engine that analyzes GCP project resources and billing data to surface cost optimization opportunities using natural language.
-
-## What it does
-
-The agent connects to three GCP APIs and answers questions like "What resources do I have?", "How much am I spending?", and "Which services cost the most?"
-
-| Tool | GCP API | What it does |
-|---|---|---|
-| `list_resources` | Cloud Asset Inventory | Lists all resources in a project, grouped by type with counts |
-| `list_running_vms` | Compute Engine | Lists running VM instances with zone, machine type, and IPs |
-| `get_billing_summary` | BigQuery (billing export) | Queries billing data — cost by service, top SKUs, total spend |
+Discovers GCP resources and billing data to surface cost optimization
+opportunities using natural language.
 
 ## Prerequisites
 
 - **Python 3.12+**
-- **GCP project** with billing enabled
-- **BigQuery billing export** configured ([setup guide](https://cloud.google.com/billing/docs/how-to/export-data-bigquery))
-- **gcloud CLI** authenticated (`gcloud auth application-default login`)
-- **APIs enabled** on your project:
-  ```bash
-  gcloud services enable \
-    cloudasset.googleapis.com \
-    compute.googleapis.com \
-    bigquery.googleapis.com \
-    aiplatform.googleapis.com
-  ```
+- **gcloud CLI** — [install](https://cloud.google.com/sdk/docs/install)
 
-## Install
+## 1. Set up environment
 
 ```bash
+cd gcp_cost_optimizer_agent
+
+# Create and activate a virtual environment
 python -m venv .venv
 source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Authenticate
+gcloud auth login
+gcloud auth application-default login
+
+# Enable required APIs on your project
+gcloud services enable \
+  cloudasset.googleapis.com \
+  compute.googleapis.com \
+  container.googleapis.com \
+  run.googleapis.com \
+  bigquery.googleapis.com \
+  aiplatform.googleapis.com
 ```
 
-## Run locally
+## 2. Run locally
 
-Run the agent locally without deploying to Agent Engine. Uses your local ADC credentials.
+Run the agent locally using your ADC credentials — no deployment needed.
 
 ```bash
 # Interactive REPL
 python run_local.py
 
 # Single query
-python run_local.py "What resources do I have in my-project?"
+python run_local.py "What resources do I have in agentengine-478902?"
 ```
 
-## Deploy to Agent Engine
+## 3. Deploy to Agent Engine
 
-Deploys the agent to Vertex AI Agent Engine with a per-agent identity (AGENT_IDENTITY). After deployment, automatically grants the agent the IAM roles it needs.
+Deploys the agent to Vertex AI Agent Engine with a per-agent identity
+(AGENT_IDENTITY). After deployment, automatically grants the agent the
+IAM roles it needs.
+
+Before deploying, update the constants in `deploy.py` to match your
+environment:
+
+```python
+PROJECT = "agentengine-478902"
+PROJECT_NUMBER = "16744841236"
+LOCATION = "us-central1"
+STAGING_BUCKET = "gs://augtestbucket"
+```
+
+Then deploy:
 
 ```bash
 python deploy.py
 ```
 
-This takes ~2 minutes. It prints a resource name like:
+This takes ~2 minutes. It will:
+1. Build the AG2Agent with all tools
+2. Upload the agent code to GCS (`STAGING_BUCKET/cost_optimizer_agent/`)
+3. Create a Reasoning Engine instance with AGENT_IDENTITY
+4. Grant the agent identity the required IAM roles
+
+The output prints a resource name like:
 ```
 projects/16744841236/locations/us-central1/reasoningEngines/XXXXXXXXX
 ```
 
-Before deploying, update the `PROJECT`, `PROJECT_NUMBER`, and `STAGING_BUCKET` constants in `deploy.py` to match your environment.
-
-## Query a deployed agent
+## 4. Query the deployed agent
 
 ```bash
 # Interactive REPL
-python query.py <resource_name>
+python query.py
 
 # Single query
-python query.py <resource_name> "What resources do I have?"
+python query.py "What resources do I have?"
 ```
 
-Update `DEFAULT_RESOURCE` in `query.py` after deploying so you can omit the resource name argument.
+Update `DEFAULT_RESOURCE` in `query.py` with the resource name from
+deployment.
 
-## Architecture
+## Tools
 
-```
-                    +-------------------+
-                    |   Gemini 2.5 Flash |
-                    +--------+----------+
-                             |
-                    +--------v----------+
-                    |  AG2Agent (AG2)    |
-                    |  system_instruction|
-                    +--------+----------+
-                             |
-            +----------------+----------------+
-            |                |                |
-   +--------v-----+  +------v-------+  +-----v-----------+
-   | list_resources|  |list_running_ |  |get_billing_     |
-   | (Asset API)   |  |vms (Compute) |  |summary (BigQuery)|
-   +--------------+  +--------------+  +-----------------+
-```
-
-- **Framework:** AG2 (AutoGen 2) via `vertexai.agent_engines.templates.ag2.AG2Agent`
-- **Model:** `gemini-2.5-flash`
-- **Identity:** AGENT_IDENTITY (per-agent service identity, not shared SA)
-
-## IAM permissions required
-
-The agent's identity needs these roles on the target GCP project:
-
-| Role | Permission | Used by |
+| Tool | GCP API | What it does |
 |---|---|---|
-| `roles/cloudasset.viewer` | `cloudasset.assets.listResource` | `list_resources` |
-| `roles/compute.viewer` | `compute.instances.list` | `list_running_vms` |
-| `roles/bigquery.jobUser` | `bigquery.jobs.create` | `get_billing_summary` |
-| `roles/bigquery.dataViewer` | `bigquery.tables.getData` | `get_billing_summary` (on billing export dataset) |
+| `list_resources` | Cloud Asset Inventory | Lists all resources grouped by type |
+| `list_running_vms` | Compute Engine | Running VMs with machine types and IPs |
+| `list_gke_clusters` | GKE | Clusters with node counts and machine types |
+| `list_cloud_run_services` | Cloud Run | Services in a region |
+| `list_agent_engines` | Vertex AI | Deployed Reasoning Engine instances |
+| `query_billing` | BigQuery | Cost by service and SKU from billing export |
 
-When running locally, these permissions must be on your ADC identity instead.
+`query_billing` auto-discovers the billing export table if one exists.
+If billing export is not configured, the agent works with inventory data
+only.
 
-`deploy.py` grants these roles automatically after deployment.
+## IAM roles
 
-## Project layout
+The agent identity needs these roles on the target project:
 
-```
-gcp_cost_optimizer_agent/
-├── agent/
-│   ├── tools/
-│   │   ├── assets.py         # list_resources — Cloud Asset Inventory
-│   │   ├── billing.py        # get_billing_summary — BigQuery billing export
-│   │   └── compute.py        # list_running_vms — Compute Engine instances
-│   ├── build.py              # assemble the AG2Agent
-│   └── prompts.py            # SYSTEM_INSTRUCTION
-├── deploy.py                 # deploy to Agent Engine + grant IAM
-├── query.py                  # query a deployed agent (REPL or single query)
-├── run_local.py              # run locally without deploying
-├── iam-manifest.yaml         # IAM permissions manifest (generated by iamspy)
-└── requirements.txt
-```
+| Role | Used by |
+|---|---|
+| `roles/cloudasset.viewer` | `list_resources` |
+| `roles/compute.viewer` | `list_running_vms` |
+| `roles/container.viewer` | `list_gke_clusters` |
+| `roles/run.viewer` | `list_cloud_run_services` |
+| `roles/aiplatform.viewer` | `list_agent_engines` |
+| `roles/bigquery.jobUser` | `query_billing` |
+| `roles/bigquery.dataViewer` | `query_billing` |
+
+`deploy.py` grants these automatically after deployment. When running
+locally, your ADC identity needs these permissions instead.
 
 ## Example queries
 
 ```
-What resources do I have in project my-project?
-List all my running VMs.
-How much am I spending on Compute Engine?
-What are my top 5 most expensive services in the last 30 days?
-Show me billing for project my-project using table my-billing.dataset.gcp_billing_export_v1_XXXX
+What resources do I have in project agentengine-478902?
+List all running VMs.
+Show me my GKE clusters.
+What Cloud Run services are deployed?
+How many Reasoning Engines are running?
 ```

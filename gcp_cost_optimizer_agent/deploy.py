@@ -28,15 +28,30 @@ STAGING_BUCKET = "gs://augtestbucket"
 REQUIREMENTS = [
     "google-cloud-aiplatform[agent_engines,ag2]>=1.93",
     "google-cloud-asset>=3.0",
+    "google-cloud-bigquery>=3.0",
     "google-cloud-compute>=1.0",
+    "google-cloud-container>=2.0",
+    "google-cloud-run>=0.10.0",
+    "google-auth>=2.0",
+    "cryptography>=42.0",  # needed by AGENT_IDENTITY for certificate parsing
 ]
 
 # IAM roles needed — derived from iamspy scan of agent/tools/
-# cloudasset.assets.listResource  → roles/cloudasset.viewer
-# compute.instances.list          → roles/compute.viewer
+# cloudasset.assets.listResource       → roles/cloudasset.viewer
+# compute.instances.list               → roles/compute.viewer
+# container.clusters.list              → roles/container.viewer
+# run.services.list                    → roles/run.viewer
+# aiplatform reasoningEngines list     → roles/aiplatform.viewer
+# bigquery.jobs.create + tables.getData → roles/bigquery.jobUser + dataViewer
 AGENT_IAM_ROLES = [
-    "roles/cloudasset.viewer",
-    "roles/compute.viewer",
+    "roles/aiplatform.user",       # call Gemini models
+    "roles/cloudasset.viewer",     # list_resources
+    "roles/compute.viewer",       # list_running_vms
+    "roles/container.viewer",     # list_gke_clusters
+    "roles/run.viewer",           # list_cloud_run_services
+    "roles/aiplatform.viewer",    # list_agent_engines
+    "roles/bigquery.jobUser",     # query_billing
+    "roles/bigquery.dataViewer",  # query_billing
 ]
 
 
@@ -68,7 +83,7 @@ def main() -> None:
         },
     )
 
-    resource_name = remote.name
+    resource_name = remote.api_resource.name
     agent_id = resource_name.split("/")[-1]
 
     print(f"\nDeployed: {resource_name}")
@@ -86,7 +101,7 @@ def _grant_agent_iam(agent_id: str) -> None:
     agents.global.project-PROJECT_NUMBER.system.id.goog
     """
     principal = (
-        f"principal://agents.global.project-{PROJECT_NUMBER}.system.id.goog"
+        f"principal://agents.global.proj-{PROJECT_NUMBER}.system.id.goog"
         f"/resources/aiplatform/projects/{PROJECT_NUMBER}"
         f"/locations/{LOCATION}/reasoningEngines/{agent_id}"
     )
