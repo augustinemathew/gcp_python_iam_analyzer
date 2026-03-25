@@ -2,11 +2,13 @@
 
 Analyzes Python codebases and generates least-privilege GCP IAM Allow Policies.
 
+Requires **Python 3.12+**.
+
 ## Getting Started
 
 ```bash
 # Clone and cd into the repo
-git clone <repo-url> && cd gcp_ae
+git clone git@github.com:augustinemathew/gcp_python_iam_analyzer.git && cd gcp_python_iam_analyzer
 
 # Install the project and agent dependencies
 pip install -e .
@@ -23,11 +25,19 @@ Open http://localhost:8000 and select **iam_agent** from the app dropdown.
 
 ## Usage
 
-Zip up a Python project and give it to the agent:
+A sample project zip is included at `iam_agent/testdata/sample_project.zip`.
+In the web UI, try:
 
 ```
-Analyze this codebase: /tmp/my-app.zip
+Analyze this codebase: iam_agent/testdata/sample_project.zip
 The service account is my-sa@my-project.iam.gserviceaccount.com, project is my-project.
+```
+
+To analyze your own code, zip it up and provide the path:
+
+```bash
+cd /path/to/my-python-project
+zip -r /tmp/my-app.zip . -x '*.git*' '__pycache__/*'
 ```
 
 The agent will:
