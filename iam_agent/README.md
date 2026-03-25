@@ -1,112 +1,63 @@
 # IAM Policy Agent
 
-Analyzes Python codebases and generates least-privilege GCP IAM policies.
-Built with [Google ADK](https://google.github.io/adk-docs/) and
-[iamspy](../README.md).
+Analyzes Python codebases and generates least-privilege GCP IAM Allow Policies.
 
-## Prerequisites
-
-- Python 3.12+
-- A Gemini API key — get one at https://aistudio.google.com/apikey
-
-## Setup
+## Getting Started
 
 ```bash
-# From the repo root (gcp_ae/)
+# Clone and cd into the repo
+git clone <repo-url> && cd gcp_ae
 
-# 1. Install the parent project (provides the iamspy CLI)
+# Install the project and agent dependencies
 pip install -e .
-
-# 2. Install agent dependencies
 pip install -r iam_agent/requirements.txt
 
-# 3. Set your Gemini API key
+# Set your Gemini API key (https://aistudio.google.com/apikey)
 export GEMINI_API_KEY="your-key-here"
-```
 
-Verify the CLI is available:
-
-```bash
-iamspy scan --help
-adk --version
-```
-
-## Run
-
-The web UI is the recommended way to run the agent. You must run `adk web`
-from the **repo root**, not from inside `iam_agent/`:
-
-```bash
-# From the repo root (gcp_ae/)
+# Launch the web UI (must run from repo root)
 adk web .
 ```
 
-Then open http://localhost:8000 in your browser. Select **iam_agent** from
-the app dropdown in the top-left corner.
+Open http://localhost:8000 and select **iam_agent** from the app dropdown.
 
-### Preparing a test project
+## Usage
 
-The agent expects a **zip file** containing Python source code. To create one
-from an existing project:
-
-```bash
-cd /path/to/my-python-project
-zip -r /tmp/my-app.zip . -x '*.git*' '__pycache__/*' 'node_modules/*'
-```
-
-### Chatting with the agent
-
-In the web UI, send a message like:
+Zip up a Python project and give it to the agent:
 
 ```
 Analyze this codebase: /tmp/my-app.zip
+The service account is my-sa@my-project.iam.gserviceaccount.com, project is my-project.
 ```
 
 The agent will:
 
-1. Call `create_workspace` to extract the zip into a temp directory
-2. Run shell commands (`ls`, `grep`) to explore the project structure
-3. Run `iamspy scan --json .` to detect GCP SDK calls and map them to IAM
-   permissions
-4. Ask you which service account or principal will run the code
-5. Generate an IAM policy in three formats:
-   - IAM Policy JSON (for `gcloud projects set-iam-policy`)
-   - Terraform HCL
-   - Human-readable summary table
-
-The agent also supports `gs://` URIs if `gsutil` is configured on your
-machine.
-
-### CLI mode
-
-`adk run` works for quick tests but has limitations with piped stdin — the
-tool execution loop may not complete. Prefer the web UI for real usage:
-
-```bash
-adk run iam_agent
-```
-
-## API key notes
-
-ADK requires the env var `GOOGLE_API_KEY`. The agent's `__init__.py`
-automatically maps `GEMINI_API_KEY` → `GOOGLE_API_KEY` so you can use
-either name. If both are set, `GOOGLE_API_KEY` takes precedence.
+1. Extract the zip and run `iamspy scan --json .` to detect GCP SDK calls
+2. Discover the deployment context from the code (or ask you)
+3. Output an **IAM Allow Policy JSON** and a **permission reference table**
+   linking each permission to the source file and line number
 
 ## Architecture
 
 ```
-User (web UI)
+User (ADK Web UI)
   │
   ▼
 ADK Agent (gemini-2.5-flash)
   │
   ├── create_workspace(source, name)
-  │     Extract zip (local or gs://) to /tmp/iam_agent/<id>/
+  │     Extracts a zip archive (local path or gs:// URI)
+  │     into /tmp/iam_agent/<workspace-id>/
   │
   └── shell(workspace, command)
-        Run commands in workspace dir (ls, grep, iamspy scan, etc.)
+        Runs shell commands inside the workspace directory
+        Used for: iamspy scan, grep, ls, sed
         60s timeout per command, output truncated to 8000 chars
 ```
 
-Two tools. The agent drives the analysis loop by calling shell commands
-iteratively until it has enough context to generate the policy.
+The agent has two tools. `create_workspace` sets up an isolated directory
+from the user's zip file. `shell` lets the agent run commands inside that
+directory — primarily `iamspy scan --json .`, which uses tree-sitter to
+parse Python source and resolve GCP SDK calls to IAM permissions from a
+curated database. The agent then maps those permissions to IAM roles and
+produces the policy.
