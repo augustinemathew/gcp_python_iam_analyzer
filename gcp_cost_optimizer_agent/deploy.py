@@ -16,10 +16,10 @@ from vertexai import types
 
 from gcp_cost_optimizer_agent.agent import root_agent
 
-PROJECT = "agentengine-478902"
-PROJECT_NUMBER = "16744841236"
+PROJECT = "your-project-id"
+PROJECT_NUMBER = "your-project-number"
 LOCATION = "us-central1"
-STAGING_BUCKET = "gs://augtestbucket"
+STAGING_BUCKET = "gs://your-staging-bucket"
 
 REQUIREMENTS = [
     "google-adk>=1.0.0",

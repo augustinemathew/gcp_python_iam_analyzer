@@ -47,10 +47,10 @@ the app dropdown.
 Update the constants in `deploy.py` to match your project:
 
 ```python
-PROJECT = "agentengine-478902"
-PROJECT_NUMBER = "16744841236"
+PROJECT = "your-project-id"
+PROJECT_NUMBER = "your-project-number"  # gcloud projects describe PROJECT --format='value(projectNumber)'
 LOCATION = "us-central1"
-STAGING_BUCKET = "gs://augtestbucket"
+STAGING_BUCKET = "gs://your-staging-bucket"
 ```
 
 Then deploy:
@@ -91,7 +91,7 @@ The agent identity needs these roles on the target project:
 ## Example queries
 
 ```
-What resources do I have in project agentengine-478902?
+What resources do I have in project my-project?
 List all running VMs.
 Show me my GKE clusters.
 What Cloud Run services are deployed?

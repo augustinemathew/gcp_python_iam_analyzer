@@ -25,9 +25,9 @@ gcp_cost_optimizer_agent/
 
 ## Environment
 
-- **Project:** `agentengine-478902` (project number: 16744841236)
+- **Project:** set in `deploy.py` (update before deploying)
 - **Location:** `us-central1`
-- **Staging bucket:** `gs://augtestbucket`
+- **Staging bucket:** set in `deploy.py`
 - **Model:** `gemini-2.5-flash`
 - **Framework:** ADK (`google.adk.agents.Agent`)
 - **Identity:** AGENT_IDENTITY (per-agent identity via Workload Identity Federation)
