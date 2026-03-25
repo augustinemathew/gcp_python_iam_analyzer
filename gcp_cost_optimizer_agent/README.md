@@ -44,13 +44,14 @@ the app dropdown.
 
 ## 3. Deploy to Agent Engine
 
-Update the constants in `deploy.py` to match your project:
+Copy the example env file and fill in your project details:
 
-```python
-PROJECT = "your-project-id"
-PROJECT_NUMBER = "your-project-number"  # gcloud projects describe PROJECT --format='value(projectNumber)'
-LOCATION = "us-central1"
-STAGING_BUCKET = "gs://your-staging-bucket"
+```bash
+cp .env.example .env
+# Edit .env with your values:
+#   PROJECT=my-project
+#   PROJECT_NUMBER=123456789  (gcloud projects describe PROJECT --format='value(projectNumber)')
+#   STAGING_BUCKET=gs://my-bucket
 ```
 
 Then deploy:

@@ -9,17 +9,23 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import subprocess
+from pathlib import Path
 
 import vertexai
+from dotenv import load_dotenv
 from vertexai import types
 
 from gcp_cost_optimizer_agent.agent import root_agent
 
-PROJECT = "your-project-id"
-PROJECT_NUMBER = "your-project-number"
-LOCATION = "us-central1"
-STAGING_BUCKET = "gs://your-staging-bucket"
+# Load .env from the same directory as this script.
+load_dotenv(Path(__file__).parent / ".env")
+
+PROJECT = os.environ["PROJECT"]
+PROJECT_NUMBER = os.environ["PROJECT_NUMBER"]
+LOCATION = os.environ.get("LOCATION", "us-central1")
+STAGING_BUCKET = os.environ["STAGING_BUCKET"]
 
 REQUIREMENTS = [
     "google-adk>=1.0.0",

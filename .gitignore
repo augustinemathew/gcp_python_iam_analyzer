@@ -43,6 +43,10 @@ data/validation_report.json
 # Build artifacts
 build/
 
+# Environment files (secrets, project config)
+.env
+*.env
+
 # ADK session databases
 .adk/
 
