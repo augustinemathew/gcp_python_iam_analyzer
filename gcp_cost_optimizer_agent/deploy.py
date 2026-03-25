@@ -63,7 +63,7 @@ def main() -> None:
             "display_name": "GCP Cost Optimizer",
             "description": "Analyzes GCP resources and surfaces cost optimization recommendations.",
             "requirements": REQUIREMENTS,
-            "extra_packages": ["agent"],
+            "extra_packages": ["gcp_cost_optimizer_agent"],
             "gcs_dir_name": "cost_optimizer_agent",
             "staging_bucket": STAGING_BUCKET,
             "identity_type": types.IdentityType.AGENT_IDENTITY,
