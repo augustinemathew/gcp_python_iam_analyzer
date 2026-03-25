@@ -41,6 +41,9 @@ from typing import Any
 from agent_sandbox.envoy_config import compile_envoy_yaml, ENVOY_LISTENER_PORT
 from agent_sandbox.policy import Policy
 
+# Lazy import to avoid hard dep when overwatch isn't used.
+_OverwatchEngine = None
+
 
 # ---------------------------------------------------------------------------
 # Seccomp profile generation
@@ -258,12 +261,23 @@ class GVisorSandbox:
       - Runs as unprivileged user (no CAP_NET_ADMIN to change iptables)
       - Cannot kill Envoy (different uid, no CAP_KILL)
       - gVisor's Sentry enforces UID-based process isolation
+
+    When ``overwatch=True``, an Overwatch server is started before the
+    container and connected via a seccheck trace session.  Every
+    security-sensitive syscall is intercepted by the Sentry, sent to the
+    Overwatch engine on the host, and evaluated against the adaptive
+    baseline before the syscall proceeds.
     """
 
     policy: Policy
     image: str = "gvisor-python:latest"
     timeout: int = 300
+    overwatch: bool = False
+    overwatch_model: str = "claude-sonnet-4-6"
+    overwatch_threshold: float = 0.45
+    app_description: str = ""
     _tmpdir: str = field(default="", init=False)
+    _overwatch_engine: object = field(default=None, init=False, repr=False)
 
     def run(
         self,
@@ -290,8 +304,13 @@ class GVisorSandbox:
             output_mount=output_mount,
         )
         try:
+            if self.overwatch:
+                self._start_overwatch()
             return self._do_run(command, mounts)
         finally:
+            if self._overwatch_engine is not None:
+                self._overwatch_engine.stop()
+                self._overwatch_engine = None
             shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def _do_run(self, command: list[str], mounts: _WorkspaceMounts) -> RunResult:
@@ -312,6 +331,71 @@ class GVisorSandbox:
 
         # Network allowed but no L7 rules — single container with iptables.
         return self._run_single_container_with_network(command, mounts)
+
+    def _start_overwatch(self) -> None:
+        """Start the Overwatch engine and Unix socket server."""
+        from agent_sandbox.overwatch import OverwatchEngine
+
+        sock_path = os.path.join(self._tmpdir, "overwatch.sock")
+        self._overwatch_engine = OverwatchEngine(
+            l2_model=self.overwatch_model,
+            l1_threshold=self.overwatch_threshold,
+            app_description=self.app_description,
+            socket_path=sock_path,
+        )
+        self._overwatch_engine.start()
+
+    def _write_overwatch_session(self) -> str:
+        """Write seccheck session config for Overwatch and return path."""
+        session = {
+            "name": "overwatch",
+            "points": [
+                {"name": "syscall/openat/enter", "optional_fields": ["fd_path"],
+                 "context_fields": ["container_id", "credentials", "cwd", "process_name"]},
+                {"name": "syscall/connect/enter",
+                 "context_fields": ["container_id", "credentials", "process_name"]},
+                {"name": "syscall/execve/enter", "optional_fields": ["fd_path"],
+                 "context_fields": ["container_id", "credentials", "cwd"]},
+                {"name": "syscall/socket/enter", "context_fields": ["container_id"]},
+                {"name": "syscall/bind/enter", "context_fields": ["container_id"]},
+                {"name": "sentry/clone", "context_fields": ["container_id", "credentials"]},
+                {"name": "sentry/execve", "context_fields": ["container_id", "credentials", "cwd"]},
+                {"name": "sentry/task_exit", "context_fields": ["container_id"]},
+            ],
+            "sinks": [{
+                "name": "overwatch",
+                "config": {
+                    "endpoint": "/sandbox/overwatch.sock",
+                    "timeout": "5s",
+                    "default_on_timeout": "allow",
+                },
+            }],
+        }
+        path = os.path.join(self._tmpdir, "overwatch-session.json")
+        with open(path, "w") as f:
+            json.dump({"trace_session": session}, f)
+        return path
+
+    def _overwatch_mounts(self) -> list[str]:
+        """Volume mounts for the Overwatch socket and session config."""
+        args: list[str] = []
+        if self._overwatch_engine is not None:
+            sock_path = os.path.join(self._tmpdir, "overwatch.sock")
+            session_path = self._write_overwatch_session()
+            args.extend([
+                "-v", f"{sock_path}:/sandbox/overwatch.sock",
+                "-v", f"{session_path}:/sandbox/overwatch-session.json:ro",
+            ])
+        return args
+
+    def _overwatch_annotations(self) -> list[str]:
+        """Docker annotations to enable the seccheck trace session."""
+        if self._overwatch_engine is not None:
+            return [
+                "--annotation",
+                "dev.gvisor.internal.pod-init-config=/sandbox/overwatch-session.json",
+            ]
+        return []
 
     def _write_artifacts(self, command: list[str], use_envoy: bool) -> None:
         """Write all config files to the tmpdir."""
@@ -350,6 +434,8 @@ class GVisorSandbox:
         ]
         docker_cmd.extend(_build_mount_args(self.policy))
         docker_cmd.extend(self._agent_mounts())
+        docker_cmd.extend(self._overwatch_mounts())
+        docker_cmd.extend(self._overwatch_annotations())
         docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
 
@@ -369,6 +455,8 @@ class GVisorSandbox:
         docker_cmd.extend(_build_mount_args(self.policy))
         docker_cmd.extend(self._agent_mounts())
         docker_cmd.extend(self._net_init_mounts())
+        docker_cmd.extend(self._overwatch_mounts())
+        docker_cmd.extend(self._overwatch_annotations())
         docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([self.image, "/usr/bin/python3", "/sandbox/agent-entry.py"])
 
@@ -408,6 +496,8 @@ class GVisorSandbox:
             "-v", f"{os.path.join(self._tmpdir, 'envoy-entry.py')}:/sandbox/envoy-entry.py:ro",
             "-v", f"{os.path.join(self._tmpdir, 'net-init.sh')}:/sandbox/net-init.sh:ro",
         ])
+        docker_cmd.extend(self._overwatch_mounts())
+        docker_cmd.extend(self._overwatch_annotations())
         docker_cmd.extend(mounts.docker_args())
         docker_cmd.extend([
             self.image, "/usr/bin/python3", "/sandbox/envoy-entry.py",

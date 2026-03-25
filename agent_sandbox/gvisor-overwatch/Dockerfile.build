@@ -1,0 +1,27 @@
+# Build gVisor with Overwatch sink on Linux.
+# Usage: docker build -f Dockerfile.build -t gvisor-overwatch-build .
+#        docker cp $(docker create gvisor-overwatch-build):/build/bazel-bin/runsc/runsc_/runsc ./runsc
+FROM --platform=linux/arm64 ubuntu:22.04 AS builder
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    clang \
+    crossbuild-essential-amd64 \
+    curl \
+    git \
+    libbpf-dev \
+    llvm \
+    python3 \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bazelisk (arm64 native).
+RUN curl -fsSL -o /usr/local/bin/bazel \
+    https://github.com/bazelbuild/bazelisk/releases/download/v1.28.1/bazelisk-linux-arm64 \
+    && chmod +x /usr/local/bin/bazel
+
+WORKDIR /build
+COPY . .
+
+# Build runsc binary (arm64).
+RUN bazel build //runsc:runsc --config=aarch64

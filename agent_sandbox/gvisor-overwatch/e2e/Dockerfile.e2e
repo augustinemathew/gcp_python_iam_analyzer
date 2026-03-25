@@ -1,0 +1,16 @@
+# E2E test environment: Docker-in-Docker with runsc-overwatch runtime.
+FROM --platform=linux/arm64 docker:dind
+
+# Install Python for the Overwatch server.
+RUN apk add --no-cache python3
+
+# Install runsc-overwatch as a container runtime.
+COPY runsc-overwatch /usr/local/bin/runsc
+RUN chmod +x /usr/local/bin/runsc
+
+# Copy E2E test files (self-contained, no agent_sandbox dependency).
+COPY e2e/e2e_test.py /opt/overwatch/e2e_test.py
+COPY e2e/overwatch_server.py /opt/overwatch/overwatch_server.py
+COPY e2e/session.json /opt/overwatch/session.json
+
+WORKDIR /opt/overwatch

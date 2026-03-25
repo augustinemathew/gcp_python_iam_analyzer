@@ -84,6 +84,10 @@ agent-sandbox -p POLICY [options] -- COMMAND [ARGS...]
 | `--image IMAGE` | | Container image (default: gvisor-python:latest) |
 | `--describe` | | Print compiled config and exit |
 | `--dry-run` | | Print docker command and exit |
+| `--overwatch` | | Enable adaptive anomaly detection |
+| `--overwatch-model MODEL` | | Claude model for L2 (default: claude-sonnet-4-6) |
+| `--overwatch-threshold N` | | L1 escalation threshold (default: 0.45) |
+| `--app-description TEXT` | | Agent purpose description (L2 context) |
 
 ## Python API
 
@@ -184,6 +188,69 @@ network:
     - host: "169.254.169.254"
 ```
 
+## Overwatch (adaptive anomaly detection)
+
+Add `--overwatch` to any command to enable behavioral monitoring. Overwatch
+intercepts every syscall via gVisor's seccheck system and evaluates it against
+a learned baseline.
+
+```bash
+# Basic — Overwatch learns what's normal, flags deviations
+agent-sandbox -p my-policy.yaml --overwatch -- python3 agent.py
+
+# With app context for smarter L2 analysis
+agent-sandbox -p my-policy.yaml --overwatch \
+  --app-description "Code review agent that reads PRs and posts comments" \
+  -w ./repo -o ./results \
+  -- python3 /workspace/reviewer.py
+
+# Lower threshold = more sensitive (flags more events for L2 review)
+agent-sandbox -p my-policy.yaml --overwatch \
+  --overwatch-threshold 0.3 \
+  -- ./my-agent
+
+# Any binary works — Overwatch operates at the syscall level
+agent-sandbox -p my-policy.yaml --overwatch \
+  -- /usr/bin/node agent.js
+```
+
+### What happens when Overwatch flags something
+
+1. **L1** scores the operation against the baseline (< 0.1ms).
+2. If the score exceeds the threshold, **L2** (Claude) analyzes with full context.
+3. L2 decides:
+   - **ALLOW** — update baseline, continue.
+   - **BLOCK** — reject the syscall, log to memory.
+   - **DEFER** — pause the container, prompt the user.
+4. If DEFER, you'll see a prompt like:
+
+```
+============================================================
+OVERWATCH: Operation requires human review
+============================================================
+Operation: FILE_READ
+Path: /etc/shadow
+L1 Score: 0.72
+  novelty: 0.90 - 2/2 features unseen
+  pattern_match: 1.00 - matches blocked pattern
+L2 Analysis: Novel file access to sensitive system file...
+Container is PAUSED. Respond with:
+  allow <explanation>  - permit and remember
+  block <explanation>  - deny and remember
+============================================================
+```
+
+Your decision is remembered across sessions. If you say "system files like
+this are never safe," Overwatch will auto-block similar access in future
+sessions without asking again.
+
+### Overwatch requirements
+
+- **gVisor fork**: Build `runsc-overwatch` from `agent_sandbox/gvisor-overwatch/`. See
+  [overwatch/README.md](../overwatch/README.md) for build instructions.
+- **L2 (optional)**: Set `ANTHROPIC_API_KEY` for Claude-powered analysis.
+  Without it, L1 still flags anomalies but defers all escalations to the user.
+
 ## Tips
 
 - **Start with `deny`/`deny`.** Add only what the agent needs.
@@ -200,3 +267,4 @@ network:
 - [Isolation model](isolation-model.md) — privilege separation, known limits, future options
 - [Design](design.md) — three-layer design, GCP deployment, threat matrix
 - [Decisions](decisions.md) — why we chose gVisor, Envoy, single container, etc.
+- [Overwatch](../overwatch/README.md) — adaptive anomaly detection design, E2E demo, seccheck events

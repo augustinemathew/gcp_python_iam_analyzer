@@ -92,6 +92,35 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Docker image to use (default: gvisor-python:latest).",
     )
 
+    # --- Overwatch ----------------------------------------------------------
+    parser.add_argument(
+        "--overwatch",
+        action="store_true",
+        help=(
+            "Enable Overwatch adaptive anomaly detection. "
+            "Intercepts every security-sensitive syscall via gVisor seccheck, "
+            "evaluates against a learned behavioral baseline (L1), and "
+            "escalates anomalies to an LLM agent (L2) that can ALLOW, BLOCK, "
+            "or DEFER to the user (pausing the container)."
+        ),
+    )
+    parser.add_argument(
+        "--overwatch-model",
+        default="claude-sonnet-4-6",
+        help="Claude model for L2 analysis (default: claude-sonnet-4-6).",
+    )
+    parser.add_argument(
+        "--overwatch-threshold",
+        type=float,
+        default=0.45,
+        help="L1 deviation score threshold for L2 escalation (default: 0.45).",
+    )
+    parser.add_argument(
+        "--app-description",
+        default="",
+        help="Description of the agent's purpose (used by L2 for context).",
+    )
+
     # --- Introspection ------------------------------------------------------
     parser.add_argument(
         "--describe",
@@ -143,6 +172,10 @@ def main(argv: list[str] | None = None) -> int:
         policy=policy,
         image=args.image,
         timeout=args.timeout,
+        overwatch=args.overwatch,
+        overwatch_model=args.overwatch_model,
+        overwatch_threshold=args.overwatch_threshold,
+        app_description=args.app_description,
     )
 
     # --- Describe mode ------------------------------------------------------

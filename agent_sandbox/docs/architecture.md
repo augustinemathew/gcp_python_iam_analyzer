@@ -172,6 +172,41 @@ The agent sees a read-only root filesystem with writable tmpfs overlays
 at the paths specified in `file.write`. The workspace and output directories
 are bind-mounted from the host.
 
+## Overwatch: adaptive anomaly detection
+
+When `--overwatch` is enabled, a fourth layer activates: the Overwatch
+behavioral anomaly detector. Unlike the other three layers which enforce
+static policy rules, Overwatch learns what "normal" looks like and flags
+deviations.
+
+```
+                         policy.yaml
+                             │
+            ┌────────────────┼────────────────┐
+            ▼                ▼                ▼
+     ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
+     │  Filesystem  │  │   Network    │  │  Application │
+     │  (gVisor)    │  │  (Envoy)     │  │  (hooks)     │
+     └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+            │                 │                  │
+            └────────────┬────┘──────────────────┘
+                         │
+                   gVisor Sentry
+                    seccheck
+                         │
+                  ┌──────▼──────┐
+                  │  Overwatch   │   ← NEW: adaptive layer
+                  │  L1 baseline │
+                  │  L2 LLM      │
+                  │  user memory │
+                  └─────────────┘
+```
+
+Overwatch intercepts syscalls via gVisor's seccheck system. A custom
+`OverwatchSink` (Go) in the Sentry sends each event over a Unix socket
+to the host-side Python engine. See [overwatch/README.md](../overwatch/README.md)
+for the full design.
+
 ## Module map
 
 ```
@@ -185,6 +220,16 @@ agent_sandbox/
 ├── hooks.py             Python sys.addaudithook() integration
 ├── errors.py            PolicyViolation, PolicyLoadError
 ├── example.policy.yaml  Full-featured example policy
+├── overwatch/           Adaptive behavioral anomaly detection
+│   ├── __init__.py      OverwatchEngine orchestrator
+│   ├── _baseline.py     L1 EMA baseline
+│   ├── _scorer.py       6 deviation signals → composite score
+│   ├── _analyzer.py     L2 LLM agent (Claude)
+│   ├── _memory.py       Cross-session persistence
+│   ├── _freezer.py      Container pause/resume
+│   ├── _server.py       Unix socket server (seccheck bridge)
+│   ├── _features.py     Feature extraction
+│   └── _types.py        Frozen dataclasses
 ├── examples/
 │   ├── adk_agent.py     ADK agent example
 │   └── adk_policy.yaml  ADK-specific policy
@@ -204,3 +249,4 @@ agent_sandbox/
 - **Isolation model + future directions** → [isolation-model.md](isolation-model.md)
 - **Why we made specific choices** → [decisions.md](decisions.md)
 - **Quick start + CLI** → [user-guide.md](user-guide.md)
+- **Overwatch adaptive detection** → [overwatch/README.md](../overwatch/README.md)

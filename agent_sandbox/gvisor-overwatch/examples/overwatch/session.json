@@ -1,0 +1,49 @@
+{
+  "name": "overwatch",
+  "points": [
+    {
+      "name": "syscall/openat/enter",
+      "optional_fields": ["fd_path"],
+      "context_fields": ["container_id", "credentials", "cwd", "process_name"]
+    },
+    {
+      "name": "syscall/connect/enter",
+      "context_fields": ["container_id", "credentials", "process_name"]
+    },
+    {
+      "name": "syscall/execve/enter",
+      "optional_fields": ["fd_path"],
+      "context_fields": ["container_id", "credentials", "cwd"]
+    },
+    {
+      "name": "syscall/socket/enter",
+      "context_fields": ["container_id"]
+    },
+    {
+      "name": "syscall/bind/enter",
+      "context_fields": ["container_id"]
+    },
+    {
+      "name": "sentry/clone",
+      "context_fields": ["container_id", "credentials"]
+    },
+    {
+      "name": "sentry/execve",
+      "context_fields": ["container_id", "credentials", "cwd"]
+    },
+    {
+      "name": "sentry/task_exit",
+      "context_fields": ["container_id"]
+    }
+  ],
+  "sinks": [
+    {
+      "name": "overwatch",
+      "config": {
+        "endpoint": "/run/overwatch/policy.sock",
+        "timeout": "5s",
+        "default_on_timeout": "allow"
+      }
+    }
+  ]
+}

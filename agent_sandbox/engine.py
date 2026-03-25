@@ -28,6 +28,33 @@ from agent_sandbox.errors import PolicyViolation
 from agent_sandbox.policy import McpToolRule, NetworkEndpoint, Policy
 
 
+def _resolve_pattern(pattern: str) -> str:
+    """Resolve the static prefix of a glob pattern through symlinks.
+
+    On macOS, /tmp → /private/tmp and /home → /System/Volumes/Data/home.
+    We resolve the non-glob prefix so patterns match resolved paths.
+    """
+    # Find where the first glob character appears.
+    first_glob = len(pattern)
+    for ch in ("*", "?", "["):
+        idx = pattern.find(ch)
+        if idx != -1 and idx < first_glob:
+            first_glob = idx
+
+    # Split into static prefix and glob suffix.
+    prefix = pattern[:first_glob]
+    suffix = pattern[first_glob:]
+
+    # Resolve the static prefix (handles symlinks like /tmp → /private/tmp).
+    resolved_prefix = str(Path(prefix).resolve()) if prefix else ""
+    return resolved_prefix + suffix
+
+
+def _path_matches(resolved_path: str, pattern: str) -> bool:
+    """Match a resolved path against a pattern, resolving the pattern's prefix."""
+    return fnmatch.fnmatch(resolved_path, _resolve_pattern(pattern))
+
+
 class PolicyEngine:
     """Evaluates operations against a loaded policy."""
 
@@ -57,7 +84,7 @@ class PolicyEngine:
     def _check_file(self, resolved: str, operation: str) -> None:
         # Explicit deny always wins.
         for pattern in self._policy.file.deny:
-            if fnmatch.fnmatch(resolved, pattern):
+            if _path_matches(resolved, pattern):
                 raise PolicyViolation(
                     f"file.{operation}",
                     f"{resolved} matches deny pattern {pattern!r}",
@@ -66,7 +93,7 @@ class PolicyEngine:
         # Check the allow list for this operation.
         allow_patterns = getattr(self._policy.file, operation)
         for pattern in allow_patterns:
-            if fnmatch.fnmatch(resolved, pattern):
+            if _path_matches(resolved, pattern):
                 return  # Explicitly allowed.
 
         # Fall back to the default stance.
