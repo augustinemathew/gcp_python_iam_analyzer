@@ -44,20 +44,33 @@ the app dropdown.
 
 ## 3. Deploy to Agent Engine
 
-Copy the example env file and fill in your project details:
+Create a `.env` file with your project details (`.env` is gitignored —
+your values stay local):
 
 ```bash
+cd gcp_cost_optimizer_agent
 cp .env.example .env
-# Edit .env with your values:
-#   PROJECT=my-project
-#   PROJECT_NUMBER=123456789  (gcloud projects describe PROJECT --format='value(projectNumber)')
-#   STAGING_BUCKET=gs://my-bucket
 ```
 
-Then deploy:
+Edit `.env`:
+
+```
+PROJECT=my-project
+PROJECT_NUMBER=123456789
+LOCATION=us-central1
+STAGING_BUCKET=gs://my-staging-bucket
+```
+
+To get your project number:
 
 ```bash
-python deploy.py
+gcloud projects describe my-project --format='value(projectNumber)'
+```
+
+Then deploy from the **repo root**:
+
+```bash
+python -m gcp_cost_optimizer_agent.deploy
 ```
 
 This deploys the agent with AGENT_IDENTITY and grants the required IAM
