@@ -8,20 +8,24 @@ opportunities using natural language. Built with
 
 - **Python 3.12+**
 - **gcloud CLI** — [install](https://cloud.google.com/sdk/docs/install)
+- **Gemini API key** — get one at https://aistudio.google.com/apikey
 
 ## 1. Set up environment
 
+All commands run from the **repo root**.
+
 ```bash
-cd gcp_cost_optimizer_agent
-
 # Install dependencies
-pip install -r requirements.txt
+pip install -r gcp_cost_optimizer_agent/requirements.txt
 
-# Authenticate
+# Set your Gemini API key
+export GEMINI_API_KEY="your-key-here"
+
+# Authenticate with GCP
 gcloud auth login
 gcloud auth application-default login
 
-# Enable required APIs on your project
+# Enable required APIs
 gcloud services enable \
   cloudasset.googleapis.com \
   compute.googleapis.com \
@@ -33,8 +37,6 @@ gcloud services enable \
 
 ## 2. Run locally
 
-From the **repo root** (not inside `gcp_cost_optimizer_agent/`):
-
 ```bash
 adk web .
 ```
@@ -44,15 +46,15 @@ the app dropdown.
 
 ## 3. Deploy to Agent Engine
 
-Create a `.env` file with your project details (`.env` is gitignored —
-your values stay local):
+Create a `.env` file with your project details. The `.env` file lives
+inside `gcp_cost_optimizer_agent/` and is gitignored so your values
+stay local:
 
 ```bash
-cd gcp_cost_optimizer_agent
-cp .env.example .env
+cp gcp_cost_optimizer_agent/.env.example gcp_cost_optimizer_agent/.env
 ```
 
-Edit `.env`:
+Edit `gcp_cost_optimizer_agent/.env`:
 
 ```
 PROJECT=my-project
@@ -61,13 +63,13 @@ LOCATION=us-central1
 STAGING_BUCKET=gs://my-staging-bucket
 ```
 
-To get your project number:
+Look up your project number:
 
 ```bash
 gcloud projects describe my-project --format='value(projectNumber)'
 ```
 
-Then deploy from the **repo root**:
+Deploy (from repo root):
 
 ```bash
 python -m gcp_cost_optimizer_agent.deploy
@@ -105,7 +107,7 @@ The agent identity needs these roles on the target project:
 ## Example queries
 
 ```
-What resources do I have in project my-project?
+What resources do I have?
 List all running VMs.
 Show me my GKE clusters.
 What Cloud Run services are deployed?
