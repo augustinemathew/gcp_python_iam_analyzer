@@ -16,13 +16,13 @@ Engine) deployments and generate policies with the correct principal format
 All commands run from the **repo root**.
 
 ```bash
-# Install the project and agent dependencies
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install the project (provides the iamspy CLI) and agent dependencies
 pip install -e .
 pip install -r iam_agent/requirements.txt
-
-# Authenticate with GCP (needed for Agent Engine and GCS access)
-gcloud auth login
-gcloud auth application-default login
 
 # Set your Gemini API key
 export GEMINI_API_KEY="your-key-here"
