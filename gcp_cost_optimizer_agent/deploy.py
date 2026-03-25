@@ -1,14 +1,10 @@
 """Deploy the GCP Cost Optimizer to Vertex AI Agent Engine.
 
-Uses AGENT_IDENTITY so the agent gets a per-agent identity (not a shared service account).
-After deployment, grants the agent identity exactly the IAM roles it needs per iamspy analysis:
-  - roles/cloudasset.viewer    (list_assets → cloudasset.assets.listResource)
-  - roles/compute.viewer       (aggregated_list → compute.instances.list)
+Uses AGENT_IDENTITY so the agent gets a per-agent identity (not a shared SA).
+After deployment, grants the agent identity the IAM roles it needs.
 
 Usage:
     python deploy.py
-
-Prints the resource name of the deployed agent, which you pass to query.py.
 """
 
 from __future__ import annotations
@@ -18,7 +14,7 @@ import subprocess
 import vertexai
 from vertexai import types
 
-from agent.build import build_agent
+from gcp_cost_optimizer_agent.agent import root_agent
 
 PROJECT = "agentengine-478902"
 PROJECT_NUMBER = "16744841236"
@@ -26,23 +22,18 @@ LOCATION = "us-central1"
 STAGING_BUCKET = "gs://augtestbucket"
 
 REQUIREMENTS = [
-    "google-cloud-aiplatform[agent_engines,ag2]>=1.93",
+    "google-adk>=1.0.0",
+    "google-cloud-aiplatform[agent_engines,adk]>=1.93",
     "google-cloud-asset>=3.0",
     "google-cloud-bigquery>=3.0",
     "google-cloud-compute>=1.0",
     "google-cloud-container>=2.0",
     "google-cloud-run>=0.10.0",
     "google-auth>=2.0",
-    "cryptography>=42.0",  # needed by AGENT_IDENTITY for certificate parsing
+    "cryptography>=42.0",
 ]
 
 # IAM roles needed — derived from iamspy scan of agent/tools/
-# cloudasset.assets.listResource       → roles/cloudasset.viewer
-# compute.instances.list               → roles/compute.viewer
-# container.clusters.list              → roles/container.viewer
-# run.services.list                    → roles/run.viewer
-# aiplatform reasoningEngines list     → roles/aiplatform.viewer
-# bigquery.jobs.create + tables.getData → roles/bigquery.jobUser + dataViewer
 AGENT_IAM_ROLES = [
     "roles/aiplatform.user",       # call Gemini models
     "roles/cloudasset.viewer",     # list_resources
@@ -56,22 +47,18 @@ AGENT_IAM_ROLES = [
 
 
 def main() -> None:
-    # vertexai.init() needed by AG2Agent constructor to read project/location
     vertexai.init(project=PROJECT, location=LOCATION)
 
-    # vertexai.Client with v1beta1 is needed for AGENT_IDENTITY support
+    # v1beta1 needed for AGENT_IDENTITY support
     client = vertexai.Client(
         project=PROJECT,
         location=LOCATION,
         http_options={"api_version": "v1beta1"},
     )
 
-    print("Building agent...")
-    agent = build_agent()
-
-    print("Deploying to Agent Engine with AGENT_IDENTITY (this takes ~2 min)...")
+    print("Deploying ADK agent to Agent Engine with AGENT_IDENTITY (~2 min)...")
     remote = client.agent_engines.create(
-        agent=agent,
+        agent=root_agent,
         config={
             "display_name": "GCP Cost Optimizer",
             "description": "Analyzes GCP resources and surfaces cost optimization recommendations.",
@@ -91,15 +78,11 @@ def main() -> None:
     _grant_agent_iam(agent_id)
 
     print(f"\nDone. Update DEFAULT_RESOURCE in query.py:")
-    print(f'  {resource_name}')
+    print(f"  {resource_name}")
 
 
 def _grant_agent_iam(agent_id: str) -> None:
-    """Grant the agent's AGENT_IDENTITY the IAM roles it needs.
-
-    For orgless projects, trust domain is:
-    agents.global.project-PROJECT_NUMBER.system.id.goog
-    """
+    """Grant the agent's AGENT_IDENTITY the IAM roles it needs."""
     principal = (
         f"principal://agents.global.proj-{PROJECT_NUMBER}.system.id.goog"
         f"/resources/aiplatform/projects/{PROJECT_NUMBER}"

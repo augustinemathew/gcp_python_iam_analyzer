@@ -1,7 +1,39 @@
-"""System instruction for the GCP Cost Optimizer agent."""
+"""GCP Cost Optimizer — ADK agent definition."""
 
-SYSTEM_INSTRUCTION = """You are a GCP cost optimization expert with access to real-time data.
+from __future__ import annotations
 
+import google.auth
+from google.adk.agents import Agent
+
+from .tools.agent_engines import list_agent_engines
+from .tools.assets import list_resources
+from .tools.billing import query_billing
+from .tools.compute import list_running_vms
+from .tools.containers import list_cloud_run_services, list_gke_clusters
+
+
+def _detect_project() -> str | None:
+    """Read the default GCP project from Application Default Credentials."""
+    try:
+        _, project = google.auth.default()
+        return project
+    except Exception:
+        return None
+
+
+def _build_instruction() -> str:
+    project = _detect_project()
+    project_line = (
+        f"Your default GCP project is **{project}**. Use this as the project_id "
+        "for tool calls unless the user specifies a different project.\n\n"
+        if project
+        else ""
+    )
+
+    return f"""\
+You are a GCP cost optimization expert with access to real-time data.
+
+{project_line}\
 Your job:
 - Discover all resources in a GCP project
 - Identify candidates for cost reduction: resources to downsize, idle resources \
@@ -42,9 +74,21 @@ Medium (storage, Cloud Run, Docker images), Low (service accounts, tags, roles)
 
 Rules:
 - Always call tools to get real data before answering. Never guess.
-- Call one tool at a time.
 - If a tool returns no data, say so clearly.
 - Be specific — name the actual resources, not just categories.
-- When you have fully answered the user's question, end your final message with \
-the exact token TERMINATE on its own line.
 """
+
+
+root_agent = Agent(
+    model="gemini-2.5-flash",
+    name="gcp_cost_optimizer",
+    instruction=_build_instruction(),
+    tools=[
+        list_resources,
+        list_running_vms,
+        list_gke_clusters,
+        list_cloud_run_services,
+        list_agent_engines,
+        query_billing,
+    ],
+)

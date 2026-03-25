@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from unittest import mock
 
-from agent.tools.agent_engines import _format_engine
-from agent.tools.assets import list_resources
-from agent.tools.billing import _discover_billing_table, query_billing
-from agent.tools.compute import _format_instance, list_running_vms
-from agent.tools.containers import _format_cluster, _format_run_service
+from gcp_cost_optimizer_agent.tools.agent_engines import _format_engine
+from gcp_cost_optimizer_agent.tools.assets import list_resources
+from gcp_cost_optimizer_agent.tools.billing import _discover_billing_table, query_billing
+from gcp_cost_optimizer_agent.tools.compute import _format_instance, list_running_vms
+from gcp_cost_optimizer_agent.tools.containers import _format_cluster, _format_run_service
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ class TestListResources:
             mock.Mock(asset_type="compute.googleapis.com/Instance", name="vm-2"),
             mock.Mock(asset_type="storage.googleapis.com/Bucket", name="bucket-1"),
         ]
-        with mock.patch("agent.tools.assets.asset_v1.AssetServiceClient") as mock_client:
+        with mock.patch("gcp_cost_optimizer_agent.tools.assets.asset_v1.AssetServiceClient") as mock_client:
             mock_client.return_value.list_assets.return_value = fake_assets
             result = list_resources("test-project")
 
@@ -37,7 +37,7 @@ class TestListResources:
         assert result["summary"][0]["asset_type"] == "compute.googleapis.com/Instance"
 
     def test_empty_project(self) -> None:
-        with mock.patch("agent.tools.assets.asset_v1.AssetServiceClient") as mock_client:
+        with mock.patch("gcp_cost_optimizer_agent.tools.assets.asset_v1.AssetServiceClient") as mock_client:
             mock_client.return_value.list_assets.return_value = []
             result = list_resources("empty-project")
 
@@ -85,7 +85,7 @@ class TestListRunningVms:
         scoped = mock.Mock()
         scoped.instances = [vm]
 
-        with mock.patch("agent.tools.compute.compute_v1.InstancesClient") as mock_client:
+        with mock.patch("gcp_cost_optimizer_agent.tools.compute.compute_v1.InstancesClient") as mock_client:
             mock_client.return_value.aggregated_list.return_value = [
                 ("zones/us-central1-a", scoped),
             ]
@@ -98,7 +98,7 @@ class TestListRunningVms:
         scoped = mock.Mock()
         scoped.instances = []
 
-        with mock.patch("agent.tools.compute.compute_v1.InstancesClient") as mock_client:
+        with mock.patch("gcp_cost_optimizer_agent.tools.compute.compute_v1.InstancesClient") as mock_client:
             mock_client.return_value.aggregated_list.return_value = [
                 ("zones/us-central1-a", scoped),
             ]
@@ -203,7 +203,7 @@ class TestDiscoverBillingTable:
 
 class TestQueryBilling:
     def test_no_billing_table_no_discovery(self) -> None:
-        with mock.patch("agent.tools.billing.bigquery.Client") as mock_bq:
+        with mock.patch("gcp_cost_optimizer_agent.tools.billing.bigquery.Client") as mock_bq:
             mock_bq.return_value.list_tables.return_value = []
             result = query_billing("test-project")
 
@@ -220,7 +220,7 @@ class TestQueryBilling:
         mock_query_job = mock.Mock()
         mock_query_job.result.return_value = [row]
 
-        with mock.patch("agent.tools.billing.bigquery.Client") as mock_bq:
+        with mock.patch("gcp_cost_optimizer_agent.tools.billing.bigquery.Client") as mock_bq:
             mock_bq.return_value.query.return_value = mock_query_job
             result = query_billing("test-project", "p.ds.table", days=7)
 
@@ -232,7 +232,7 @@ class TestQueryBilling:
         mock_query_job = mock.Mock()
         mock_query_job.result.return_value = []
 
-        with mock.patch("agent.tools.billing.bigquery.Client") as mock_bq:
+        with mock.patch("gcp_cost_optimizer_agent.tools.billing.bigquery.Client") as mock_bq:
             mock_bq.return_value.query.return_value = mock_query_job
             result = query_billing("test-project", "p.ds.table")
 
