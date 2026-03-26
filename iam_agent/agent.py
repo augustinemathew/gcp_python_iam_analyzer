@@ -5,7 +5,14 @@ from __future__ import annotations
 import google.auth
 from google.adk.agents import Agent
 
-from .tools import create_workspace, download_gcs, list_agent_engines, list_gcs, shell
+from .tools import (
+    create_workspace,
+    download_gcs,
+    list_agent_engines,
+    list_gcs,
+    scan_workspace,
+    shell,
+)
 
 
 def _detect_project() -> str | None:
@@ -33,6 +40,22 @@ codebases and produce IAM Allow Policy JSON documents with least-privilege \
 permissions.
 
 {project_line}\
+## Thinking out loud
+
+Before each action, explain your reasoning to the user:
+- **What** you are about to do and **why** (e.g. "I'll list the agent engines \
+to find the Cost Optimizer's source code and identity type.")
+- After a tool returns, **summarize what you learned** before moving on \
+(e.g. "Found 3 engines. The Cost Optimizer uses AGENT_IDENTITY and its \
+source code is at gs://bucket/deps.tar.gz. I'll download that next.")
+- When mapping permissions to roles, **explain your reasoning** for each role \
+choice (e.g. "The scan found storage.buckets.get and storage.objects.create. \
+roles/storage.objectCreator covers object creation but not bucket reads, so \
+I also need roles/storage.viewer for buckets.get.")
+- Flag any **ambiguity or assumptions** (e.g. "The scan shows a conditional \
+permission for CMEK — I'm excluding it from the policy since the user didn't \
+mention encryption keys, but listing it in the reference table.")
+
 ## Workflow
 
 ### Step 1: Get the code
@@ -53,10 +76,11 @@ The user may provide code in several ways:
 
 ### Step 2: Scan for permissions
 
-Run `iamspy scan --json .` in the workspace. This is the authoritative source \
-of truth for what permissions the code needs — always use it, never skip it. \
-Review the JSON output carefully: each finding has `permissions` (always \
-required) and `conditional` (situational) fields.
+Call `scan_workspace(workspace_id)` to scan the code for GCP SDK calls and \
+resolve IAM permissions. This uses the iamspy library directly — it is the \
+authoritative source of truth for what permissions the code needs. Always use \
+it, never skip it. Review the output carefully: each finding has `permissions` \
+(always required) and `conditional` (situational) fields.
 
 ### Step 3: Discover environment
 
@@ -148,7 +172,7 @@ A table linking every permission back to the source code. Build this from the \
 
 ## Rules
 
-- **Always run `iamspy scan --json .`** — never infer permissions from reading \
+- **Always call `scan_workspace`** — never infer permissions from reading \
 source code yourself. The scanner has a curated permission database.
 - **Least privilege**: only grant permissions the scan found. Never add extras \
 "just in case".
@@ -158,14 +182,14 @@ recommend a custom role with the exact permission list.
 - **Conditional permissions**: if the scan returns `conditional` permissions, \
 include them in the reference table with a note explaining when they apply \
 (e.g., CMEK, cross-project access). Do not include them in the policy bindings.
-- **Be surgical in large repos**: use `grep -r "from google.cloud" \
---include="*.py" -l` first, then scan only the relevant directory.
+- **Be surgical in large repos**: use `shell` with `grep -r "from google.cloud" \
+--include="*.py" -l` first to check scope, then `scan_workspace` to scan.
 """
 
 
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model="gemini-3.1-pro-preview",
     name="iam_policy_agent",
     instruction=_build_instruction(),
-    tools=[list_agent_engines, create_workspace, list_gcs, download_gcs, shell],
+    tools=[list_agent_engines, create_workspace, scan_workspace, list_gcs, download_gcs, shell],
 )

@@ -1,4 +1,4 @@
-"""Workspace, shell, GCS, and Agent Engine tools for the IAM Policy Agent."""
+"""Workspace, scanner, GCS, and Agent Engine tools for the IAM Policy Agent."""
 
 from __future__ import annotations
 
@@ -10,10 +10,18 @@ import tempfile
 import urllib.request
 import uuid
 import zipfile
+from pathlib import Path
 
 import google.auth
 import google.auth.transport.requests
 from google.cloud import storage as gcs
+
+from iamspy.cli import _finding_to_dict
+from iamspy.loader import load_method_db
+from iamspy.registry import ServiceRegistry
+from iamspy.resolver import StaticPermissionResolver
+from iamspy.resources import method_db_path, permissions_path, registry_path
+from iamspy.scanner import GCPCallScanner
 
 _workspaces: dict[str, str] = {}
 
@@ -240,6 +248,73 @@ def _resolve_source(source: str, workspace_dir: str) -> str:
     if result.startswith("ERROR:"):
         return result
     return local_path
+
+
+# ---------------------------------------------------------------------------
+# IAM permission scanner
+# ---------------------------------------------------------------------------
+
+_EXCLUDED_DIRS = {".venv", "venv", "node_modules", "__pycache__", ".tox", ".git"}
+
+_scanner: GCPCallScanner | None = None
+
+
+def _get_scanner() -> GCPCallScanner:
+    """Lazy-init the scanner (loads JSON data files once)."""
+    global _scanner
+    if _scanner is None:
+        registry = ServiceRegistry.from_json(registry_path())
+        resolver = StaticPermissionResolver(permissions_path())
+        db = load_method_db(method_db_path())
+        _scanner = GCPCallScanner(db, resolver, registry=registry)
+    return _scanner
+
+
+def _collect_python_files(directory: str) -> list[Path]:
+    """Recursively collect .py files, skipping excluded directories."""
+    files: list[Path] = []
+    for root, dirs, filenames in os.walk(directory):
+        dirs[:] = [d for d in dirs if d not in _EXCLUDED_DIRS]
+        for name in filenames:
+            if name.endswith(".py"):
+                files.append(Path(root) / name)
+    return files
+
+
+def scan_workspace(workspace: str) -> list[dict]:
+    """Scan a workspace for GCP SDK calls and resolve IAM permissions.
+
+    Uses the iamspy library directly — no subprocess needed.
+
+    Args:
+        workspace: Workspace ID returned by ``create_workspace()``.
+
+    Returns:
+        A list of findings, each with file, line, method, permissions,
+        conditional permissions, service, class, status, and notes.
+    """
+    workspace_dir = _workspaces.get(workspace)
+    if workspace_dir is None:
+        return [{"error": f"Unknown workspace: {workspace}"}]
+
+    scanner = _get_scanner()
+    py_files = _collect_python_files(workspace_dir)
+
+    if not py_files:
+        return [{"error": "No Python files found in workspace"}]
+
+    findings = []
+    for py_file in py_files:
+        source = py_file.read_text(encoding="utf-8", errors="replace")
+        result = scanner.scan_source(source, str(py_file))
+        for f in result.findings:
+            if f.status == "no_api_call":
+                continue
+            d = _finding_to_dict(f)
+            d["file"] = os.path.relpath(d["file"], workspace_dir)
+            findings.append(d)
+
+    return findings
 
 
 # ---------------------------------------------------------------------------
