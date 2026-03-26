@@ -74,13 +74,22 @@ The user may provide code in several ways:
 - A gs:// prefix to explore → call `list_gcs` first, then \
 `create_workspace` with the archive.
 
-### Step 2: Scan for permissions
+### Step 2: Run the IAM Python static analyzer
 
-Call `scan_workspace(workspace_id)` to scan the code for GCP SDK calls and \
-resolve IAM permissions. This uses the iamspy library directly — it is the \
-authoritative source of truth for what permissions the code needs. Always use \
-it, never skip it. Review the output carefully: each finding has `permissions` \
-(always required) and `conditional` (situational) fields.
+Call `scan_workspace(workspace_id)` to run the IAM Python static analyzer on \
+the source code. The analyzer uses tree-sitter to parse the full AST of every \
+Python file, detects google.cloud SDK imports, resolves method calls against a \
+curated database of 8,000+ permission mappings across 129 GCP services, and \
+returns structured findings with exact IAM permissions for each call.
+
+The response includes a `stats` section — **always present these statistics \
+to the user** before the policy. For example: "Analyzed 12 Python files, \
+found 3 files with GCP imports, resolved 7 SDK method calls across 4 GCP \
+services, identified 9 unique permissions."
+
+It is the authoritative source of truth for what permissions the code needs. \
+Always use it, never skip it. Each finding has `permissions` (always required) \
+and `conditional` (situational) fields.
 
 ### Step 3: Discover environment
 
@@ -163,7 +172,7 @@ For an **AGENT_IDENTITY** principal:
 #### Section 2: Permission Reference
 
 A table linking every permission back to the source code. Build this from the \
-`iamspy scan` output. Include every permission (both required and conditional):
+`scan_workspace` output. Include every permission (both required and conditional):
 
 | Permission | File | Line | SDK Call | Notes |
 |---|---|---|---|---|

@@ -281,40 +281,66 @@ def _collect_python_files(directory: str) -> list[Path]:
     return files
 
 
-def scan_workspace(workspace: str) -> list[dict]:
-    """Scan a workspace for GCP SDK calls and resolve IAM permissions.
+def scan_workspace(workspace: str) -> dict:
+    """Run the IAM Python static analyzer on a workspace.
 
-    Uses the iamspy library directly — no subprocess needed.
+    Statically parses every Python file using tree-sitter, detects GCP SDK
+    imports and method calls, and resolves each call to its required IAM
+    permissions using a curated database of 8,000+ permission mappings
+    across 129 GCP services.
 
     Args:
         workspace: Workspace ID returned by ``create_workspace()``.
 
     Returns:
-        A list of findings, each with file, line, method, permissions,
-        conditional permissions, service, class, status, and notes.
+        A dict with:
+          - "stats": analysis statistics (files scanned, methods resolved, etc.)
+          - "findings": list of findings with file, line, method, permissions,
+            conditional permissions, service, class, status, and notes.
     """
     workspace_dir = _workspaces.get(workspace)
     if workspace_dir is None:
-        return [{"error": f"Unknown workspace: {workspace}"}]
+        return {"error": f"Unknown workspace: {workspace}"}
 
     scanner = _get_scanner()
     py_files = _collect_python_files(workspace_dir)
 
     if not py_files:
-        return [{"error": "No Python files found in workspace"}]
+        return {"error": "No Python files found in workspace"}
 
     findings = []
+    files_with_gcp_imports = 0
+    total_methods_resolved = 0
+    all_permissions: set[str] = set()
+    all_services: set[str] = set()
+
     for py_file in py_files:
         source = py_file.read_text(encoding="utf-8", errors="replace")
         result = scanner.scan_source(source, str(py_file))
+        if result.findings:
+            files_with_gcp_imports += 1
         for f in result.findings:
             if f.status == "no_api_call":
                 continue
+            total_methods_resolved += 1
+            all_permissions.update(f.permissions)
+            all_permissions.update(f.conditional_permissions)
+            for m in f.matched:
+                all_services.add(m.display_name)
             d = _finding_to_dict(f)
             d["file"] = os.path.relpath(d["file"], workspace_dir)
             findings.append(d)
 
-    return findings
+    return {
+        "stats": {
+            "files_scanned": len(py_files),
+            "files_with_gcp_imports": files_with_gcp_imports,
+            "sdk_methods_resolved": total_methods_resolved,
+            "unique_permissions_found": len(all_permissions),
+            "gcp_services_detected": sorted(all_services),
+        },
+        "findings": findings,
+    }
 
 
 # ---------------------------------------------------------------------------
