@@ -343,6 +343,53 @@ def scan_workspace(workspace: str) -> dict:
     }
 
 
+def scan_file(file_path: str) -> dict:
+    """Run the IAM Python static analyzer on a single Python file.
+
+    Parses the file's AST, detects GCP SDK calls, and resolves each call
+    to its required IAM permissions. Use this for quick, incremental
+    analysis of individual files.
+
+    Args:
+        file_path: Absolute or relative path to a Python file.
+
+    Returns:
+        A dict with ``findings`` (list of permission findings) and
+        ``stats`` (methods resolved, permissions found, services detected).
+    """
+    path = Path(file_path)
+    if not path.is_file():
+        return {"error": f"File not found: {file_path}"}
+    if path.suffix != ".py":
+        return {"error": f"Not a Python file: {file_path}"}
+
+    scanner = _get_scanner()
+    source = path.read_text(encoding="utf-8", errors="replace")
+    result = scanner.scan_source(source, str(path))
+
+    findings = []
+    all_permissions: set[str] = set()
+    all_services: set[str] = set()
+
+    for f in result.findings:
+        if f.status == "no_api_call":
+            continue
+        all_permissions.update(f.permissions)
+        all_permissions.update(f.conditional_permissions)
+        for m in f.matched:
+            all_services.add(m.display_name)
+        findings.append(_finding_to_dict(f))
+
+    return {
+        "stats": {
+            "sdk_methods_resolved": len(findings),
+            "unique_permissions_found": len(all_permissions),
+            "gcp_services_detected": sorted(all_services),
+        },
+        "findings": findings,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Shell
 # ---------------------------------------------------------------------------
