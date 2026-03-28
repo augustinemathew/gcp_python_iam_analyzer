@@ -180,6 +180,100 @@ def list_cloud_run_services(project_id: str | None = None) -> str:
     return json.dumps({"project": proj, "count": len(services), "services": services}, indent=2)
 
 
+# ── Service account tools ──────────────────────────────────────────────
+
+
+def list_service_accounts(project_id: str | None = None) -> str:
+    """List service accounts in the project.
+
+    Shows account email, display name, and status.
+    """
+    from agents.shared.gcp import list_service_accounts as _list_sas
+
+    proj = project_id or get_project()
+    if not proj:
+        return json.dumps({"error": "No project specified"})
+
+    accounts = _list_sas(proj)
+    entries = []
+    for sa in accounts:
+        entries.append({
+            "email": sa.get("email", ""),
+            "display_name": sa.get("displayName", ""),
+            "disabled": sa.get("disabled", False),
+            "description": sa.get("description", ""),
+        })
+    return json.dumps({"project": proj, "count": len(entries), "accounts": entries}, indent=2)
+
+
+def create_service_account(
+    account_id: str,
+    display_name: str = "",
+    description: str = "",
+    project_id: str | None = None,
+) -> str:
+    """Create a new service account in the project.
+
+    Args:
+        account_id: SA name (becomes <account_id>@<project>.iam.gserviceaccount.com).
+        display_name: Human-readable name.
+        description: What this SA is for.
+        project_id: GCP project. Uses default if not specified.
+
+    Returns:
+        The created SA details including full email.
+    """
+    from agents.shared.gcp import create_service_account as _create_sa
+
+    proj = project_id or get_project()
+    if not proj:
+        return json.dumps({"error": "No project specified"})
+
+    result = _create_sa(proj, account_id, display_name, description)
+    if "error" in result:
+        return json.dumps(result, indent=2)
+
+    return json.dumps({
+        "created": True,
+        "email": result.get("email", ""),
+        "display_name": result.get("displayName", ""),
+        "project": proj,
+    }, indent=2)
+
+
+def grant_iam_role(
+    role: str,
+    member: str,
+    project_id: str | None = None,
+) -> str:
+    """Grant an IAM role to a member on the project.
+
+    Args:
+        role: The IAM role (e.g., 'roles/storage.objectViewer').
+        member: The principal (e.g., 'serviceAccount:sa@proj.iam.gserviceaccount.com').
+        project_id: GCP project.
+
+    Returns:
+        Confirmation or error.
+    """
+    from agents.shared.gcp import add_iam_binding
+
+    proj = project_id or get_project()
+    if not proj:
+        return json.dumps({"error": "No project specified"})
+
+    result = add_iam_binding(proj, role, member)
+    if "error" in result:
+        return json.dumps(result, indent=2)
+
+    return json.dumps({
+        "granted": True,
+        "role": role,
+        "member": member,
+        "project": proj,
+    }, indent=2)
+
+
 # ── IAM tools ──────────────────────────────────────────────────────────
 
 

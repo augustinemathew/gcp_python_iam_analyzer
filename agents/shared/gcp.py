@@ -116,3 +116,101 @@ def test_iam_permissions(
     )
     resp = _authed_request("POST", url, body={"permissions": permissions})
     return resp.get("permissions", [])
+
+
+# ── Service Account management ─────────────────────────────────────────
+
+
+def list_service_accounts(project: str) -> list[dict]:
+    """List service accounts in a project."""
+    url = (
+        f"https://iam.googleapis.com/v1"
+        f"/projects/{project}/serviceAccounts"
+    )
+    resp = _authed_request("GET", url)
+    return resp.get("accounts", [])
+
+
+def create_service_account(
+    project: str,
+    account_id: str,
+    display_name: str = "",
+    description: str = "",
+) -> dict:
+    """Create a service account in a project.
+
+    Args:
+        project: GCP project ID.
+        account_id: The account ID (becomes <account_id>@<project>.iam.gserviceaccount.com).
+        display_name: Human-readable name.
+        description: Description of what this SA is for.
+
+    Returns:
+        The created service account resource, or error dict.
+    """
+    url = (
+        f"https://iam.googleapis.com/v1"
+        f"/projects/{project}/serviceAccounts"
+    )
+    body = {
+        "accountId": account_id,
+        "serviceAccount": {
+            "displayName": display_name or account_id,
+            "description": description,
+        },
+    }
+    return _authed_request("POST", url, body=body)
+
+
+def get_service_account(project: str, email: str) -> dict:
+    """Get details of a specific service account."""
+    url = (
+        f"https://iam.googleapis.com/v1"
+        f"/projects/{project}/serviceAccounts/{email}"
+    )
+    return _authed_request("GET", url)
+
+
+def add_iam_binding(
+    project: str,
+    role: str,
+    member: str,
+) -> dict:
+    """Add a single IAM binding to a project (read-modify-write).
+
+    This is additive — it won't remove existing bindings.
+    """
+    # Get current policy
+    policy = get_iam_policy(project)
+    if "error" in policy:
+        return policy
+
+    bindings = policy.get("bindings", [])
+
+    # Find or create the binding for this role
+    found = False
+    for binding in bindings:
+        if binding["role"] == role:
+            members = binding.get("members", [])
+            if member not in members:
+                members.append(member)
+                binding["members"] = members
+            found = True
+            break
+
+    if not found:
+        bindings.append({"role": role, "members": [member]})
+
+    # Set the updated policy
+    url = (
+        f"https://cloudresourcemanager.googleapis.com/v3"
+        f"/projects/{project}:setIamPolicy"
+    )
+    set_body = {
+        "policy": {
+            "bindings": bindings,
+            "etag": policy.get("etag", ""),
+            "version": policy.get("version", 3),
+        },
+    }
+    return _authed_request("POST", url, body=set_body)

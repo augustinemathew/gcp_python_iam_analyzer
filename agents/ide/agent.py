@@ -14,12 +14,15 @@ from google.adk.agents import Agent
 from agents.ide.tools import (
     analyze_permissions,
     check_guardrails,
+    create_service_account,
     generate_manifest,
     get_project_iam_policy,
     get_workspace_config,
+    grant_iam_role,
     init_workspace_config,
     list_agent_engines,
     list_cloud_run_services,
+    list_service_accounts,
     recommend_policy,
     scan_directory,
     scan_file,
@@ -68,8 +71,13 @@ developers understand, manage, and deploy GCP IAM permissions for their code.
 **Explore project:**
 - `list_agent_engines(project_id)` — list deployed agents
 - `list_cloud_run_services(project_id)` — list Cloud Run services
+- `list_service_accounts(project_id)` — list service accounts
 - `get_project_iam_policy(project_id)` — get IAM policy
 - `troubleshoot_access(permission, project_id)` — diagnose PERMISSION_DENIED
+
+**Manage identities:**
+- `create_service_account(account_id, display_name, description)` — create a SA
+- `grant_iam_role(role, member, project_id)` — grant a role to a principal
 
 ## How to respond
 
@@ -115,6 +123,7 @@ root_agent = Agent(
         scan_file, scan_directory, generate_manifest,
         recommend_policy, check_guardrails, analyze_permissions,
         list_agent_engines, list_cloud_run_services,
+        list_service_accounts, create_service_account, grant_iam_role,
         get_project_iam_policy, troubleshoot_access,
     ],
 )
