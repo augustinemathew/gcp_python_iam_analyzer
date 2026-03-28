@@ -8,7 +8,10 @@ from google.adk.agents import Agent
 from .tools import (
     create_workspace,
     download_gcs,
+    get_effective_iam_policy,
+    get_project_iam_policy,
     list_agent_engines,
+    list_deny_policies,
     list_gcs,
     scan_workspace,
     shell,
@@ -133,6 +136,26 @@ in the deploy script, or the user says "agent identity", use the \
 `principal://` format. Otherwise use the service account from \
 `effectiveIdentity`.
 
+### Step 3b: Audit existing policies
+
+Audit the project's IAM posture using three tools:
+
+1. **`get_project_iam_policy(project_id)`** — the raw allow policy on the \
+project. Compare against the permissions the code needs:
+   - Flag **excess permissions** — roles granted but not required by the code.
+   - Flag **missing permissions** — permissions needed but no binding covers.
+   - Note **overlapping roles** where a narrower role could replace a broader one.
+
+2. **`get_effective_iam_policy(project_id, member)`** — the effective \
+permissions for a specific principal after inheritance (org → folder → project) \
+and deny policies are applied. This is the ground truth for what a principal \
+can actually do. Use this to verify that the agent's identity has the right \
+access, or to debug "permission denied" errors.
+
+3. **`list_deny_policies(project_id)`** — check for IAM deny policies. If \
+deny policies exist, warn the user that some allow bindings may be effectively \
+blocked. If none exist, note that no deny policies are in place.
+
 ### Step 4: Generate output
 
 Produce exactly two sections:
@@ -200,5 +223,5 @@ root_agent = Agent(
     model="gemini-3.1-pro-preview",
     name="iam_policy_agent",
     instruction=_build_instruction(),
-    tools=[list_agent_engines, create_workspace, scan_workspace, list_gcs, download_gcs, shell],
+    tools=[list_agent_engines, create_workspace, scan_workspace, get_project_iam_policy, get_effective_iam_policy, list_deny_policies, list_gcs, download_gcs, shell],
 )

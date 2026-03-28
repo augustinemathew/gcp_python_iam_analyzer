@@ -56,6 +56,134 @@ def list_agent_engines(project_id: str, location: str = "us-central1") -> str:
     return json.dumps([_summarize_engine(e) for e in engines], indent=2)
 
 
+def get_project_iam_policy(project_id: str) -> dict:
+    """Get the current IAM allow policy for a GCP project.
+
+    Args:
+        project_id: The GCP project ID.
+
+    Returns:
+        A dict with ``bindings`` (list of role→members mappings) and
+        ``summary`` (role counts).
+    """
+    url = (
+        f"https://cloudresourcemanager.googleapis.com/v1/"
+        f"projects/{project_id}:getIamPolicy"
+    )
+    try:
+        body = _authed_post(url, {"options": {"requestedPolicyVersion": 3}})
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    bindings = body.get("bindings", [])
+    summary = [
+        {"role": b["role"], "member_count": len(b.get("members", []))}
+        for b in bindings
+    ]
+    return {"bindings": bindings, "summary": summary}
+
+
+def get_effective_iam_policy(project_id: str, member: str) -> dict:
+    """Get the effective IAM permissions for a specific member on a project.
+
+    Uses the Cloud Asset API's AnalyzeIamPolicy to show permissions after
+    inheritance (org/folder/project) and deny policies are applied. This
+    is the ground truth for what a principal can actually do.
+
+    Args:
+        project_id: The GCP project ID.
+        member: The member to analyze, e.g.
+            ``serviceAccount:my-sa@project.iam.gserviceaccount.com`` or
+            ``principal://agents.global.proj-...``.
+
+    Returns:
+        A dict with ``roles`` (list of effective roles) and ``bindings``
+        (detailed binding info including where each role is inherited from).
+    """
+    # The identity selector needs the member without the prefix type for
+    # service accounts, but with it for principal://.
+    if member.startswith("serviceAccount:"):
+        identity = member[len("serviceAccount:"):]
+    elif member.startswith("principal://"):
+        identity = member
+    else:
+        identity = member
+
+    url = (
+        f"https://cloudasset.googleapis.com/v1/"
+        f"projects/{project_id}:analyzeIamPolicy"
+        f"?analysisQuery.scope=projects/{project_id}"
+        f"&analysisQuery.identitySelector.identity={identity}"
+    )
+    try:
+        body = _authed_get(url)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    analyses = body.get("mainAnalysis", {}).get("analysisResults", [])
+    roles: set[str] = set()
+    bindings = []
+    for result in analyses:
+        policy = result.get("iamBinding", {})
+        role = policy.get("role", "")
+        resource = result.get("attachedResourceFullName", "")
+        if role:
+            roles.add(role)
+            bindings.append({
+                "role": role,
+                "resource": resource,
+                "members": policy.get("members", []),
+            })
+
+    return {
+        "roles": sorted(roles),
+        "role_count": len(roles),
+        "bindings": bindings,
+    }
+
+
+def list_deny_policies(project_id: str) -> dict:
+    """List IAM deny policies on a GCP project.
+
+    Args:
+        project_id: The GCP project ID.
+
+    Returns:
+        A dict with ``policies`` (list of deny policy summaries) and
+        ``total`` count.
+    """
+    parent = f"cloudresourcemanager.googleapis.com%2Fprojects%2F{project_id}"
+    url = f"https://iam.googleapis.com/v2/policies/{parent}/denypolicies"
+    try:
+        body = _authed_get(url)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    policies = body.get("policies", [])
+    summaries = []
+    for p in policies:
+        summaries.append({
+            "name": p.get("name", ""),
+            "display_name": p.get("displayName", ""),
+            "create_time": p.get("createTime", ""),
+            "rules_count": len(p.get("rules", [])),
+        })
+
+    return {"total": len(summaries), "policies": summaries}
+
+
+def _authed_post(url: str, body: dict) -> dict:
+    """HTTP POST with Application Default Credentials."""
+    creds, _ = google.auth.default()
+    creds.refresh(google.auth.transport.requests.Request())
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Authorization", f"Bearer {creds.token}")
+    req.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
 def _authed_get(url: str) -> dict:
     """HTTP GET with Application Default Credentials."""
     creds, _ = google.auth.default()

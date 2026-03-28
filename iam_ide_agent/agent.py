@@ -7,7 +7,10 @@ from google.adk.agents import Agent
 from iam_agent.tools import (
     create_workspace,
     download_gcs,
+    get_effective_iam_policy,
+    get_project_iam_policy,
     list_agent_engines,
+    list_deny_policies,
     list_gcs,
     scan_file,
     scan_workspace,
@@ -119,5 +122,5 @@ root_agent = Agent(
     model="gemini-3.1-pro-preview",
     name="iam_ide_agent",
     instruction=_build_instruction(),
-    tools=[scan_file, scan_workspace, create_workspace, list_agent_engines, list_gcs, download_gcs, shell],
+    tools=[scan_file, scan_workspace, create_workspace, list_agent_engines, get_project_iam_policy, get_effective_iam_policy, list_deny_policies, list_gcs, download_gcs, shell],
 )
