@@ -536,6 +536,7 @@ class GCPCallScanner:
             return
 
         prov = CredentialProvenanceAnalyzer().analyze(source, filename)
+        result._provenance = prov
         if not prov.clients and not prov.sources:
             return
 

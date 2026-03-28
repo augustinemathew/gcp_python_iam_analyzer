@@ -137,6 +137,8 @@ class ScanResult:
 
     file: str
     findings: list[Finding] = field(default_factory=list)
+    _provenance: object | None = field(default=None, repr=False)
+    """Credential provenance result (ProvenanceResult), set by scanner."""
 
     @property
     def all_permissions(self) -> set[str]:

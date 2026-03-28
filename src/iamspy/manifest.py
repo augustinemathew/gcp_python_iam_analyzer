@@ -6,6 +6,7 @@ Tests: tests/test_manifest.py
 from __future__ import annotations
 
 import sys
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,8 +20,9 @@ class ManifestGenerator:
     """Build a permission manifest from scan results.
 
     The manifest is a structured dict that can be serialized to YAML.
-    It captures the complete set of IAM permissions, GCP APIs to enable,
-    and (optionally) the source locations for each permission.
+
+    v2 format splits permissions by identity context (app/user/impersonated).
+    v1 format is a flat permission list (backward compatible).
 
     Usage::
 
@@ -39,58 +41,100 @@ class ManifestGenerator:
         scanned_paths: list[str],
         include_sources: bool = False,
     ) -> dict:
-        """Build manifest data structure from scan results.
+        """Build v2 manifest with identity-aware permissions.
 
-        Args:
-            results: Output from scanner.scan_files().
-            scanned_paths: The CLI paths passed to iamspy scan (for generated_by).
-            include_sources: If True, emit a sources section mapping each
-                permission to the file/line(s) where it was detected.
-
-        Returns:
-            Dict suitable for yaml.dump().
+        Findings with an identity_context go into the identities block.
+        Findings without go into the top-level permissions block.
         """
-        required: set[str] = set()
-        conditional: set[str] = set()
         service_ids: set[str] = set()
+        sources: dict[str, list[dict]] = {}
 
-        sources: dict[str, list[dict]] = {}  # permission → [{file, line, method}]
+        # Per-identity buckets
+        identity_required: dict[str, set[str]] = defaultdict(set)
+        identity_conditional: dict[str, set[str]] = defaultdict(set)
+        identity_scopes: dict[str, set[str]] = defaultdict(set)
+
+        # Unattributed (no identity context)
+        unattributed_required: set[str] = set()
+        unattributed_conditional: set[str] = set()
 
         for result in results:
             for finding in result.findings:
                 if finding.status == "no_api_call":
                     continue
 
-                for perm in finding.permissions:
-                    required.add(perm)
-                    if include_sources:
-                        sources.setdefault(perm, []).append(
-                            {"file": finding.file, "line": finding.line, "method": finding.method_name}
-                        )
-
-                for perm in finding.conditional_permissions:
-                    conditional.add(perm)
-                    if include_sources:
-                        sources.setdefault(perm, []).append(
-                            {"file": finding.file, "line": finding.line, "method": finding.method_name}
-                        )
-
+                identity = str(finding.identity_context) if finding.identity_context else ""
                 for match in finding.matched:
                     service_ids.add(match.service_id)
 
+                for perm in finding.permissions:
+                    if identity:
+                        identity_required[identity].add(perm)
+                    else:
+                        unattributed_required.add(perm)
+                    if include_sources:
+                        source_entry = {
+                            "file": finding.file,
+                            "line": finding.line,
+                            "method": finding.method_name,
+                        }
+                        if identity:
+                            source_entry["identity"] = identity
+                        sources.setdefault(perm, []).append(source_entry)
+
+                for perm in finding.conditional_permissions:
+                    if identity:
+                        identity_conditional[identity].add(perm)
+                    else:
+                        unattributed_conditional.add(perm)
+                    if include_sources:
+                        source_entry = {
+                            "file": finding.file,
+                            "line": finding.line,
+                            "method": finding.method_name,
+                        }
+                        if identity:
+                            source_entry["identity"] = identity
+                        sources.setdefault(perm, []).append(source_entry)
+
         api_services = self._resolve_api_services(service_ids)
 
+        # Collect OAuth scopes from credential provenance analysis
+        # (stored on ScanResult if provenance was run)
+        for result in results:
+            if hasattr(result, "_provenance") and result._provenance:
+                for scope_ref in result._provenance.oauth_scopes:
+                    identity_scopes["user"].add(scope_ref.scope)
+
         manifest: dict = {
-            "version": "1",
+            "version": "2",
             "generated_by": f"iamspy scan {' '.join(scanned_paths)}",
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "services": {
                 "enable": sorted(api_services),
             },
-            "permissions": {
-                "required": sorted(required),
-                "conditional": sorted(conditional),
-            },
+        }
+
+        # Identities block — only emit identities that have findings
+        all_identities = sorted(set(identity_required) | set(identity_conditional))
+        if all_identities:
+            identities: dict = {}
+            for ident in all_identities:
+                entry: dict = {
+                    "permissions": {
+                        "required": sorted(identity_required.get(ident, set())),
+                        "conditional": sorted(identity_conditional.get(ident, set())),
+                    },
+                }
+                if ident in identity_scopes:
+                    entry["oauth_scopes"] = sorted(identity_scopes[ident])
+                identities[ident] = entry
+            manifest["identities"] = identities
+
+        # Top-level permissions — unattributed findings
+        manifest["permissions"] = {
+            "required": sorted(unattributed_required),
+            "conditional": sorted(unattributed_conditional),
         }
 
         if include_sources:

@@ -81,7 +81,7 @@ class TestManifestGeneratorBuild:
 
         manifest = gen.build([result], scanned_paths=["app.py"])
 
-        assert manifest["version"] == "1"
+        assert manifest["version"] == "2"
         assert "generated_at" in manifest
         assert manifest["generated_by"] == "iamspy scan app.py"
 
