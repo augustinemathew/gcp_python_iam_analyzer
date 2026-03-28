@@ -107,6 +107,10 @@ class Finding:
     matched: list[MethodSig] = field(default_factory=list)
     perm_result: PermissionResult | None = None
     resolution: Resolution = Resolution.UNRESOLVED
+    identity_context: str = ""
+    """Identity context: 'app', 'user', 'impersonated', or '' (unknown/not analyzed)."""
+    credential_provenance: str = ""
+    """How the credential was created: 'sa_default', 'oauth_user', 'implicit', etc."""
 
     @property
     def status(self) -> str:

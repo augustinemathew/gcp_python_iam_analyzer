@@ -1,0 +1,1562 @@
+[
+  {
+    "file": "python-docs-samples/auth/api-client/snippets.py",
+    "line": 49,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/api-client/snippets.py",
+    "line": 71,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/api-client/snippets.py",
+    "line": 93,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/cloud-client/snippets.py",
+    "line": 63,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": false
+  },
+  {
+    "file": "python-docs-samples/auth/cloud-client-temp/authenticate_explicit_with_adc.py",
+    "line": 48,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/custom-credentials/aws/snippets.py",
+    "line": 85,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/custom-credentials/okta/snippets.py",
+    "line": 89,
+    "client_var": "storage_client",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/downscoping/snippets.py",
+    "line": 132,
+    "client_var": "storage_client",
+    "cred_var": "creds",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/auth/end-user/web/main.py",
+    "line": 56,
+    "client_var": "client",
+    "cred_var": "credentials",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/bigquery-datatransfer/snippets/conftest.py",
+    "line": 64,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/bigquery-datatransfer/snippets/conftest.py",
+    "line": 70,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/bigquery-datatransfer/snippets/conftest.py",
+    "line": 114,
+    "client_var": "transfer_client",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/compute/oslogin/service_account_ssh_test.py",
+    "line": 98,
+    "client_var": "oslogin",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/datacatalog/quickstart/conftest.py",
+    "line": 31,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/datacatalog/quickstart/conftest.py",
+    "line": 36,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/datacatalog/snippets/conftest.py",
+    "line": 33,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/datacatalog/snippets/conftest.py",
+    "line": 129,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/datacatalog/v1beta1/conftest.py",
+    "line": 26,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/dialogflow/participant_management.py",
+    "line": 139,
+    "client_var": "client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/dialogflow/participant_management.py",
+    "line": 218,
+    "client_var": "client",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/endpoints/getting-started/clients/service_to_service_non_default/main.py",
+    "line": 39,
+    "client_var": "service",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "unknown",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/healthcare/api-client/v1beta1/fhir/fhir_stores.py",
+    "line": 38,
+    "client_var": "?",
+    "cred_var": "scoped_credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/iam/api-client/grantable_roles.py",
+    "line": 27,
+    "client_var": "service",
+    "cred_var": "credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-docs-samples/iap/generate_self_signed_jwt.py",
+    "line": 67,
+    "client_var": "iam_client",
+    "cred_var": "source_credentials",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/admin_sdk/directory/quickstart.py",
+    "line": 50,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/admin_sdk/reports/quickstart.py",
+    "line": 50,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/admin_sdk/reseller/quickstart.py",
+    "line": 50,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/apps_script/execute/execute.py",
+    "line": 29,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/apps_script/quickstart/quickstart.py",
+    "line": 68,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/calendar/quickstart/quickstart.py",
+    "line": 53,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/chat/client-libraries/cloud/authentication_utils.py",
+    "line": 39,
+    "client_var": "?",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": false
+  },
+  {
+    "file": "python-samples/chat/client-libraries/cloud/authentication_utils.py",
+    "line": 62,
+    "client_var": "client",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": false
+  },
+  {
+    "file": "python-samples/chat/quickstart/quickstart.py",
+    "line": 53,
+    "client_var": "client",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_add_alias_existing.py",
+    "line": 32,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_add_alias_new.py",
+    "line": 67,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_add_attachment.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_add_student.py",
+    "line": 60,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_add_teacher.py",
+    "line": 30,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_all_submissions.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_create_course.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_create_coursework.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_get_course.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_invite_guardian.py",
+    "line": 38,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_list_course_aliases.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_list_courses.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_list_student_submissions.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_list_submissions.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_patch_course.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/classroom/snippets/classroom_update_course.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/mail-merge/docs_mail_merge.py",
+    "line": 87,
+    "client_var": "DRIVE",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/mail-merge/docs_mail_merge.py",
+    "line": 88,
+    "client_var": "DOCS",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/mail-merge/docs_mail_merge.py",
+    "line": 89,
+    "client_var": "SHEETS",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/mail-merge/docs_mail_merge_test.py",
+    "line": 60,
+    "client_var": "DRIVE",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/mail-merge/docs_mail_merge_test.py",
+    "line": 72,
+    "client_var": "DRIVE",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/output-json/output_json.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/docs/quickstart/quickstart.py",
+    "line": 55,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/activity-v2/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/app data snippet/fetch_appdata_folder.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/app data snippet/list_appdata.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/app data snippet/upload_app_data.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/change snippet/fetch_changes.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/change snippet/fetch_start_page_token.py",
+    "line": 31,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/drive_snippet/create_drive.py",
+    "line": 38,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/drive_snippet/recover_drives.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/create_folder.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/create_shortcut.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/download_file.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/export_pdf.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/move_file_to_folder.py",
+    "line": 38,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/search_file.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/share_file.py",
+    "line": 39,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/touch_file.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/upload_basic.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/upload_revision.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/upload_to_folder.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/file snippet/upload_with_conversion.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/team_drive_snippets/create_team_drive.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v2/team_drive_snippets/recover_team_drives.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/app_data_snippet/fetch_appdata_folder.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/app_data_snippet/list_appdata.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/app_data_snippet/upload_appdata.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/change_snippet/fetch_changes.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/change_snippet/fetch_start_page_token.py",
+    "line": 32,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/drive_snippet/create_drive.py",
+    "line": 38,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/drive_snippet/recover_drives.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/create_folder.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/create_shortcut.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/download_file.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/export_pdf.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/move_file_to_folder.py",
+    "line": 38,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/search_file.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/share_file.py",
+    "line": 39,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/touch_file.py",
+    "line": 40,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/upload_basic.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/upload_revision.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/upload_to_folder.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/file_snippet/upload_with_conversion.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/team_drive_snippets/create_team_drive.py",
+    "line": 36,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/drive/snippets/drive-v3/team_drive_snippets/recover_team_drives.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/add_responder.py",
+    "line": 56,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/anyone_with_link_responder.py",
+    "line": 55,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/anyone_with_link_responder.py",
+    "line": 105,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/anyone_with_link_responder.py",
+    "line": 139,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/duplicate_form.py",
+    "line": 47,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/get_responders.py",
+    "line": 55,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/publish_form.py",
+    "line": 56,
+    "client_var": "form_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/remove_responder.py",
+    "line": 56,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/stop_accepting_responses.py",
+    "line": 56,
+    "client_var": "form_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/supports_publishing.py",
+    "line": 56,
+    "client_var": "form_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/forms/snippets/unpublish_form.py",
+    "line": 56,
+    "client_var": "form_service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/quickstart/quickstart.py",
+    "line": 53,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/base_test.py",
+    "line": 49,
+    "client_var": "?",
+    "cred_var": "credentials",
+    "ground_truth": "unknown",
+    "crosses_function": false,
+    "our_result": "none",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/list_messages.py",
+    "line": 50,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/send mail/create_draft.py",
+    "line": 39,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/send mail/create_draft_with_attachment.py",
+    "line": 44,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/send mail/send_message.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/settings snippets/create_filter.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/settings snippets/enable_auto_reply.py",
+    "line": 37,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/settings snippets/enable_forwarding.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/settings snippets/update_signature.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/smime snippets/insert_smime_info.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/smime snippets/update_smime_cert.py",
+    "line": 58,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/gmail/snippet/thread/threads.py",
+    "line": 31,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/meet/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "client",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/people/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/quickstart/quickstart.py",
+    "line": 56,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_append_values.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_batch_get_values.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_batch_update.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_batch_update_values.py",
+    "line": 35,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_conditional_formatting.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_create.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_filter_views.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_get_values.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_pivot_tables.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/sheets/snippets/sheets_update_values.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/quickstart/quickstart.py",
+    "line": 55,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_copy_presentation.py",
+    "line": 34,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_bulleted_text.py",
+    "line": 33,
+    "client_var": "slides_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_image.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_presentation.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_sheets_chart.py",
+    "line": 35,
+    "client_var": "slides_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_slide.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_create_textbox_with_text.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_image_merging.py",
+    "line": 33,
+    "client_var": "slides_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_image_merging.py",
+    "line": 34,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_refresh_sheets_chart.py",
+    "line": 33,
+    "client_var": "slides_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_simple_text_replace.py",
+    "line": 33,
+    "client_var": "slides_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_text_merging.py",
+    "line": 34,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_text_merging.py",
+    "line": 35,
+    "client_var": "sheets_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_text_merging.py",
+    "line": 36,
+    "client_var": "drive_service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/slides/snippets/slides_text_style_update.py",
+    "line": 33,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "app",
+    "crosses_function": false,
+    "our_result": "app",
+    "correct": true
+  },
+  {
+    "file": "python-samples/tasks/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  },
+  {
+    "file": "python-samples/vault/quickstart/quickstart.py",
+    "line": 52,
+    "client_var": "service",
+    "cred_var": "creds",
+    "ground_truth": "user",
+    "crosses_function": false,
+    "our_result": "user",
+    "correct": true
+  }
+]

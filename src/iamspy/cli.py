@@ -129,7 +129,7 @@ def _write_manifest(results: list, args: argparse.Namespace) -> None:
 
 
 def _finding_to_dict(f: Finding) -> dict:
-    return {
+    d: dict = {
         "file": f.file,
         "line": f.line,
         "method": f.method_name,
@@ -142,6 +142,10 @@ def _finding_to_dict(f: Finding) -> dict:
         "resolution": f.resolution.value,
         "notes": f.perm_result.notes if f.perm_result else "",
     }
+    if f.identity_context:
+        d["identity"] = f.identity_context
+        d["credential"] = f.credential_provenance
+    return d
 
 
 def _print_compact(results: list, show_all: bool = False):

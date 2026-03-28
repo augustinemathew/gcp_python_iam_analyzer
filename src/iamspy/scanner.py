@@ -21,6 +21,7 @@ import aiofiles
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
+from iamspy.credential_provenance import CredentialProvenanceAnalyzer, ProvenanceResult
 from iamspy.models import Finding, MethodDB, MethodSig, PermissionResult, Resolution, ScanResult
 from iamspy.registry import ServiceRegistry
 from iamspy.resolver import PermissionResolver
@@ -384,6 +385,10 @@ class GCPCallScanner:
 
         pta = PointsToAnalysis(tree.root_node, src, self._known_classes)
         self._walk(tree.root_node, src, result, imported_services, pta)
+
+        # Credential provenance: annotate each finding with identity context
+        self._annotate_credential_provenance(source, filename, result)
+
         return result
 
     async def scan_files(self, paths: list[Path]) -> list[ScanResult]:
@@ -514,3 +519,54 @@ class GCPCallScanner:
                         results.append(r)
                         break  # one result per class
         return results
+
+    def _annotate_credential_provenance(
+        self,
+        source: str,
+        filename: str,
+        result: ScanResult,
+    ) -> None:
+        """Annotate findings with credential identity context.
+
+        Runs the credential provenance analyzer and matches each finding's
+        receiver variable back to a client binding to determine which
+        identity context (app/user/impersonated) the call uses.
+        """
+        if not result.findings:
+            return
+
+        prov = CredentialProvenanceAnalyzer().analyze(source, filename)
+        if not prov.clients and not prov.sources:
+            return
+
+        # Build line → client binding index for fast lookup
+        # Sort clients by line descending so we can find the most recent binding
+        sorted_clients = sorted(prov.clients, key=lambda c: c.line)
+
+        for finding in result.findings:
+            # Find the client whose variable is the receiver of this call
+            best = _match_finding_to_client(finding, sorted_clients)
+            if best:
+                finding.identity_context = best.identity
+                finding.credential_provenance = best.provenance
+
+
+def _match_finding_to_client(
+    finding: Finding,
+    sorted_clients: list,
+) -> object | None:
+    """Match a finding to the client binding that produced it.
+
+    Strategy: the finding's call_text contains the receiver variable name.
+    Match it against client bindings defined before this line.
+    """
+    for client in reversed(sorted_clients):
+        if client.line > finding.line:
+            continue
+        # Check if the client variable appears in the call text
+        if client.variable in finding.call_text:
+            return client
+    # Fallback: if there's exactly one client, assume it's the one
+    if len(sorted_clients) == 1:
+        return sorted_clients[0]
+    return None

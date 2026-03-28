@@ -95,7 +95,10 @@ def _print_finding(
 
     if f.permissions:
         perm_str = fmt.green(", ".join(f.permissions))
-        print(f"        {fmt.dim('→')} {perm_str}", file=file)
+        identity_tag = ""
+        if f.identity_context:
+            identity_tag = fmt.dim(f" [{f.identity_context}]")
+        print(f"        {fmt.dim('→')} {perm_str}{identity_tag}", file=file)
         all_perms.update(f.permissions)
     if f.conditional_permissions:
         cond_str = fmt.yellow(", ".join(f.conditional_permissions))
