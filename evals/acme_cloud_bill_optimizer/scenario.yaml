@@ -1,0 +1,89 @@
+# Eval scenario: Acme Cloud Bill Optimizer
+# Agent Engine app with AGENT_IDENTITY
+
+name: acme_cloud_bill_optimizer
+description: |
+  ADK agent deployed to Agent Engine with AGENT_IDENTITY.
+  Reads GCP resources (Asset Inventory, Compute, GKE, Cloud Run, Agent Engine)
+  and queries BigQuery billing export. Read-heavy, no writes.
+
+app_dir: app/
+deployment:
+  target: agent_engine
+  identity_type: agent_identity
+  location: us-central1
+
+# Pre-existing IAM state for "existing principal" test
+existing_policy:
+  principal: "principal://agents.global.proj-16744841236.system.id.goog/resources/aiplatform/projects/16744841236/locations/us-central1/reasoningEngines/123456"
+  bindings:
+    - role: roles/editor  # intentionally over-permissioned
+      member: "principal://agents.global.proj-16744841236.system.id.goog/resources/aiplatform/projects/16744841236/locations/us-central1/reasoningEngines/123456"
+
+expected:
+  manifest:
+    identities:
+      app:
+        permissions:
+          required:
+            - bigquery.jobs.create
+            - cloudasset.assets.listResource
+            - compute.instances.list
+            - container.clusters.list
+            - run.services.list
+          conditional:
+            - bigquery.tables.getData
+    services:
+      - bigquery.googleapis.com
+      - cloudasset.googleapis.com
+      - compute.googleapis.com
+      - container.googleapis.com
+      - run.googleapis.com
+
+  # For "new principal" workflow
+  new_principal_policy:
+    roles:
+      - roles/aiplatform.user
+      - roles/bigquery.dataViewer
+      - roles/bigquery.jobUser
+      - roles/cloudasset.viewer
+      - roles/compute.viewer
+      - roles/container.viewer
+      - roles/run.viewer
+
+  # For "existing principal" workflow — should detect over-permissioning
+  existing_principal_analysis:
+    excess_roles:
+      - roles/editor
+    recommendation: "Replace roles/editor with specific viewer/user roles"
+
+  guardrails:
+    ring_0_violations: 0  # no privilege escalation
+    ring_1_violations: 0  # no sensitive data (except bigquery.tables.getData)
+    deploy_allowed: true
+
+workflows:
+  - name: generate_new_policy
+    description: "Scan code, generate IAM policy for a brand new AGENT_IDENTITY principal"
+    steps:
+      - tool: scan_files
+        args: { paths: ["app/"] }
+      - tool: generate_manifest
+        args: { paths: ["app/"] }
+      - tool: check_guardrails
+        args: { paths: ["app/"], environment: "prod", identity_type: "agent_identity" }
+    assertions:
+      - all_required_permissions_found
+      - no_guardrail_blocks
+      - manifest_version_2
+
+  - name: analyze_existing_overpermissioned
+    description: "Existing principal has roles/editor — detect and recommend fix"
+    steps:
+      - tool: scan_files
+        args: { paths: ["app/"] }
+      - tool: analyze_permissions
+        args: { paths: ["app/"] }
+    assertions:
+      - detects_overpermissioning
+      - recommends_specific_roles

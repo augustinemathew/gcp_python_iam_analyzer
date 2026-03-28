@@ -1,0 +1,80 @@
+# Eval scenario: Acme Data Pipeline
+# Cloud Run job (cron), SA only, uses KMS encryption
+
+name: acme_data_pipeline
+description: |
+  Cloud Run job triggered by Cloud Scheduler. No user interaction.
+  Reads from BigQuery, encrypts with KMS, writes to Cloud Storage.
+  Single identity: app SA. Contains Ring 1 sensitive permissions (KMS).
+
+app_dir: app/
+deployment:
+  target: cloud_run_job
+  identity_type: service_account
+  has_delegated_user: false
+
+expected:
+  manifest:
+    identities:
+      app:
+        permissions:
+          required:
+            - bigquery.jobs.create
+            - cloudkms.cryptoKeyVersions.useToEncrypt
+            - storage.objects.create
+          conditional:
+            - bigquery.tables.getData
+
+    services:
+      - bigquery.googleapis.com
+      - cloudkms.googleapis.com
+      - storage.googleapis.com
+
+  new_principal_policy:
+    roles:
+      - roles/bigquery.jobUser
+      - roles/bigquery.dataViewer
+      - roles/cloudkms.cryptoKeyEncrypter
+      - roles/storage.objectCreator
+
+  guardrails:
+    ring_0_violations: 0
+    ring_1_violations: 1  # cloudkms.cryptoKeyVersions.useToEncrypt
+    deploy_allowed: true  # KMS usage is expected, warn but allow
+
+  # Advanced: pre-existing deny policy test
+  deny_policy_test:
+    # Org has a deny policy blocking KMS usage for non-approved principals
+    deny_rules:
+      - denied_permissions:
+          - cloudkms.cryptoKeyVersions.useToEncrypt
+          - cloudkms.cryptoKeyVersions.useToDecrypt
+        denied_principals:
+          - "principalSet://goog/public:all"
+        exception_principals:
+          - "principal://iam.googleapis.com/projects/acme-prod/serviceAccounts/pipeline-sa@acme-prod.iam.gserviceaccount.com"
+    # If the agent's SA is NOT in the exception list, deploy should warn
+    expected_result: "KMS permissions blocked by org deny policy unless SA is added to exception list"
+
+workflows:
+  - name: generate_cron_job_policy
+    description: "Scan code, generate IAM policy for a cron job SA"
+    steps:
+      - tool: scan_files
+        args: { paths: ["app/"] }
+      - tool: generate_manifest
+        args: { paths: ["app/"] }
+      - tool: check_guardrails
+        args: { paths: ["app/"], environment: "prod" }
+    assertions:
+      - all_required_permissions_found
+      - kms_usage_flagged_as_sensitive
+      - no_user_identity_detected
+      - single_app_identity
+
+  - name: check_against_deny_policy
+    description: "Verify deny policy detection blocks KMS access for unapproved principals"
+    assertions:
+      - deny_policy_detected
+      - kms_blocked_for_default_principal
+      - exception_path_documented

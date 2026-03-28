@@ -1,351 +1,235 @@
 [
   {
-    "name": "simple_storage_app",
+    "name": "acme_cloud_bill_optimizer",
+    "description": "ADK agent deployed to Agent Engine with AGENT_IDENTITY.\nReads GCP resources (Asset Inventory, Compute, GKE, Cloud Run, Agent Engine)\nand queries BigQuery billing export. Read-heavy, no writes.\n",
     "passed": true,
-    "permissions": {
-      "expected": [
-        "storage.buckets.list",
-        "storage.objects.list"
-      ],
-      "actual": [
-        "storage.buckets.list",
-        "storage.objects.list"
-      ],
-      "missing": [],
-      "extra": []
+    "files_scanned": 8,
+    "findings": 6,
+    "permissions": [
+      "bigquery.jobs.create",
+      "bigquery.tables.list",
+      "cloudasset.assets.listResource",
+      "compute.instances.list",
+      "container.clusters.list",
+      "run.services.list"
+    ],
+    "credential_sources": 2,
+    "client_bindings": 5,
+    "oauth_scopes": [],
+    "ring_distribution": {
+      "CRITICAL": 0,
+      "SENSITIVE": 1,
+      "MUTATING": 3,
+      "READ": 5
     },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "storage.buckets.list",
-        "storage.objects.list"
-      ],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "storage.googleapis.com"
-      ],
-      "actual": [
-        "storage.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 2
+    "checks": [
+      {
+        "check": "permissions_app",
+        "passed": true,
+        "expected_required": [
+          "bigquery.jobs.create",
+          "cloudasset.assets.listResource",
+          "compute.instances.list",
+          "container.clusters.list",
+          "run.services.list"
+        ],
+        "actual_required": [
+          "bigquery.jobs.create",
+          "bigquery.tables.list",
+          "cloudasset.assets.listResource",
+          "compute.instances.list",
+          "container.clusters.list",
+          "run.services.list"
+        ],
+        "missing": [],
+        "missing_conditional": [],
+        "extra": [
+          "bigquery.tables.list"
+        ]
+      },
+      {
+        "check": "services",
+        "passed": true,
+        "expected": [
+          "bigquery.googleapis.com",
+          "cloudasset.googleapis.com",
+          "compute.googleapis.com",
+          "container.googleapis.com",
+          "run.googleapis.com"
+        ],
+        "actual": [
+          "bigquery.googleapis.com",
+          "cloudasset.googleapis.com",
+          "compute.googleapis.com",
+          "container.googleapis.com",
+          "run.googleapis.com"
+        ],
+        "missing": []
+      },
+      {
+        "check": "guardrails",
+        "passed": true,
+        "ring_0_actual": 0,
+        "ring_0_expected": 0,
+        "ring_1_actual": 1,
+        "deploy_allowed": true
+      }
+    ]
   },
   {
-    "name": "multi_service_agent",
+    "name": "acme_data_pipeline",
+    "description": "Cloud Run job triggered by Cloud Scheduler. No user interaction.\nReads from BigQuery, encrypts with KMS, writes to Cloud Storage.\nSingle identity: app SA. Contains Ring 1 sensitive permissions (KMS).\n",
     "passed": true,
-    "permissions": {
-      "expected": [
-        "bigquery.jobs.create",
-        "secretmanager.versions.access",
-        "storage.objects.create"
-      ],
-      "actual": [
-        "bigquery.jobs.create",
-        "secretmanager.versions.access",
-        "storage.objects.create"
-      ],
-      "missing": [],
-      "extra": []
+    "files_scanned": 1,
+    "findings": 3,
+    "permissions": [
+      "bigquery.jobs.create",
+      "cloudkms.cryptoKeyVersions.useToEncrypt",
+      "storage.objects.create"
+    ],
+    "credential_sources": 0,
+    "client_bindings": 3,
+    "oauth_scopes": [],
+    "ring_distribution": {
+      "CRITICAL": 0,
+      "SENSITIVE": 2,
+      "MUTATING": 4,
+      "READ": 0
     },
-    "conditional": {
-      "expected": [
-        "bigquery.tables.getData"
-      ],
-      "actual": [
-        "bigquery.tables.create",
-        "bigquery.tables.getData",
-        "storage.objects.delete"
-      ],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "bigquery.jobs.create",
-        "secretmanager.versions.access"
-      ],
-      "user": [],
-      "unattributed": [
-        "storage.objects.create"
-      ]
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "bigquery.googleapis.com",
-        "secretmanager.googleapis.com",
-        "storage.googleapis.com"
-      ],
-      "actual": [
-        "bigquery.googleapis.com",
-        "secretmanager.googleapis.com",
-        "storage.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 5
+    "checks": [
+      {
+        "check": "permissions_app",
+        "passed": true,
+        "expected_required": [
+          "bigquery.jobs.create",
+          "cloudkms.cryptoKeyVersions.useToEncrypt",
+          "storage.objects.create"
+        ],
+        "actual_required": [
+          "bigquery.jobs.create",
+          "cloudkms.cryptoKeyVersions.useToEncrypt",
+          "storage.objects.create"
+        ],
+        "missing": [],
+        "missing_conditional": [],
+        "extra": []
+      },
+      {
+        "check": "services",
+        "passed": true,
+        "expected": [
+          "bigquery.googleapis.com",
+          "cloudkms.googleapis.com",
+          "storage.googleapis.com"
+        ],
+        "actual": [
+          "bigquery.googleapis.com",
+          "cloudkms.googleapis.com",
+          "storage.googleapis.com"
+        ],
+        "missing": []
+      },
+      {
+        "check": "guardrails",
+        "passed": true,
+        "ring_0_actual": 0,
+        "ring_0_expected": 0,
+        "ring_1_actual": 2,
+        "deploy_allowed": true
+      }
+    ]
   },
   {
-    "name": "dual_identity_app",
+    "name": "acme_doc_assistant",
+    "description": "Cloud Run web app where users sign in with Google OAuth.\nApp reads user's Google Docs (delegated user identity) and stores\nsummaries in Cloud Storage (app's SA identity).\nTwo distinct identity contexts in one app.\n",
     "passed": true,
-    "permissions": {
-      "expected": [
-        "storage.buckets.list"
-      ],
-      "actual": [
-        "storage.buckets.list"
-      ],
-      "missing": [],
-      "extra": []
+    "files_scanned": 1,
+    "findings": 2,
+    "permissions": [
+      "secretmanager.versions.access",
+      "storage.objects.create"
+    ],
+    "credential_sources": 3,
+    "client_bindings": 4,
+    "oauth_scopes": [
+      "https://www.googleapis.com/auth/documents.readonly",
+      "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "openid"
+    ],
+    "ring_distribution": {
+      "CRITICAL": 0,
+      "SENSITIVE": 1,
+      "MUTATING": 2,
+      "READ": 0
     },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "storage.buckets.list"
-      ],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "storage.googleapis.com"
-      ],
-      "actual": [
-        "storage.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 1
-  },
-  {
-    "name": "workspace_quickstart",
-    "passed": true,
-    "permissions": {
-      "expected": [],
-      "actual": [],
-      "missing": [],
-      "extra": []
-    },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [
-        "https://www.googleapis.com/auth/drive.readonly"
-      ],
-      "found": [
-        "https://www.googleapis.com/auth/drive.readonly"
-      ],
-      "missing": []
-    },
-    "services": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "findings_count": 0
-  },
-  {
-    "name": "kms_encryption",
-    "passed": true,
-    "permissions": {
-      "expected": [
-        "cloudkms.cryptoKeyVersions.useToDecrypt",
-        "cloudkms.cryptoKeyVersions.useToEncrypt"
-      ],
-      "actual": [
-        "cloudkms.cryptoKeyVersions.useToDecrypt",
-        "cloudkms.cryptoKeyVersions.useToEncrypt"
-      ],
-      "missing": [],
-      "extra": []
-    },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "cloudkms.cryptoKeyVersions.useToDecrypt",
-        "cloudkms.cryptoKeyVersions.useToEncrypt"
-      ],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "cloudkms.googleapis.com"
-      ],
-      "actual": [
-        "cloudkms.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 3
-  },
-  {
-    "name": "dangerous_iam_admin",
-    "passed": true,
-    "permissions": {
-      "expected": [
-        "resourcemanager.projects.getIamPolicy",
-        "resourcemanager.projects.setIamPolicy"
-      ],
-      "actual": [
-        "resourcemanager.projects.getIamPolicy",
-        "resourcemanager.projects.setIamPolicy"
-      ],
-      "missing": [],
-      "extra": []
-    },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "resourcemanager.projects.getIamPolicy",
-        "resourcemanager.projects.setIamPolicy"
-      ],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "cloudresourcemanager.googleapis.com"
-      ],
-      "actual": [
-        "cloudresourcemanager.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 2
-  },
-  {
-    "name": "dwd_workspace",
-    "passed": true,
-    "permissions": {
-      "expected": [],
-      "actual": [],
-      "missing": [],
-      "extra": []
-    },
-    "conditional": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "identity": {
-      "app": [],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ],
-      "found": [
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ],
-      "missing": []
-    },
-    "services": {
-      "expected": [],
-      "actual": [],
-      "missing": []
-    },
-    "findings_count": 0
-  },
-  {
-    "name": "readonly_agent",
-    "passed": true,
-    "permissions": {
-      "expected": [
-        "bigquery.tables.list",
-        "storage.objects.list"
-      ],
-      "actual": [
-        "bigquery.tables.list",
-        "storage.objects.list"
-      ],
-      "missing": [],
-      "extra": []
-    },
-    "conditional": {
-      "expected": [],
-      "actual": [
-        "bigquery.datasets.get"
-      ],
-      "missing": []
-    },
-    "identity": {
-      "app": [
-        "bigquery.tables.list",
-        "storage.objects.list"
-      ],
-      "user": [],
-      "unattributed": []
-    },
-    "oauth_scopes": {
-      "expected": [],
-      "found": [],
-      "missing": []
-    },
-    "services": {
-      "expected": [
-        "bigquery.googleapis.com",
-        "storage.googleapis.com"
-      ],
-      "actual": [
-        "bigquery.googleapis.com",
-        "storage.googleapis.com"
-      ],
-      "missing": []
-    },
-    "findings_count": 2
+    "checks": [
+      {
+        "check": "permissions_app",
+        "passed": true,
+        "expected_required": [
+          "secretmanager.versions.access",
+          "storage.objects.create"
+        ],
+        "actual_required": [
+          "secretmanager.versions.access",
+          "storage.objects.create"
+        ],
+        "missing": [],
+        "missing_conditional": [],
+        "extra": []
+      },
+      {
+        "check": "permissions_user",
+        "passed": true,
+        "expected_required": [],
+        "actual_required": [
+          "storage.objects.create"
+        ],
+        "missing": [],
+        "missing_conditional": [],
+        "extra": [
+          "storage.objects.create"
+        ]
+      },
+      {
+        "check": "oauth_scopes",
+        "passed": true,
+        "expected": [
+          "https://www.googleapis.com/auth/documents.readonly",
+          "https://www.googleapis.com/auth/drive.readonly",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "openid"
+        ],
+        "actual": [
+          "https://www.googleapis.com/auth/documents.readonly",
+          "https://www.googleapis.com/auth/drive.readonly",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "openid"
+        ],
+        "missing": []
+      },
+      {
+        "check": "services",
+        "passed": true,
+        "expected": [
+          "secretmanager.googleapis.com",
+          "storage.googleapis.com"
+        ],
+        "actual": [
+          "secretmanager.googleapis.com",
+          "storage.googleapis.com"
+        ],
+        "missing": []
+      },
+      {
+        "check": "guardrails",
+        "passed": true,
+        "ring_0_actual": 0,
+        "ring_0_expected": 0,
+        "ring_1_actual": 1,
+        "deploy_allowed": true
+      }
+    ]
   }
 ]

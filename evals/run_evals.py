@@ -1,6 +1,16 @@
-"""Run eval scenarios against the scan pipeline.
+"""Eval harness — run agent workflows against canonical app directories.
 
-Validates: scan → manifest generation → permission accuracy.
+Each eval scenario is a directory with:
+  app/            — the application source code
+  scenario.yaml   — expected outputs, workflows, assertions
+
+The harness:
+1. Loads the scenario
+2. Runs the scan pipeline against app/
+3. Generates manifest
+4. Runs credential provenance analysis
+5. Evaluates guardrails
+6. Compares against expected outputs
 """
 
 from __future__ import annotations
@@ -10,125 +20,186 @@ import json
 import sys
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from iamspy.credential_provenance import analyze_credentials
 from iamspy.loader import load_method_db
 from iamspy.manifest import ManifestGenerator
 from iamspy.registry import ServiceRegistry
 from iamspy.resolver import StaticPermissionResolver
 from iamspy.resources import method_db_path, permissions_path, registry_path
 from iamspy.scanner import GCPCallScanner
-from iamspy.credential_provenance import analyze_credentials
 
-from evals.scenarios import SCENARIOS, Scenario, ExpectedManifest
+_SKIP_DIRS = {".git", "__pycache__", ".venv", "venv", "node_modules"}
 
 
 def _get_scanner() -> tuple[GCPCallScanner, ServiceRegistry]:
     registry = ServiceRegistry.from_json(registry_path())
     resolver = StaticPermissionResolver(permissions_path())
     db = load_method_db(method_db_path())
-    scanner = GCPCallScanner(db, resolver, registry=registry)
-    return scanner, registry
+    return GCPCallScanner(db, resolver, registry=registry), registry
 
 
-def eval_scenario(scenario: Scenario, scanner: GCPCallScanner, registry: ServiceRegistry) -> dict:
-    """Run a single scenario and compare against expected output."""
-    result = scanner.scan_source(scenario.code, f"{scenario.name}.py")
+def _collect_py_files(d: Path) -> list[Path]:
+    return sorted(
+        f for f in d.rglob("*.py")
+        if not any(s in f.parts for s in _SKIP_DIRS)
+    )
 
-    # Build manifest
+
+def run_scenario(scenario_dir: Path, scanner: GCPCallScanner, registry: ServiceRegistry) -> dict:
+    """Run a single eval scenario."""
+    scenario_file = scenario_dir / "scenario.yaml"
+    scenario = yaml.safe_load(scenario_file.read_text())
+
+    app_dir = scenario_dir / scenario.get("app_dir", "app/")
+    files = _collect_py_files(app_dir)
+
+    # 1. Scan
+    results = asyncio.run(scanner.scan_files(files))
+    all_findings = [f for r in results for f in r.findings if f.status != "no_api_call"]
+
+    actual_perms: set[str] = set()
+    actual_cond: set[str] = set()
+    for f in all_findings:
+        actual_perms.update(f.permissions)
+        actual_cond.update(f.conditional_permissions)
+
+    # 2. Manifest
     gen = ManifestGenerator(registry)
-    manifest = gen.build([result], scanned_paths=[f"{scenario.name}.py"])
-
-    # Extract actual permissions by identity
+    manifest = gen.build(results, scanned_paths=[str(app_dir)])
     identities = manifest.get("identities", {})
-    app_perms = set()
-    app_cond = set()
-    user_perms = set()
-    for ident_name, ident_data in identities.items():
-        perms_data = ident_data.get("permissions", {})
-        if ident_name == "app":
-            app_perms.update(perms_data.get("required", []))
-            app_cond.update(perms_data.get("conditional", []))
-        elif ident_name == "user":
-            user_perms.update(perms_data.get("required", []))
 
-    # Unattributed permissions
-    unattr = manifest.get("permissions", {})
-    unattr_perms = set(unattr.get("required", []))
-    unattr_cond = set(unattr.get("conditional", []))
+    # 3. Credential provenance (aggregate across files)
+    all_sources = []
+    all_clients = []
+    all_scopes = []
+    for f in files:
+        source = f.read_text(encoding="utf-8", errors="replace")
+        prov = analyze_credentials(source, str(f.relative_to(scenario_dir)))
+        all_sources.extend(prov.sources)
+        all_clients.extend(prov.clients)
+        all_scopes.extend(prov.oauth_scopes)
 
-    # All actual permissions (any identity)
-    all_actual = app_perms | user_perms | unattr_perms
-    all_actual_cond = app_cond | unattr_cond
+    # 4. Guardrails
+    from iamspy_mcp.shared.permission_rings import classify, Ring
+    ring_counts = {r: 0 for r in Ring}
+    for perm in actual_perms | actual_cond:
+        ring_counts[classify(perm)] += 1
 
-    # Expected
-    expected = scenario.expected
-    all_expected = set(expected.app_permissions) | set(expected.user_permissions)
-    all_expected_cond = set(expected.app_conditional)
+    # 5. Compare against expected
+    expected = scenario.get("expected", {})
+    expected_manifest = expected.get("manifest", {})
 
-    # Compare
-    missing = all_expected - all_actual
-    extra = all_actual - all_expected
-    missing_cond = all_expected_cond - all_actual_cond
+    checks: list[dict] = []
 
-    # Credential provenance
-    prov = analyze_credentials(scenario.code, f"{scenario.name}.py")
-    scopes_found = {s.scope for s in prov.oauth_scopes}
-    expected_scopes = set(expected.user_oauth_scopes)
-    missing_scopes = expected_scopes - scopes_found
+    # Check permissions by identity
+    for ident_name, ident_expected in expected_manifest.get("identities", {}).items():
+        exp_perms = set(ident_expected.get("permissions", {}).get("required", []))
+        exp_cond = set(ident_expected.get("permissions", {}).get("conditional", []))
 
-    # Services
-    actual_services = set(manifest.get("services", {}).get("enable", []))
-    expected_services = set(expected.services)
-    missing_services = expected_services - actual_services
+        actual_ident = identities.get(ident_name, {})
+        act_perms = set(actual_ident.get("permissions", {}).get("required", []))
+        act_cond = set(actual_ident.get("permissions", {}).get("conditional", []))
 
-    passed = len(missing) == 0 and len(missing_cond) == 0 and len(missing_scopes) == 0
-    # Extra permissions are acceptable (over-detection is safe)
+        # Also check unattributed
+        unattr = manifest.get("permissions", {})
+        all_act_perms = act_perms | set(unattr.get("required", []))
+        all_act_cond = act_cond | set(unattr.get("conditional", []))
+
+        missing_perms = exp_perms - all_act_perms
+        missing_cond = exp_cond - all_act_cond
+        extra_perms = all_act_perms - exp_perms
+
+        passed = len(missing_perms) == 0 and len(missing_cond) == 0
+        checks.append({
+            "check": f"permissions_{ident_name}",
+            "passed": passed,
+            "expected_required": sorted(exp_perms),
+            "actual_required": sorted(all_act_perms),
+            "missing": sorted(missing_perms),
+            "missing_conditional": sorted(missing_cond),
+            "extra": sorted(extra_perms),
+        })
+
+    # Check OAuth scopes
+    exp_scopes = set()
+    for ident_data in expected_manifest.get("identities", {}).values():
+        exp_scopes.update(ident_data.get("oauth_scopes", []))
+    actual_scopes = {s.scope for s in all_scopes}
+    missing_scopes = exp_scopes - actual_scopes
+    if exp_scopes:
+        checks.append({
+            "check": "oauth_scopes",
+            "passed": len(missing_scopes) == 0,
+            "expected": sorted(exp_scopes),
+            "actual": sorted(actual_scopes),
+            "missing": sorted(missing_scopes),
+        })
+
+    # Check services
+    exp_services = set(expected_manifest.get("services", []))
+    act_services = set(manifest.get("services", {}).get("enable", []))
+    if exp_services:
+        missing_svc = exp_services - act_services
+        checks.append({
+            "check": "services",
+            "passed": len(missing_svc) == 0,
+            "expected": sorted(exp_services),
+            "actual": sorted(act_services),
+            "missing": sorted(missing_svc),
+        })
+
+    # Check guardrails
+    exp_guardrails = expected.get("guardrails", {})
+    if exp_guardrails:
+        checks.append({
+            "check": "guardrails",
+            "passed": (
+                ring_counts.get(Ring.CRITICAL, 0) == exp_guardrails.get("ring_0_violations", 0)
+            ),
+            "ring_0_actual": ring_counts.get(Ring.CRITICAL, 0),
+            "ring_0_expected": exp_guardrails.get("ring_0_violations", 0),
+            "ring_1_actual": ring_counts.get(Ring.SENSITIVE, 0),
+            "deploy_allowed": ring_counts.get(Ring.CRITICAL, 0) == 0,
+        })
+
+    all_passed = all(c["passed"] for c in checks)
 
     return {
-        "name": scenario.name,
-        "passed": passed,
-        "permissions": {
-            "expected": sorted(all_expected),
-            "actual": sorted(all_actual),
-            "missing": sorted(missing),
-            "extra": sorted(extra),
-        },
-        "conditional": {
-            "expected": sorted(all_expected_cond),
-            "actual": sorted(all_actual_cond),
-            "missing": sorted(missing_cond),
-        },
-        "identity": {
-            "app": sorted(app_perms),
-            "user": sorted(user_perms),
-            "unattributed": sorted(unattr_perms),
-        },
-        "oauth_scopes": {
-            "expected": sorted(expected_scopes),
-            "found": sorted(scopes_found),
-            "missing": sorted(missing_scopes),
-        },
-        "services": {
-            "expected": sorted(expected_services),
-            "actual": sorted(actual_services),
-            "missing": sorted(missing_services),
-        },
-        "findings_count": len(result.findings),
+        "name": scenario["name"],
+        "description": scenario.get("description", ""),
+        "passed": all_passed,
+        "files_scanned": len(files),
+        "findings": len(all_findings),
+        "permissions": sorted(actual_perms),
+        "credential_sources": len(all_sources),
+        "client_bindings": len(all_clients),
+        "oauth_scopes": sorted(actual_scopes),
+        "ring_distribution": {r.name: ring_counts[r] for r in Ring},
+        "checks": checks,
     }
 
 
 def main() -> None:
+    evals_dir = Path(__file__).parent
     scanner, registry = _get_scanner()
 
-    print(f"Running {len(SCENARIOS)} eval scenarios...\n")
+    scenarios = sorted(
+        d for d in evals_dir.iterdir()
+        if d.is_dir() and (d / "scenario.yaml").exists()
+    )
+
+    print(f"Running {len(scenarios)} eval scenarios...\n")
 
     results = []
     passed = 0
     failed = 0
 
-    for scenario in SCENARIOS:
-        result = eval_scenario(scenario, scanner, registry)
+    for scenario_dir in scenarios:
+        result = run_scenario(scenario_dir, scanner, registry)
         results.append(result)
 
         status = "PASS" if result["passed"] else "FAIL"
@@ -137,26 +208,24 @@ def main() -> None:
         else:
             failed += 1
 
-        print(f"  [{status}] {scenario.name}: {scenario.description}")
+        print(f"[{status}] {result['name']}")
+        print(f"       {result['files_scanned']} files, {result['findings']} findings, {len(result['permissions'])} permissions")
+        print(f"       rings: {result['ring_distribution']}")
 
-        if not result["passed"]:
-            if result["permissions"]["missing"]:
-                print(f"         missing perms: {result['permissions']['missing']}")
-            if result["conditional"]["missing"]:
-                print(f"         missing cond:  {result['conditional']['missing']}")
-            if result["oauth_scopes"]["missing"]:
-                print(f"         missing scopes: {result['oauth_scopes']['missing']}")
+        for check in result["checks"]:
+            c_status = "ok" if check["passed"] else "FAIL"
+            print(f"       [{c_status}] {check['check']}", end="")
+            if not check["passed"] and "missing" in check:
+                print(f"  missing: {check['missing']}", end="")
+            print()
+        print()
 
-        if result["permissions"]["extra"]:
-            print(f"         extra perms:   {result['permissions']['extra']}")
+    print(f"{'='*60}")
+    print(f"Results: {passed}/{len(scenarios)} passed, {failed} failed")
 
-    print(f"\n{'='*60}")
-    print(f"Results: {passed}/{len(SCENARIOS)} passed, {failed} failed")
-
-    # Save detailed results
-    output = Path(__file__).parent / "results.json"
+    output = evals_dir / "results.json"
     output.write_text(json.dumps(results, indent=2))
-    print(f"Detailed results: {output}")
+    print(f"Details: {output}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+google-adk>=1.0.0
+google-cloud-asset>=3.0
+google-cloud-bigquery>=3.0
+google-cloud-compute>=1.0
+google-cloud-container>=2.0
+google-cloud-run>=0.10.0
+google-auth>=2.0
+python-dotenv>=1.0

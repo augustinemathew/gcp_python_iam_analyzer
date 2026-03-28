@@ -1,0 +1,67 @@
+# Eval scenario: Acme Doc Assistant
+# Cloud Run app with delegated OAuth identity
+
+name: acme_doc_assistant
+description: |
+  Cloud Run web app where users sign in with Google OAuth.
+  App reads user's Google Docs (delegated user identity) and stores
+  summaries in Cloud Storage (app's SA identity).
+  Two distinct identity contexts in one app.
+
+app_dir: app/
+deployment:
+  target: cloud_run
+  identity_type: service_account
+  has_delegated_user: true
+
+expected:
+  manifest:
+    identities:
+      app:
+        permissions:
+          required:
+            - secretmanager.versions.access
+            - storage.objects.create
+          conditional: []
+      user:
+        oauth_scopes:
+          - https://www.googleapis.com/auth/documents.readonly
+          - https://www.googleapis.com/auth/drive.readonly
+          - openid
+          - https://www.googleapis.com/auth/userinfo.email
+        permissions:
+          required: []  # Workspace APIs, not IAM-gated
+          conditional: []
+    services:
+      - secretmanager.googleapis.com
+      - storage.googleapis.com
+
+  new_principal_policy:
+    roles:
+      - roles/secretmanager.secretAccessor
+      - roles/storage.objectCreator
+
+  guardrails:
+    ring_0_violations: 0
+    ring_1_violations: 1  # secretmanager.versions.access is Ring 1
+    deploy_allowed: true  # Ring 1 is warn, not block
+
+workflows:
+  - name: generate_dual_identity_policy
+    description: "Scan code, generate manifest with both app and user identities"
+    steps:
+      - tool: scan_files
+        args: { paths: ["app/"] }
+      - tool: generate_manifest
+        args: { paths: ["app/"] }
+    assertions:
+      - manifest_has_app_identity
+      - manifest_has_user_identity
+      - user_identity_has_oauth_scopes
+      - app_and_user_permissions_separated
+
+  - name: detect_oauth_scopes
+    description: "Verify OAuth scopes are correctly extracted from code"
+    assertions:
+      - drive_readonly_scope_detected
+      - documents_readonly_scope_detected
