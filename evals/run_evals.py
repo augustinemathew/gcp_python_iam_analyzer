@@ -104,10 +104,16 @@ def run_scenario(scenario_dir: Path, scanner: GCPCallScanner, registry: ServiceR
         act_perms = set(actual_ident.get("permissions", {}).get("required", []))
         act_cond = set(actual_ident.get("permissions", {}).get("conditional", []))
 
-        # Also check unattributed
+        # Also check unattributed permissions
         unattr = manifest.get("permissions", {})
         all_act_perms = act_perms | set(unattr.get("required", []))
         all_act_cond = act_cond | set(unattr.get("conditional", []))
+
+        # Also check multi-identity keys (e.g., "app,user") that include this identity
+        for multi_key, multi_data in identities.items():
+            if "," in multi_key and ident_name in multi_key.split(","):
+                all_act_perms |= set(multi_data.get("permissions", {}).get("required", []))
+                all_act_cond |= set(multi_data.get("permissions", {}).get("conditional", []))
 
         missing_perms = exp_perms - all_act_perms
         missing_cond = exp_cond - all_act_cond

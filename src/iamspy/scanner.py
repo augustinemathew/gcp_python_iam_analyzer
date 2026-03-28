@@ -545,29 +545,71 @@ class GCPCallScanner:
         sorted_clients = sorted(prov.clients, key=lambda c: c.line)
 
         for finding in result.findings:
-            # Find the client whose variable is the receiver of this call
-            best = _match_finding_to_client(finding, sorted_clients)
-            if best:
-                finding.identity_context = best.identity
-                finding.credential_provenance = best.provenance
+            matches = _match_finding_to_clients(finding, sorted_clients)
+            if len(matches) == 1:
+                finding.identity_context = str(matches[0].identity)
+                finding.credential_provenance = str(matches[0].provenance)
+            elif len(matches) > 1:
+                # Multiple clients serve this finding — collect all identities
+                identities = sorted({str(m.identity) for m in matches})
+                if len(identities) == 1:
+                    finding.identity_context = identities[0]
+                    finding.credential_provenance = str(matches[0].provenance)
+                else:
+                    # Genuinely multi-identity
+                    finding.identity_context = ",".join(identities)
+                    finding.credential_provenance = ",".join(
+                        sorted({str(m.provenance) for m in matches})
+                    )
 
 
-def _match_finding_to_client(
+def _match_finding_to_clients(
     finding: Finding,
     sorted_clients: list,
-) -> object | None:
-    """Match a finding to the client binding that produced it.
+) -> list:
+    """Match a finding to client binding(s) that could serve it.
 
-    Strategy: the finding's call_text contains the receiver variable name.
-    Match it against client bindings defined before this line.
+    Returns all matching clients. A finding can have multiple identities
+    if the same service is used with different credentials.
+
+    Strategy:
+    1. Direct match: client variable in call_text
+    2. Service match: all clients whose service matches the finding
+    3. Fallback: single client in file
     """
-    for client in reversed(sorted_clients):
-        if client.line > finding.line:
-            continue
-        # Check if the client variable appears in the call text
+    eligible = [c for c in sorted_clients if c.line <= finding.line]
+    if not eligible:
+        return []
+
+    # Direct match: client variable in call text
+    for client in reversed(eligible):
         if client.variable in finding.call_text:
-            return client
-    # Fallback: if there's exactly one client, assume it's the one
-    if len(sorted_clients) == 1:
-        return sorted_clients[0]
-    return None
+            return [client]
+
+    # Service match: find all clients that serve this finding's service.
+    finding_services = {m.service_id for m in finding.matched}
+    if finding_services:
+        # First pass: specific clients (class name contains service name)
+        specific = []
+        generic = []
+        for client in eligible:
+            cls_lower = client.client_class.lower()
+            matched_service = False
+            for svc in finding_services:
+                if svc in cls_lower:
+                    specific.append(client)
+                    matched_service = True
+                    break
+            if not matched_service and cls_lower in ("client", "build"):
+                generic.append(client)
+
+        # Prefer specific matches; only use generic if no specific found
+        service_clients = specific if specific else generic
+        if service_clients:
+            return service_clients
+
+    # Fallback: single client
+    if len(eligible) == 1:
+        return eligible
+
+    return []
