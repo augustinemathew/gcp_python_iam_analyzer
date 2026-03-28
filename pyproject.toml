@@ -29,6 +29,13 @@ build = [
     "sentence-transformers>=3.0",
     "einops>=0.8",
 ]
+mcp = [
+    "mcp>=1.0",
+    "google-auth>=2.0",
+    "google-cloud-resource-manager>=1.0",
+    "google-cloud-asset>=3.0",
+    "google-cloud-run>=0.10",
+]
 
 [project.scripts]
 iamspy = "iamspy.__main__:main"

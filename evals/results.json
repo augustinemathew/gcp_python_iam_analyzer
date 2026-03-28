@@ -1,0 +1,351 @@
+[
+  {
+    "name": "simple_storage_app",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "storage.buckets.list",
+        "storage.objects.list"
+      ],
+      "actual": [
+        "storage.buckets.list",
+        "storage.objects.list"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "storage.buckets.list",
+        "storage.objects.list"
+      ],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "storage.googleapis.com"
+      ],
+      "actual": [
+        "storage.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 2
+  },
+  {
+    "name": "multi_service_agent",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "bigquery.jobs.create",
+        "secretmanager.versions.access",
+        "storage.objects.create"
+      ],
+      "actual": [
+        "bigquery.jobs.create",
+        "secretmanager.versions.access",
+        "storage.objects.create"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [
+        "bigquery.tables.getData"
+      ],
+      "actual": [
+        "bigquery.tables.create",
+        "bigquery.tables.getData",
+        "storage.objects.delete"
+      ],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "bigquery.jobs.create",
+        "secretmanager.versions.access"
+      ],
+      "user": [],
+      "unattributed": [
+        "storage.objects.create"
+      ]
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "bigquery.googleapis.com",
+        "secretmanager.googleapis.com",
+        "storage.googleapis.com"
+      ],
+      "actual": [
+        "bigquery.googleapis.com",
+        "secretmanager.googleapis.com",
+        "storage.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 5
+  },
+  {
+    "name": "dual_identity_app",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "storage.buckets.list"
+      ],
+      "actual": [
+        "storage.buckets.list"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "storage.buckets.list"
+      ],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "storage.googleapis.com"
+      ],
+      "actual": [
+        "storage.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 1
+  },
+  {
+    "name": "workspace_quickstart",
+    "passed": true,
+    "permissions": {
+      "expected": [],
+      "actual": [],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [
+        "https://www.googleapis.com/auth/drive.readonly"
+      ],
+      "found": [
+        "https://www.googleapis.com/auth/drive.readonly"
+      ],
+      "missing": []
+    },
+    "services": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "findings_count": 0
+  },
+  {
+    "name": "kms_encryption",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "cloudkms.cryptoKeyVersions.useToDecrypt",
+        "cloudkms.cryptoKeyVersions.useToEncrypt"
+      ],
+      "actual": [
+        "cloudkms.cryptoKeyVersions.useToDecrypt",
+        "cloudkms.cryptoKeyVersions.useToEncrypt"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "cloudkms.cryptoKeyVersions.useToDecrypt",
+        "cloudkms.cryptoKeyVersions.useToEncrypt"
+      ],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "cloudkms.googleapis.com"
+      ],
+      "actual": [
+        "cloudkms.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 3
+  },
+  {
+    "name": "dangerous_iam_admin",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "resourcemanager.projects.getIamPolicy",
+        "resourcemanager.projects.setIamPolicy"
+      ],
+      "actual": [
+        "resourcemanager.projects.getIamPolicy",
+        "resourcemanager.projects.setIamPolicy"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "resourcemanager.projects.getIamPolicy",
+        "resourcemanager.projects.setIamPolicy"
+      ],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "cloudresourcemanager.googleapis.com"
+      ],
+      "actual": [
+        "cloudresourcemanager.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 2
+  },
+  {
+    "name": "dwd_workspace",
+    "passed": true,
+    "permissions": {
+      "expected": [],
+      "actual": [],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "identity": {
+      "app": [],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ],
+      "found": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ],
+      "missing": []
+    },
+    "services": {
+      "expected": [],
+      "actual": [],
+      "missing": []
+    },
+    "findings_count": 0
+  },
+  {
+    "name": "readonly_agent",
+    "passed": true,
+    "permissions": {
+      "expected": [
+        "bigquery.tables.list",
+        "storage.objects.list"
+      ],
+      "actual": [
+        "bigquery.tables.list",
+        "storage.objects.list"
+      ],
+      "missing": [],
+      "extra": []
+    },
+    "conditional": {
+      "expected": [],
+      "actual": [
+        "bigquery.datasets.get"
+      ],
+      "missing": []
+    },
+    "identity": {
+      "app": [
+        "bigquery.tables.list",
+        "storage.objects.list"
+      ],
+      "user": [],
+      "unattributed": []
+    },
+    "oauth_scopes": {
+      "expected": [],
+      "found": [],
+      "missing": []
+    },
+    "services": {
+      "expected": [
+        "bigquery.googleapis.com",
+        "storage.googleapis.com"
+      ],
+      "actual": [
+        "bigquery.googleapis.com",
+        "storage.googleapis.com"
+      ],
+      "missing": []
+    },
+    "findings_count": 2
+  }
+]
