@@ -14,8 +14,10 @@ from google.adk.agents import Agent
 from agents.ide.context import build_context
 from agents.ide.tools import (
     analyze_permissions,
+    check_enabled_services,
     check_guardrails,
     create_service_account,
+    enable_services,
     generate_manifest,
     get_project_iam_policy,
     get_workspace_config,
@@ -67,6 +69,12 @@ The code has been automatically scanned. Here is what the project needs:
 or you suspect the manifest is outdated.** Use the context above to answer \
 questions directly.
 
+**IMPORTANT: On your FIRST response in every conversation, ALWAYS call \
+`get_workspace_config()` to load the latest workspace state, even if the \
+context above shows workspace info.** The config may have changed since \
+startup. This ensures you have the freshest environment/identity data \
+before responding.
+
 ## Tools
 
 **Workspace config:**
@@ -89,6 +97,10 @@ questions directly.
 - `list_service_accounts(project_id)` — list service accounts
 - `get_project_iam_policy(project_id)` — get IAM policy
 - `troubleshoot_access(permission, project_id)` — diagnose PERMISSION_DENIED
+
+**Services:**
+- `check_enabled_services(project_id)` — check which APIs are enabled vs needed
+- `enable_services(service_names, project_id)` — enable APIs
 
 **Manage identities:**
 - `create_service_account(account_id, display_name, description)` — create a SA
@@ -130,6 +142,7 @@ root_agent = Agent(
         get_workspace_config, init_workspace_config,
         scan_file, scan_directory, generate_manifest,
         recommend_policy, check_guardrails, analyze_permissions,
+        check_enabled_services, enable_services,
         list_agent_engines, list_cloud_run_services,
         list_service_accounts, create_service_account, grant_iam_role,
         get_project_iam_policy, troubleshoot_access,

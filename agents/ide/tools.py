@@ -159,6 +159,68 @@ def check_guardrails(
     }, indent=2)
 
 
+# ── Service enablement ─────────────────────────────────────────────────
+
+
+def check_enabled_services(project_id: str | None = None) -> str:
+    """Check which GCP API services are enabled in the project.
+
+    Compares against what the code needs (from the manifest) and
+    shows which services are missing.
+    """
+    from agents.shared.gcp import list_enabled_services
+
+    proj = project_id or get_project()
+    if not proj:
+        return json.dumps({"error": "No project specified"})
+
+    enabled = set(list_enabled_services(proj))
+
+    # Load manifest to see what's needed
+    from pathlib import Path
+    manifest_path = Path("iam-manifest.yaml")
+    needed: set[str] = set()
+    if manifest_path.exists():
+        import yaml
+        manifest = yaml.safe_load(manifest_path.read_text())
+        needed = set(manifest.get("services", {}).get("enable", []))
+
+    missing = sorted(needed - enabled)
+    already = sorted(needed & enabled)
+
+    return json.dumps({
+        "project": proj,
+        "needed_by_code": sorted(needed),
+        "already_enabled": already,
+        "missing": missing,
+        "all_good": len(missing) == 0,
+    }, indent=2)
+
+
+def enable_services(service_names: list[str], project_id: str | None = None) -> str:
+    """Enable GCP API services in the project.
+
+    Args:
+        service_names: List of services (e.g., ["bigquery.googleapis.com"]).
+        project_id: GCP project. Uses default if not specified.
+    """
+    from agents.shared.gcp import enable_services as _enable
+
+    proj = project_id or get_project()
+    if not proj:
+        return json.dumps({"error": "No project specified"})
+
+    result = _enable(proj, service_names)
+    if "error" in result:
+        return json.dumps(result, indent=2)
+
+    return json.dumps({
+        "enabled": True,
+        "services": service_names,
+        "project": proj,
+    }, indent=2)
+
+
 # ── GCP resource tools ─────────────────────────────────────────────────
 
 

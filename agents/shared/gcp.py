@@ -121,6 +121,37 @@ def test_iam_permissions(
 # ── Service Account management ─────────────────────────────────────────
 
 
+# ── Service enablement ─────────────────────────────────────────────────
+
+
+def list_enabled_services(project: str) -> list[str]:
+    """List enabled API services in a project."""
+    url = (
+        f"https://serviceusage.googleapis.com/v1"
+        f"/projects/{project}/services?filter=state:ENABLED&pageSize=200"
+    )
+    resp = _authed_request("GET", url)
+    services = resp.get("services", [])
+    return [s.get("config", {}).get("name", "") for s in services]
+
+
+def enable_services(project: str, service_names: list[str]) -> dict:
+    """Enable one or more API services in a project.
+
+    Args:
+        project: GCP project ID.
+        service_names: List of service names (e.g., ["bigquery.googleapis.com"]).
+
+    Returns:
+        Operation result or error.
+    """
+    url = (
+        f"https://serviceusage.googleapis.com/v1"
+        f"/projects/{project}/services:batchEnable"
+    )
+    return _authed_request("POST", url, body={"serviceIds": service_names})
+
+
 def list_service_accounts(project: str) -> list[dict]:
     """List service accounts in a project."""
     url = (
