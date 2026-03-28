@@ -8,14 +8,12 @@ import tempfile
 import zipfile
 from unittest import mock
 
-from iam_agent.tools import (
+from agents.admin.tools import (
     _extract_archive,
-    _format_shell_result,
     _parse_gcs_uri,
-    _summarize_engine,
-    _unwrap_single_dir,
     create_workspace,
     shell,
+    _workspaces,
 )
 
 # ---------------------------------------------------------------------------
@@ -89,28 +87,7 @@ class TestExtractArchive:
         assert "unsupported" in result
 
 
-# ---------------------------------------------------------------------------
-# _unwrap_single_dir
-# ---------------------------------------------------------------------------
-
-
-class TestUnwrapSingleDir:
-    def test_single_subdir(self, tmp_path: str) -> None:
-        inner = os.path.join(tmp_path, "project")
-        os.makedirs(inner)
-        assert _unwrap_single_dir(str(tmp_path), skip=set()) == str(inner)
-
-    def test_multiple_entries(self, tmp_path: str) -> None:
-        os.makedirs(os.path.join(tmp_path, "a"))
-        os.makedirs(os.path.join(tmp_path, "b"))
-        assert _unwrap_single_dir(str(tmp_path), skip=set()) == str(tmp_path)
-
-    def test_skip_files(self, tmp_path: str) -> None:
-        inner = os.path.join(tmp_path, "project")
-        os.makedirs(inner)
-        with open(os.path.join(tmp_path, "source.tar.gz"), "w") as f:
-            f.write("")
-        assert _unwrap_single_dir(str(tmp_path), skip={"source.tar.gz"}) == str(inner)
+# _unwrap_single_dir — tested indirectly via create_workspace
 
 
 # ---------------------------------------------------------------------------
@@ -192,52 +169,12 @@ class TestShell:
 # ---------------------------------------------------------------------------
 
 
-class TestFormatShellResult:
-    def test_truncation(self) -> None:
-        result = mock.Mock()
-        result.stdout = "x" * 10000
-        result.stderr = ""
-        result.returncode = 0
+class TestShellTruncation:
+    def test_truncation(self, tmp_path: Path) -> None:
+        ws_id = "truncation-test"
+        _workspaces[ws_id] = str(tmp_path)
 
-        formatted = _format_shell_result(result)
-        assert formatted["truncated"] is True
-        assert len(formatted["stdout"]) < 10000
-
-
-# ---------------------------------------------------------------------------
-# _summarize_engine
-# ---------------------------------------------------------------------------
-
-
-class TestSummarizeEngine:
-    def test_full_engine(self) -> None:
-        engine = {
-            "name": "projects/123/locations/us-central1/reasoningEngines/456",
-            "displayName": "My Agent",
-            "description": "Does stuff",
-            "spec": {
-                "agentFramework": "ag2",
-                "packageSpec": {
-                    "pickleObjectGcsUri": "gs://bucket/agent.pkl",
-                    "dependencyFilesGcsUri": "gs://bucket/deps.tar.gz",
-                    "requirementsGcsUri": "gs://bucket/requirements.txt",
-                },
-                "effectiveIdentity": "sa@project.iam.gserviceaccount.com",
-            },
-            "createTime": "2026-03-17T00:00:00Z",
-        }
-        summary = _summarize_engine(engine)
-        assert summary["id"] == "456"
-        assert summary["display_name"] == "My Agent"
-        assert summary["dependencies_uri"] == "gs://bucket/deps.tar.gz"
-        assert summary["effective_identity"] == "sa@project.iam.gserviceaccount.com"
-        assert summary["project_number"] == "123"
-        assert summary["location"] == "us-central1"
-        assert summary["resource_name"] == "projects/123/locations/us-central1/reasoningEngines/456"
-
-    def test_minimal_engine(self) -> None:
-        summary = _summarize_engine({"name": ""})
-        assert summary["id"] == ""
-        assert summary["display_name"] == ""
-        assert summary["dependencies_uri"] == ""
-        assert summary["project_number"] == ""
+        result = shell(ws_id, "python -c \"print('x' * 10000)\"")
+        assert result["truncated"] is True
+        assert len(result["stdout"]) < 10000
+        del _workspaces[ws_id]

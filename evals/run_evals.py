@@ -84,7 +84,7 @@ def run_scenario(scenario_dir: Path, scanner: GCPCallScanner, registry: ServiceR
         all_scopes.extend(prov.oauth_scopes)
 
     # 4. Guardrails
-    from iamspy_mcp.shared.permission_rings import classify, Ring
+    from agents.shared.permission_rings import classify, Ring
     ring_counts = {r: 0 for r in Ring}
     for perm in actual_perms | actual_cond:
         ring_counts[classify(perm)] += 1
