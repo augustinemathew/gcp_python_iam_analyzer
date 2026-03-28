@@ -30,7 +30,7 @@ def analyze(
     if not files:
         return {"error": "No Python files found"}
 
-    results = asyncio.run(scanner.scan_files(files))
+    results = [scanner.scan_source(f.read_text(encoding="utf-8", errors="replace"), str(f)) for f in files]
     required: set[str] = set()
     conditional: set[str] = set()
     for result in results:

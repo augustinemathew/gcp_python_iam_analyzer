@@ -1,0 +1,24 @@
+project:
+  name: acme-cloud-bill-optimizer
+
+environments:
+  dev:
+    gcp_project: agentengine-478902
+    region: us-central1
+    deployment:
+      target: agent_engine
+      display_name: bill-optimizer-dev
+    identity:
+      app:
+        type: agent_identity
+
+  prod:
+    gcp_project: agentengine-478902
+    region: us-central1
+    deployment:
+      target: agent_engine
+      display_name: bill-optimizer
+    identity:
+      app:
+        type: agent_identity
+        principal: "principal://agents.global.proj-16744841236.system.id.goog/resources/aiplatform/projects/16744841236/locations/us-central1/reasoningEngines/4803828424160313344"

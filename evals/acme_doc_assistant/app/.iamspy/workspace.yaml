@@ -1,0 +1,29 @@
+project:
+  name: acme-doc-assistant
+
+environments:
+  dev:
+    gcp_project: acme-dev-123
+    region: us-central1
+    deployment:
+      target: cloud_run
+      service_name: doc-assistant-dev
+    identity:
+      app:
+        type: service_account
+        principal: doc-assistant-dev@acme-dev-123.iam.gserviceaccount.com
+      user:
+        type: oauth
+
+  prod:
+    gcp_project: acme-prod-456
+    region: us-central1
+    deployment:
+      target: cloud_run
+      service_name: doc-assistant
+    identity:
+      app:
+        type: service_account
+        principal: doc-assistant@acme-prod-456.iam.gserviceaccount.com
+      user:
+        type: oauth

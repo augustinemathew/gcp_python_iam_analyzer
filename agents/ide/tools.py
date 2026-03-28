@@ -126,7 +126,7 @@ def check_guardrails(
     if not files:
         return json.dumps({"error": "No Python files found"})
 
-    results = asyncio.run(scanner.scan_files(files))
+    results = [scanner.scan_source(f.read_text(encoding="utf-8", errors="replace"), str(f)) for f in files]
     permissions: set[str] = set()
     for result in results:
         for finding in result.findings:
@@ -208,3 +208,215 @@ def troubleshoot_access(permission: str, project_id: str | None = None) -> str:
     """
     from agents.shared.tools.iam import troubleshoot
     return json.dumps(troubleshoot(permission, project_id), indent=2)
+
+
+# ── Workspace config ───────────────────────────────────────────────────
+
+
+def get_workspace_config(workspace_root: str | None = None) -> str:
+    """Load the IAM workspace config (.iamspy/workspace.yaml).
+
+    The workspace config defines deployment environments (dev, staging, prod)
+    with GCP project, region, deployment target, and identity information.
+
+    Returns the full config as JSON, or an error if not found.
+    Use this to understand the deployment context before generating policies.
+    """
+    from agents.shared.workspace import load_workspace
+
+    config = load_workspace(workspace_root)
+    if config is None:
+        return json.dumps({
+            "error": "No .iamspy/workspace.yaml found",
+            "hint": "Run init_workspace_config to create one",
+        })
+
+    envs = {}
+    for name, env in config.environments.items():
+        envs[name] = {
+            "gcp_project": env.gcp_project,
+            "region": env.region,
+            "deployment": {
+                "target": env.deployment.target,
+                "service_name": env.deployment.service_name,
+                "display_name": env.deployment.display_name,
+            },
+            "identity": {
+                ident_name: {"type": ident.type, "principal": ident.principal}
+                for ident_name, ident in env.identities.items()
+            },
+        }
+
+    return json.dumps({
+        "project_name": config.project_name,
+        "config_path": str(config.path),
+        "environments": envs,
+    }, indent=2)
+
+
+def init_workspace_config(
+    workspace_root: str,
+    project_name: str,
+    gcp_project_dev: str | None = None,
+    gcp_project_prod: str | None = None,
+    deployment_target: str = "cloud_run",
+    identity_type: str = "service_account",
+) -> str:
+    """Initialize a .iamspy/workspace.yaml for a project.
+
+    Creates the config file with dev and prod environments.
+    The developer can edit it afterward to fill in details.
+
+    Args:
+        workspace_root: Project root directory.
+        project_name: Human-readable project name.
+        gcp_project_dev: GCP project ID for dev (optional).
+        gcp_project_prod: GCP project ID for prod (optional).
+        deployment_target: cloud_run, cloud_run_job, or agent_engine.
+        identity_type: service_account or agent_identity.
+    """
+    from agents.shared.workspace import init_workspace
+
+    environments = {
+        "dev": {
+            "gcp_project": gcp_project_dev or "",
+            "region": "us-central1",
+            "deployment": {"target": deployment_target},
+            "identity": {
+                "app": {"type": identity_type, "principal": None},
+            },
+        },
+        "prod": {
+            "gcp_project": gcp_project_prod or "",
+            "region": "us-central1",
+            "deployment": {"target": deployment_target},
+            "identity": {
+                "app": {"type": identity_type, "principal": None},
+            },
+        },
+    }
+
+    path = init_workspace(workspace_root, project_name, environments)
+    return json.dumps({
+        "created": str(path),
+        "project_name": project_name,
+        "environments": ["dev", "prod"],
+        "next_steps": [
+            f"Edit {path} to fill in GCP project IDs and principals",
+            "Run scan_directory to generate iam-manifest.yaml",
+        ],
+    }, indent=2)
+
+
+def recommend_policy(
+    paths: list[str],
+    environment: str = "dev",
+    workspace_root: str | None = None,
+) -> str:
+    """Generate an IAM policy recommendation for a specific environment.
+
+    Joins the workspace config (who/where) with the scan results (what)
+    to produce environment-specific IAM bindings.
+
+    Args:
+        paths: Code paths to scan.
+        environment: Target environment name from workspace.yaml.
+        workspace_root: Project root (searches for .iamspy/workspace.yaml).
+    """
+    from agents.shared.workspace import load_workspace
+
+    # Load workspace config
+    config = load_workspace(workspace_root)
+    if config is None:
+        return json.dumps({"error": "No .iamspy/workspace.yaml found"})
+
+    env = config.get_env(environment)
+    if env is None:
+        return json.dumps({
+            "error": f"Environment '{environment}' not found",
+            "available": config.env_names,
+        })
+
+    # Scan code
+    scan_result = _scan(paths)
+    if "error" in scan_result:
+        return json.dumps(scan_result)
+
+    required = set(scan_result["permissions"]["required"])
+    conditional = set(scan_result["permissions"]["conditional"])
+
+    # Build recommendation per identity
+    recommendations: dict = {
+        "environment": environment,
+        "gcp_project": env.gcp_project,
+        "deployment": {
+            "target": env.deployment.target,
+            "service_name": env.deployment.service_name,
+            "display_name": env.deployment.display_name,
+        },
+        "identities": {},
+    }
+
+    for ident_name, ident in env.identities.items():
+        # Filter permissions for this identity from scan findings
+        ident_perms = set()
+        ident_cond = set()
+        for finding in scan_result.get("findings", []):
+            finding_identity = finding.get("identity", "")
+            # Match if identity matches, or if multi-identity includes this one
+            if ident_name in finding_identity or not finding_identity:
+                ident_perms.update(finding.get("permissions", []))
+                ident_cond.update(finding.get("conditional", []))
+
+        if not ident_perms and not ident_cond:
+            continue
+
+        rec: dict = {
+            "type": ident.type,
+            "principal": ident.principal or f"(not yet configured in workspace.yaml)",
+            "permissions": {
+                "required": sorted(ident_perms),
+                "conditional": sorted(ident_cond),
+            },
+        }
+
+        # Check if principal exists and has grants
+        if ident.principal and env.gcp_project:
+            try:
+                granted = set(test_iam_permissions(env.gcp_project, sorted(ident_perms | ident_cond)))
+                rec["analysis"] = {
+                    "granted": sorted(granted & ident_perms),
+                    "missing": sorted(ident_perms - granted),
+                    "conditional_granted": sorted(granted & ident_cond),
+                }
+            except Exception:
+                rec["analysis"] = {"error": "Could not check live permissions"}
+
+        recommendations["identities"][ident_name] = rec
+
+    # Guardrail check
+    from agents.shared.guardrails import evaluate_guardrails
+
+    identity_type = None
+    for ident in env.identities.values():
+        identity_type = ident.type
+        break
+
+    violations = evaluate_guardrails(
+        permissions=required | conditional,
+        identity_type=identity_type,
+        environment=environment,
+    )
+    blocks = [v for v in violations if v.severity == "block"]
+    recommendations["guardrails"] = {
+        "violations": len(violations),
+        "blocks": len(blocks),
+        "deploy_allowed": len(blocks) == 0,
+    }
+    if violations:
+        recommendations["guardrails"]["details"] = [
+            {"severity": v.severity, "category": v.category, "message": v.message}
+            for v in violations
+        ]
+
+    return json.dumps(recommendations, indent=2)
