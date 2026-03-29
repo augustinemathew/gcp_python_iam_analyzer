@@ -295,11 +295,33 @@ def create_service_account(
     if "error" in result:
         return json.dumps(result, indent=2)
 
+    sa_email = result.get("email", "")
+
+    # Auto-update workspace config with the new principal
+    workspace_updated = False
+    if sa_email:
+        from agents.shared.workspace import load_workspace, update_workspace_principal
+        config = load_workspace()
+        if config:
+            # Find the first environment matching this project and update its principal
+            principal_str = f"serviceAccount:{sa_email}"
+            for env_name, env in config.environments.items():
+                if env.gcp_project == proj:
+                    for ident_name, ident in env.identities.items():
+                        if ident.type == "service_account" and not ident.principal:
+                            workspace_updated = update_workspace_principal(
+                                ".", env_name, ident_name, principal_str,
+                            )
+                            break
+                    if workspace_updated:
+                        break
+
     return json.dumps({
         "created": True,
-        "email": result.get("email", ""),
+        "email": sa_email,
         "display_name": result.get("displayName", ""),
         "project": proj,
+        "workspace_updated": workspace_updated,
     }, indent=2)
 
 

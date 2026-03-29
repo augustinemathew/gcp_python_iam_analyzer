@@ -8,6 +8,7 @@ from agents.shared.workspace import (
     WorkspaceConfig,
     init_workspace,
     load_workspace,
+    update_workspace_principal,
 )
 
 
@@ -120,3 +121,44 @@ class TestInitWorkspace:
         assert config is not None
         assert config.env_names == ["staging"]
         assert config.get_env("staging").deployment.target == "agent_engine"
+
+
+class TestUpdateWorkspacePrincipal:
+    def test_updates_null_principal(self, tmp_path: Path) -> None:
+        init_workspace(tmp_path, "test", environments={
+            "dev": {
+                "gcp_project": "proj-123",
+                "identity": {"app": {"type": "service_account", "principal": None}},
+            },
+        })
+
+        updated = update_workspace_principal(tmp_path, "dev", "app", "serviceAccount:sa@proj.iam")
+        assert updated is True
+
+        config = load_workspace(tmp_path)
+        assert config.get_env("dev").identities["app"].principal == "serviceAccount:sa@proj.iam"
+
+    def test_updates_existing_principal(self, tmp_path: Path) -> None:
+        init_workspace(tmp_path, "test", environments={
+            "dev": {
+                "gcp_project": "proj-123",
+                "identity": {"app": {"type": "service_account", "principal": "old@proj.iam"}},
+            },
+        })
+
+        updated = update_workspace_principal(tmp_path, "dev", "app", "serviceAccount:new@proj.iam")
+        assert updated is True
+
+        config = load_workspace(tmp_path)
+        assert config.get_env("dev").identities["app"].principal == "serviceAccount:new@proj.iam"
+
+    def test_returns_false_for_missing_env(self, tmp_path: Path) -> None:
+        init_workspace(tmp_path, "test")
+        assert update_workspace_principal(tmp_path, "staging", "app", "sa@proj.iam") is False
+
+    def test_returns_false_for_missing_identity(self, tmp_path: Path) -> None:
+        init_workspace(tmp_path, "test")
+        assert update_workspace_principal(tmp_path, "dev", "user", "sa@proj.iam") is False
+
+    def test_returns_false_for_no_config(self, tmp_path: Path) -> None:
+        assert update_workspace_principal(tmp_path, "dev", "app", "sa@proj.iam") is False

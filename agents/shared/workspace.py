@@ -166,3 +166,42 @@ def init_workspace(
 
     config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
     return config_path
+
+
+def update_workspace_principal(
+    workspace_root: str | Path,
+    environment: str,
+    identity_name: str,
+    principal: str,
+) -> bool:
+    """Update the principal for an identity in a specific environment.
+
+    Reads .iamspy/workspace.yaml, updates the principal field, writes back.
+
+    Returns True if updated, False if environment/identity not found.
+    """
+    config_path = _find_config(Path(workspace_root).resolve())
+    if config_path is None:
+        return False
+
+    data = yaml.safe_load(config_path.read_text())
+    if not isinstance(data, dict):
+        return False
+
+    envs = data.get("environments", {})
+    env = envs.get(environment)
+    if env is None:
+        return False
+
+    identities = env.get("identity", {})
+    ident = identities.get(identity_name)
+    if ident is None:
+        return False
+
+    if isinstance(ident, dict):
+        ident["principal"] = principal
+    else:
+        identities[identity_name] = {"type": str(ident), "principal": principal}
+
+    config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+    return True
