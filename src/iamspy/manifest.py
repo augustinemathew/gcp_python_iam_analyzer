@@ -5,6 +5,7 @@ Tests: tests/test_manifest.py
 
 from __future__ import annotations
 
+import os
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -49,6 +50,9 @@ class ManifestGenerator:
         service_ids: set[str] = set()
         sources: dict[str, list[dict]] = {}
 
+        # Compute the root for relative paths
+        source_root = self._resolve_source_root(scanned_paths)
+
         # Per-identity buckets
         identity_required: dict[str, set[str]] = defaultdict(set)
         identity_conditional: dict[str, set[str]] = defaultdict(set)
@@ -67,14 +71,16 @@ class ManifestGenerator:
                 for match in finding.matched:
                     service_ids.add(match.service_id)
 
+                rel_file = os.path.relpath(finding.file, source_root)
+
                 for perm in finding.permissions:
                     if identity:
                         identity_required[identity].add(perm)
                     else:
                         unattributed_required.add(perm)
                     if include_sources:
-                        source_entry = {
-                            "file": finding.file,
+                        source_entry: dict = {
+                            "file": rel_file,
                             "line": finding.line,
                             "method": finding.method_name,
                         }
@@ -89,7 +95,7 @@ class ManifestGenerator:
                         unattributed_conditional.add(perm)
                     if include_sources:
                         source_entry = {
-                            "file": finding.file,
+                            "file": rel_file,
                             "line": finding.line,
                             "method": finding.method_name,
                         }
@@ -143,6 +149,18 @@ class ManifestGenerator:
             }
 
         return manifest
+
+    @staticmethod
+    def _resolve_source_root(scanned_paths: list[str]) -> str:
+        """Compute the root directory for relative path computation.
+
+        Uses the first scanned path — if it's a directory, use it directly.
+        If it's a file, use its parent. Falls back to cwd.
+        """
+        if not scanned_paths:
+            return os.getcwd()
+        first = os.path.abspath(scanned_paths[0])
+        return first if os.path.isdir(first) else os.path.dirname(first)
 
     def _resolve_api_services(self, service_ids: set[str]) -> list[str]:
         """Resolve service_ids to their canonical googleapis.com names.
