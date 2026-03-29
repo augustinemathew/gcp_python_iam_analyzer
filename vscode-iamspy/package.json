@@ -40,6 +40,11 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically scan Python files on save"
+        },
+        "iamspy.autoManifest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-regenerate iam-manifest.yaml when Python files are saved (only writes if content changed)"
         }
       }
     }

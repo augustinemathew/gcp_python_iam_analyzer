@@ -8,6 +8,7 @@ import { scanPath } from './scanner.js';
 import { IamspyCodeLensProvider } from './codelens.js';
 import { createStatusBarItem, updateStatusBar, buildSummaryItems } from './statusBar.js';
 import { registerManifestCommand } from './manifest.js';
+import { registerAutoManifest } from './autoManifest.js';
 import { showDetailPanel } from './detailPanel.js';
 
 /** Shared state across all providers and commands. */
@@ -32,6 +33,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerEventHandlers(context, state);
   registerCommands(context, state);
   registerManifestCommand(context);
+  registerAutoManifest(context, state.outputChannel);
   scanActiveEditor(state);
 
   state.outputChannel.appendLine('IAMSpy activated.');
