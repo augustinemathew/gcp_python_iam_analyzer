@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from iamspy_mcp.shared.guardrails import (
+from agents.shared.guardrails import (
     Category,
     GuardrailPolicy,
     Severity,
