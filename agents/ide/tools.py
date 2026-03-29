@@ -358,6 +358,115 @@ def grant_iam_role(
     }, indent=2)
 
 
+# ── IAM change plans ──────────────────────────────────────────────────
+
+
+def plan_iam_changes(
+    paths: list[str],
+    environment: str = "dev",
+    workspace_root: str | None = None,
+) -> str:
+    """Generate a plan for IAM changes WITHOUT executing them.
+
+    Scans code, looks up workspace config, computes what needs to happen:
+    - SA to create (if principal is null)
+    - Roles to grant (from deterministic role mapper)
+    - Services to enable (if missing)
+
+    Returns a plan ID. Present the plan to the developer and wait for
+    confirmation before calling execute_iam_plan().
+    """
+    from agents.shared.workspace import load_workspace
+    from agents.shared.tools.role_mapper import permissions_to_roles
+    from agents.ide.plan import PlannedAction, create_plan, plan_to_dict
+
+    config = load_workspace(workspace_root)
+    if config is None:
+        return json.dumps({"error": "No .iamspy/workspace.yaml found"})
+
+    env = config.get_env(environment)
+    if env is None:
+        return json.dumps({"error": f"Environment '{environment}' not found", "available": config.env_names})
+
+    if not env.gcp_project:
+        return json.dumps({"error": f"No gcp_project set for environment '{environment}'"})
+
+    # Scan code
+    scan_result = _scan(paths)
+    if "error" in scan_result:
+        return json.dumps(scan_result)
+
+    required = set(scan_result["permissions"]["required"])
+    conditional = set(scan_result["permissions"]["conditional"])
+
+    actions: list[PlannedAction] = []
+
+    # Check if SA needs to be created
+    for ident_name, ident in env.identities.items():
+        if ident.type == "service_account" and not ident.principal:
+            sa_name = f"{config.project_name.lower().replace(' ', '-')}-{environment}"
+            actions.append(PlannedAction(
+                action="create_sa",
+                params={"account_id": sa_name, "display_name": config.project_name},
+                description=f"Create SA: {sa_name}@{env.gcp_project}.iam.gserviceaccount.com",
+            ))
+
+    # Check services to enable
+    from agents.shared.gcp import list_enabled_services
+    try:
+        from pathlib import Path as _Path
+        manifest_path = _Path("iam-manifest.yaml")
+        needed_services: set[str] = set()
+        if manifest_path.exists():
+            import yaml
+            manifest = yaml.safe_load(manifest_path.read_text())
+            needed_services = set(manifest.get("services", {}).get("enable", []))
+
+        if needed_services:
+            enabled = set(list_enabled_services(env.gcp_project))
+            missing = needed_services - enabled
+            if missing:
+                actions.append(PlannedAction(
+                    action="enable_service",
+                    params={"services": sorted(missing)},
+                    description=f"Enable APIs: {', '.join(sorted(missing))}",
+                ))
+    except Exception:
+        pass  # non-critical
+
+    # Compute roles to grant
+    role_recs = permissions_to_roles(required, conditional)
+    for ident_name, ident in env.identities.items():
+        principal = ident.principal
+        if not principal and actions and actions[0].action == "create_sa":
+            # Will be created — use projected email
+            sa_name = actions[0].params["account_id"]
+            principal = f"serviceAccount:{sa_name}@{env.gcp_project}.iam.gserviceaccount.com"
+
+        if principal:
+            for rec in role_recs:
+                if rec.role == "(custom role needed)":
+                    continue
+                actions.append(PlannedAction(
+                    action="grant_role",
+                    params={"role": rec.role, "member": principal},
+                    description=f"Grant {rec.role} → {rec.reason}",
+                ))
+
+    plan = create_plan(environment, env.gcp_project, actions)
+    return json.dumps(plan_to_dict(plan), indent=2)
+
+
+def execute_iam_plan(plan_id: str) -> str:
+    """Execute a previously generated IAM plan after developer confirmation.
+
+    The developer should have reviewed the plan from plan_iam_changes() first.
+    This creates the SA, grants roles, and enables services.
+    """
+    from agents.ide.plan import execute_plan
+    return json.dumps(execute_plan(plan_id), indent=2)
+
+
 # ── IAM tools ──────────────────────────────────────────────────────────
 
 

@@ -18,6 +18,7 @@ from agents.ide.tools import (
     check_guardrails,
     create_service_account,
     enable_services,
+    execute_iam_plan,
     generate_manifest,
     get_project_iam_policy,
     get_workspace_config,
@@ -26,6 +27,7 @@ from agents.ide.tools import (
     list_agent_engines,
     list_cloud_run_services,
     list_service_accounts,
+    plan_iam_changes,
     recommend_policy,
     scan_directory,
     scan_file,
@@ -102,7 +104,11 @@ before responding.
 - `check_enabled_services(project_id)` — check which APIs are enabled vs needed
 - `enable_services(service_names, project_id)` — enable APIs
 
-**Manage identities:**
+**Plan & execute (for mutating operations):**
+- `plan_iam_changes(paths, environment)` — generate a plan (SA creation, role grants, service enablement) WITHOUT executing
+- `execute_iam_plan(plan_id)` — execute a plan AFTER developer confirms
+
+**Direct tools (use plan_iam_changes instead when possible):**
 - `create_service_account(account_id, display_name, description)` — create a SA
 - `grant_iam_role(role, member, project_id)` — grant a role to a principal
 
@@ -132,6 +138,11 @@ not a guess.
 (app SA + delegated OAuth user), explain them clearly: which SDK calls use \
 which identity, what the SA needs vs what the user needs. If the app only \
 has one identity, say so — "single identity, all calls go through the app's SA."
+- **Plan before mutating**: When the developer wants to create SAs, grant roles, \
+or enable services, ALWAYS use `plan_iam_changes()` first. Present the plan, \
+wait for the developer to confirm, then call `execute_iam_plan(plan_id)`. \
+NEVER call `create_service_account`, `grant_iam_role`, or `enable_services` \
+directly unless the developer explicitly asks to skip the plan.
 - **Always pass the principal**: When calling `analyze_permissions` or \
 `troubleshoot_access`, always pass the `principal` argument from the workspace \
 config. These tools check what a *specific* SA or AGENT_IDENTITY can do by \
@@ -167,6 +178,7 @@ root_agent = Agent(
         get_workspace_config, init_workspace_config,
         scan_file, scan_directory, generate_manifest,
         recommend_policy, check_guardrails, analyze_permissions,
+        plan_iam_changes, execute_iam_plan,
         check_enabled_services, enable_services,
         list_agent_engines, list_cloud_run_services,
         list_service_accounts, create_service_account, grant_iam_role,
