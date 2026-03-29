@@ -10,9 +10,6 @@ checks what a specific SA or AGENT_IDENTITY principal can do.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from agents.shared.gcp import (
     get_deny_policies,
     get_iam_policy,

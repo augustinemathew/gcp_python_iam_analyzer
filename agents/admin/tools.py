@@ -20,9 +20,7 @@ from google.cloud import storage as gcs_client
 from agents.shared.gcp import (
     get_deny_policies,
     get_iam_policy,
-    get_project,
     list_agent_engines as _list_agents,
-    test_iam_permissions,
 )
 from agents.shared.gcp import _authed_request
 from agents.shared.tools.scan import (
