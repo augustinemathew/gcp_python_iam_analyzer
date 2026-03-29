@@ -44,7 +44,54 @@ manifest = gen.build(results, scanned_paths=["src/"], include_sources=True)
 gen.write(manifest, Path("iam-manifest.yaml"))
 ```
 
-## Format Specification (Version 1)
+## Format Specification
+
+### Version 2 (current)
+
+Version 2 splits permissions by identity context. An app with both SA and OAuth credentials gets separate permission blocks.
+
+```yaml
+version: '2'
+generated_by: iamspy scan src/
+generated_at: '2026-03-29T00:00:00Z'
+services:
+  enable:
+  - bigquery.googleapis.com
+  - storage.googleapis.com
+identities:
+  app:
+    permissions:
+      required:
+      - bigquery.jobs.create
+      - storage.objects.create
+      conditional:
+      - bigquery.tables.getData
+  user:
+    oauth_scopes:
+    - https://www.googleapis.com/auth/drive.readonly
+    permissions:
+      required: []
+      conditional: []
+# Unattributed findings (identity couldn't be determined)
+permissions:
+  required: []
+  conditional: []
+sources:
+  bigquery.jobs.create:
+  - file: main.py
+    line: 30
+    method: query
+    identity: app
+```
+
+**New fields in v2:**
+- `identities` — permissions grouped by identity context (`app`, `user`, `impersonated`)
+- `identities.*.oauth_scopes` — OAuth scopes detected in code (for delegated user identity)
+- `sources.*.identity` — which identity context the finding belongs to
+
+**Backward compatibility:** Top-level `permissions` block still exists for unattributed findings. Tools that only read `permissions` will get findings that couldn't be attributed to an identity.
+
+### Version 1 (legacy)
 
 ```yaml
 # Required: format version
