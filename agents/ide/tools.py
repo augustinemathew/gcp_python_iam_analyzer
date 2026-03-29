@@ -549,13 +549,21 @@ def recommend_policy(
         if not ident_perms and not ident_cond:
             continue
 
+        # Deterministic role mapping
+        from agents.shared.tools.role_mapper import permissions_to_roles
+        role_recs = permissions_to_roles(ident_perms, ident_cond)
+
         rec: dict = {
             "type": ident.type,
-            "principal": ident.principal or f"(not yet configured in workspace.yaml)",
+            "principal": ident.principal or "(not yet configured in workspace.yaml)",
             "permissions": {
                 "required": sorted(ident_perms),
                 "conditional": sorted(ident_cond),
             },
+            "recommended_roles": [
+                {"role": r.role, "covers": r.covers, "excess": r.excess_count, "reason": r.reason}
+                for r in role_recs
+            ],
         }
 
         # Check if principal exists and has grants (via role expansion)
