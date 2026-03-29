@@ -20,10 +20,9 @@ export function formatTitle(finding: IamspyFinding): string {
 }
 
 /**
- * Detailed Markdown tooltip showing all permissions.
+ * Detailed tooltip showing all permissions.
  *
- * Uses bold headers and code formatting for readability,
- * similar to Python docstring hover tooltips.
+ * Plain text with clear structure — CodeLens tooltips don't render markdown.
  */
 export function formatTooltip(finding: IamspyFinding): string {
   const className = finding.class.length <= 3
@@ -31,35 +30,27 @@ export function formatTooltip(finding: IamspyFinding): string {
     : finding.class[0];
 
   const identityTag = finding.identity
-    ? ` \`[${finding.identity}]\``
+    ? ` [${finding.identity}]`
     : '';
 
   const lines = [
-    `**${className}**.${finding.method}${identityTag}`,
+    `${className}.${finding.method}${identityTag}`,
+    `Service: ${finding.service.join(', ')}`,
     '',
-    `**Service:** ${finding.service.join(', ')}`,
-    '',
-    '**Required:**',
-    ...finding.permissions.map((p) => `- \`${p}\``),
+    'REQUIRED:',
+    ...finding.permissions.map((p) => `  ${p}`),
   ];
 
   if (finding.conditional.length > 0) {
-    lines.push('', '**Conditional:**');
-    lines.push(
-      ...finding.conditional.map((c) => `- \`${c}\``),
-    );
+    lines.push('', 'CONDITIONAL:');
+    lines.push(...finding.conditional.map((c) => `  ${c}`));
   }
 
   if (finding.notes) {
-    lines.push('', `**Note:** ${finding.notes}`);
+    lines.push('', `NOTE: ${finding.notes}`);
   }
 
-  lines.push(
-    '',
-    `**Resolution:** ${finding.resolution}`,
-    '',
-    '*Click for full details*',
-  );
+  lines.push('', `Resolution: ${finding.resolution}`);
 
   return lines.join('\n');
 }

@@ -71,7 +71,7 @@ describe('formatTooltip', () => {
     const tooltip = formatTooltip(makeFinding({
       conditional: ['bigquery.tables.create'],
     }));
-    assert.ok(tooltip.includes('Conditional'));
+    assert.ok(tooltip.includes('CONDITIONAL'));
     assert.ok(tooltip.includes('bigquery.tables.create'));
   });
 });
