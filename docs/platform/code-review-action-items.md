@@ -551,17 +551,17 @@ Set `is_workspace_api=True` when `client_class == "build"`. The manifest builder
 
 | ID | Priority | Status | Description |
 |---|---|---|---|
-| P0-1 | P0 | [ ] | Fix manifest absolute paths → relative |
-| P0-2 | P0 | [ ] | Delete old directories, fix all imports |
-| P0-3 | P0 | [ ] | Build deterministic `permissions_to_roles()` |
-| P0-4 | P0 | [ ] | Add confirmation gate for mutating tools |
-| P0-5 | P0 | [ ] | Auto-update workspace config after SA creation |
+| P0-1 | P0 | [x] | Fix manifest absolute paths → relative |
+| P0-2 | P0 | [x] | Delete old directories, fix all imports |
+| P0-3 | P0 | [x] | Build deterministic `permissions_to_roles()` |
+| P0-4 | P0 | [x] | Add confirmation gate for mutating tools |
+| P0-5 | P0 | [x] | Auto-update workspace config after SA creation |
 | P1-1 | P1 | [ ] | Add programmatic assertions to conversation evals |
-| P1-2 | P1 | [ ] | (Covered by P0-1) |
+| P1-2 | P1 | [x] | (Covered by P0-1) |
 | P1-3 | P1 | [ ] | Unify error handling across tools layer |
-| P1-4 | P1 | [ ] | Remove unused imports |
-| P1-5 | P1 | [ ] | Connect guardrails.py and permission_rings.py |
-| P1-6 | P1 | [ ] | Fix test_guardrails.py import to use agents.shared |
+| P1-4 | P1 | [x] | Remove unused imports |
+| P1-5 | P1 | [x] | Connect guardrails.py and permission_rings.py |
+| P1-6 | P1 | [x] | Fix test_guardrails.py import to use agents.shared |
 | P2-1 | P2 | [ ] | Reduce double tree-sitter parsing |
 | P2-2 | P2 | [ ] | Fix multi-identity string representation |
 | P2-3 | P2 | [ ] | Refactor functions exceeding 40 lines |
