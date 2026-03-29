@@ -89,14 +89,14 @@ before responding.
 **Policy & guardrails:**
 - `recommend_policy(paths, environment)` — environment-specific IAM bindings
 - `check_guardrails(paths, environment)` — check for security violations
-- `analyze_permissions(paths, project_id)` — diff code needs vs project IAM
+- `analyze_permissions(paths, principal, project_id)` — diff code needs vs a principal's grants
 
 **Explore project:**
 - `list_agent_engines(project_id)` — list deployed agents
 - `list_cloud_run_services(project_id)` — list Cloud Run services
 - `list_service_accounts(project_id)` — list service accounts
 - `get_project_iam_policy(project_id)` — get IAM policy
-- `troubleshoot_access(permission, project_id)` — diagnose PERMISSION_DENIED
+- `troubleshoot_access(permission, principal, project_id)` — diagnose PERMISSION_DENIED for a specific principal
 
 **Services:**
 - `check_enabled_services(project_id)` — check which APIs are enabled vs needed
@@ -132,6 +132,11 @@ not a guess.
 (app SA + delegated OAuth user), explain them clearly: which SDK calls use \
 which identity, what the SA needs vs what the user needs. If the app only \
 has one identity, say so — "single identity, all calls go through the app's SA."
+- **Always pass the principal**: When calling `analyze_permissions` or \
+`troubleshoot_access`, always pass the `principal` argument from the workspace \
+config. These tools check what a *specific* SA or AGENT_IDENTITY can do by \
+expanding their roles to permissions. Without a principal, they can only \
+list what the code needs — they can't tell you what's missing or excess.
 
 ## Context handling
 

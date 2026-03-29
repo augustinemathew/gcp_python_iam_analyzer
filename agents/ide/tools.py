@@ -348,22 +348,44 @@ def get_project_iam_policy(project_id: str | None = None) -> str:
     return json.dumps({"project": proj, "bindings": policy.get("bindings", [])}, indent=2)
 
 
-def analyze_permissions(paths: list[str], project_id: str | None = None) -> str:
-    """Compare what the code needs vs what the caller has on the project.
+def analyze_permissions(
+    paths: list[str],
+    principal: str | None = None,
+    project_id: str | None = None,
+) -> str:
+    """Compare what the code needs vs what a principal actually has.
 
-    Scans code, checks IAM, shows missing and excess permissions.
+    Expands the principal's IAM roles to permissions using the local
+    role database (12,879 permissions). Does NOT use testIamPermissions
+    (which only checks the caller). This accurately shows what a specific
+    SA or AGENT_IDENTITY can do.
+
+    Args:
+        paths: Code paths to scan.
+        principal: The principal to check (e.g., "serviceAccount:sa@proj.iam").
+        project_id: GCP project.
     """
     from agents.shared.tools.iam import analyze
-    return json.dumps(analyze(paths, project_id), indent=2)
+    return json.dumps(analyze(paths, project_id, principal), indent=2)
 
 
-def troubleshoot_access(permission: str, project_id: str | None = None) -> str:
-    """Troubleshoot a PERMISSION_DENIED error.
+def troubleshoot_access(
+    permission: str,
+    principal: str | None = None,
+    project_id: str | None = None,
+) -> str:
+    """Troubleshoot a PERMISSION_DENIED error for a specific principal.
 
-    Checks caller permissions, deny policies, and suggests fix.
+    Checks the principal's roles (via expansion), deny policies, and
+    suggests which role to grant.
+
+    Args:
+        permission: The permission that was denied (e.g., "storage.objects.create").
+        principal: The principal getting the error (e.g., "serviceAccount:sa@proj.iam").
+        project_id: GCP project.
     """
     from agents.shared.tools.iam import troubleshoot
-    return json.dumps(troubleshoot(permission, project_id), indent=2)
+    return json.dumps(troubleshoot(permission, project_id, principal), indent=2)
 
 
 # ── Workspace config ───────────────────────────────────────────────────
@@ -536,14 +558,18 @@ def recommend_policy(
             },
         }
 
-        # Check if principal exists and has grants
+        # Check if principal exists and has grants (via role expansion)
         if ident.principal and env.gcp_project:
+            from agents.shared.tools.iam import _find_roles_for_principal, _expand_roles_to_permissions
             try:
-                granted = set(test_iam_permissions(env.gcp_project, sorted(ident_perms | ident_cond)))
+                roles = _find_roles_for_principal(env.gcp_project, ident.principal)
+                granted = _expand_roles_to_permissions(roles)
+                rec["granted_roles"] = roles
                 rec["analysis"] = {
                     "granted": sorted(granted & ident_perms),
                     "missing": sorted(ident_perms - granted),
                     "conditional_granted": sorted(granted & ident_cond),
+                    "excess_permission_count": len(granted - ident_perms - ident_cond),
                 }
             except Exception:
                 rec["analysis"] = {"error": "Could not check live permissions"}
