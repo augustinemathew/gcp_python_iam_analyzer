@@ -39,6 +39,10 @@ function buildHtml(finding: IamspyFinding): string {
   const meta = buildMetaSection(finding);
   const docsLink = buildDocsLink(finding);
 
+  const identityBadge = finding.identity
+    ? `<span class="tag identity-${esc(finding.identity)}">${esc(finding.identity)}</span>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +51,7 @@ function buildHtml(finding: IamspyFinding): string {
 <style>${CSS}</style>
 </head>
 <body>
-  <h1>${className}.${method}</h1>
+  <h1>${className}.${method} ${identityBadge}</h1>
   <div class="service">${service}</div>
   <table>
     <thead><tr><th>Permission</th><th>Type</th></tr></thead>
@@ -183,6 +187,10 @@ const CSS = `
   .exact { background: #2ea043; color: #fff; }
   .ambiguous { background: #d29922; color: #fff; }
   .unresolved { background: #6e7681; color: #fff; }
+  .identity-app { background: #1f6feb; color: #fff; }
+  .identity-user { background: #8957e5; color: #fff; }
+  .identity-impersonated { background: #da3633; color: #fff; }
+  .identity-unknown { background: #6e7681; color: #fff; }
   .meta {
     margin-top: 20px; padding-top: 16px;
     border-top: 1px solid var(--vscode-panel-border);

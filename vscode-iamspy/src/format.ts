@@ -11,37 +11,55 @@ export function formatTitle(finding: IamspyFinding): string {
   const perms = finding.permissions;
   const condCount = finding.conditional.length;
   const suffix = condCount > 0 ? `  +${condCount} conditional` : '';
+  const identity = finding.identity ? ` [${finding.identity}]` : '';
 
   if (perms.length === 1) {
-    return `🔑 ${perms[0]}${suffix}`;
+    return `🔑 ${perms[0]}${identity}${suffix}`;
   }
-  return `🔑 ${perms.length} permissions${suffix}`;
+  return `🔑 ${perms.length} permissions${identity}${suffix}`;
 }
 
-/** Detailed tooltip showing all permissions. */
+/**
+ * Detailed Markdown tooltip showing all permissions.
+ *
+ * Uses bold headers and code formatting for readability,
+ * similar to Python docstring hover tooltips.
+ */
 export function formatTooltip(finding: IamspyFinding): string {
   const className = finding.class.length <= 3
     ? finding.class.join(', ')
     : finding.class[0];
+
+  const identityTag = finding.identity
+    ? ` \`[${finding.identity}]\``
+    : '';
+
   const lines = [
-    `${className}.${finding.method}`,
-    `Service: ${finding.service.join(', ')}`,
+    `**${className}**.${finding.method}${identityTag}`,
     '',
-    'Required:',
-    ...finding.permissions.map((p) => `  ${p}`),
+    `**Service:** ${finding.service.join(', ')}`,
+    '',
+    '**Required:**',
+    ...finding.permissions.map((p) => `- \`${p}\``),
   ];
 
   if (finding.conditional.length > 0) {
-    lines.push('', 'Conditional:');
-    lines.push(...finding.conditional.map((c) => `  ${c}`));
+    lines.push('', '**Conditional:**');
+    lines.push(
+      ...finding.conditional.map((c) => `- \`${c}\``),
+    );
   }
 
   if (finding.notes) {
-    lines.push('', `Note: ${finding.notes}`);
+    lines.push('', `**Note:** ${finding.notes}`);
   }
 
-  lines.push('', `Resolution: ${finding.resolution}`);
-  lines.push('', 'Click for full details');
+  lines.push(
+    '',
+    `**Resolution:** ${finding.resolution}`,
+    '',
+    '*Click for full details*',
+  );
 
   return lines.join('\n');
 }

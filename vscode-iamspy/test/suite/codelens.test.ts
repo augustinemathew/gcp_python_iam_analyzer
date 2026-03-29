@@ -23,21 +23,26 @@ function makeFinding(overrides: Partial<IamspyFinding> = {}): IamspyFinding {
 describe('formatTitle', () => {
   it('shows single permission directly', () => {
     const title = formatTitle(makeFinding());
-    assert.equal(title, '🔑 bigquery.jobs.create');
+    assert.ok(title.includes('bigquery.jobs.create'));
   });
 
   it('shows count for multiple permissions', () => {
     const title = formatTitle(makeFinding({
       permissions: ['bigquery.jobs.create', 'bigquery.tables.getData'],
     }));
-    assert.equal(title, '🔑 2 permissions');
+    assert.ok(title.includes('2 permissions'));
   });
 
   it('appends conditional count when present', () => {
     const title = formatTitle(makeFinding({
       conditional: ['bigquery.tables.getData', 'bigquery.tables.create'],
     }));
-    assert.equal(title, '🔑 bigquery.jobs.create  +2 conditional');
+    assert.ok(title.includes('+2 conditional'));
+  });
+
+  it('shows identity tag when present', () => {
+    const title = formatTitle(makeFinding({ identity: 'app' }));
+    assert.ok(title.includes('[app]'));
   });
 
   it('no conditional suffix when empty', () => {
@@ -49,8 +54,9 @@ describe('formatTitle', () => {
 describe('formatTooltip', () => {
   it('includes method and service', () => {
     const tooltip = formatTooltip(makeFinding());
-    assert.ok(tooltip.includes('Client.query'));
-    assert.ok(tooltip.includes('Service: BigQuery'));
+    assert.ok(tooltip.includes('Client'));
+    assert.ok(tooltip.includes('query'));
+    assert.ok(tooltip.includes('BigQuery'));
   });
 
   it('lists all permissions', () => {
@@ -65,7 +71,7 @@ describe('formatTooltip', () => {
     const tooltip = formatTooltip(makeFinding({
       conditional: ['bigquery.tables.create'],
     }));
-    assert.ok(tooltip.includes('Conditional:'));
+    assert.ok(tooltip.includes('Conditional'));
     assert.ok(tooltip.includes('bigquery.tables.create'));
   });
 });

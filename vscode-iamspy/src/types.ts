@@ -17,6 +17,10 @@ export interface IamspyFinding {
   status: FindingStatus;
   resolution: 'exact' | 'ambiguous' | 'unresolved';
   notes: string;
+  /** Identity context: 'app', 'user', 'impersonated', or undefined. */
+  identity?: string;
+  /** Credential provenance: 'sa_default', 'oauth_user', 'implicit', etc. */
+  credential?: string;
 }
 
 export type FindingStatus = 'mapped' | 'unmapped' | 'no_api_call';
