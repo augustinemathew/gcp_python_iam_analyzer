@@ -44,7 +44,7 @@ class TestPrivilegeEscalation:
 
 
 class TestDestructiveActions:
-    """Guardrails block destructive operations in prod."""
+    """Guardrails block high-impact destructive operations in prod."""
 
     def test_project_delete_blocked(self) -> None:
         perms = {"resourcemanager.projects.delete"}
@@ -57,7 +57,8 @@ class TestDestructiveActions:
     def test_bucket_delete_blocked(self) -> None:
         perms = {"storage.buckets.delete"}
         violations = evaluate_guardrails(perms, environment="prod")
-        assert any(v.category == Category.DESTRUCTIVE_ACTION for v in violations)
+        blocks = [v for v in violations if v.severity == Severity.BLOCK and v.permission == "storage.buckets.delete"]
+        assert len(blocks) > 0
 
     def test_kms_destroy_blocked(self) -> None:
         perms = {"cloudkms.cryptoKeyVersions.destroy"}
@@ -65,10 +66,9 @@ class TestDestructiveActions:
         assert any(v.severity == Severity.BLOCK for v in violations)
 
     def test_destructive_allowed_in_dev(self) -> None:
-        """Most destructive ops are allowed in dev (except project delete)."""
+        """Destructive ops are allowed in dev (dev has no denied_permission_patterns)."""
         perms = {"storage.buckets.delete", "bigquery.datasets.delete"}
         violations = evaluate_guardrails(perms, environment="dev")
-        # Dev only blocks project delete and priv esc, not general destructive
         blocks = [v for v in violations if v.severity == Severity.BLOCK]
         assert len(blocks) == 0
 

@@ -1,27 +1,19 @@
 """Agent guardrails — admin-defined boundaries for agent permissions.
 
-Guardrails define what agents are NEVER allowed to do, regardless of what
-their code requires. They're the admin's safety net against:
-- Agent developers accidentally requesting dangerous permissions
-- Agents performing destructive operations
-- Privilege escalation (agent grants itself more access)
-- Data exfiltration (agent exports data to external destinations)
+Uses the permission ring classifier as the source of truth for permission
+severity. Ring 0 (CRITICAL) permissions are blocked. Ring 1 (SENSITIVE)
+permissions are warned. Roles and identity constraints use their own rules.
 
-Guardrails are evaluated against a manifest to produce violations.
-A violation blocks deployment in prod, warns in dev.
-
-Guardrail categories:
-1. Denied permissions — specific IAM permissions that are never allowed
-2. Denied roles — roles too broad for any agent
-3. Resource boundaries — what resources agents can/cannot touch
-4. Identity constraints — how agents must authenticate
-5. Destructive action rules — operations that require extra scrutiny
+Ring classification: agents/shared/permission_rings.py
 """
 
 from __future__ import annotations
 
+import fnmatch
 from dataclasses import dataclass, field
 from enum import StrEnum
+
+from agents.shared.permission_rings import Ring, classify
 
 
 class Severity(StrEnum):
@@ -56,9 +48,6 @@ class Violation:
 class GuardrailPolicy:
     """Admin-defined guardrails for agent permissions."""
 
-    # Permissions that no agent may ever have
-    denied_permissions: frozenset[str] = frozenset()
-
     # Permission patterns (glob) that are denied
     denied_permission_patterns: frozenset[str] = frozenset()
 
@@ -67,6 +56,10 @@ class GuardrailPolicy:
 
     # Maximum number of permissions an agent can request
     max_permissions: int = 50
+
+    # Ring thresholds: which rings to block vs warn
+    block_rings: frozenset[Ring] = frozenset({Ring.CRITICAL})
+    warn_rings: frozenset[Ring] = frozenset({Ring.SENSITIVE})
 
     # Identity constraints
     require_agent_identity: bool = True
@@ -78,74 +71,13 @@ class GuardrailPolicy:
     allowed_services: frozenset[str] | None = None  # None = all allowed
     denied_services: frozenset[str] = frozenset()
 
-    # Custom rules
-    custom_rules: list[str] = field(default_factory=list)
 
+# ── Roles too broad for any agent ─────────────────────────────────────
 
-# ── Built-in guardrail rules ──────────────────────────────────────────
-
-# Permissions that enable privilege escalation — an agent with these can
-# grant itself (or others) more access than intended.
-PRIVILEGE_ESCALATION_PERMISSIONS = frozenset({
-    # IAM policy modification
-    "resourcemanager.projects.setIamPolicy",
-    "resourcemanager.folders.setIamPolicy",
-    "resourcemanager.organizations.setIamPolicy",
-    # Service account key creation (can exfil long-lived credentials)
-    "iam.serviceAccountKeys.create",
-    "iam.serviceAccountKeys.get",
-    # Service account creation (can create new identities)
-    "iam.serviceAccounts.create",
-    # Service account token creation (can mint tokens for other SAs)
-    "iam.serviceAccounts.getAccessToken",
-    "iam.serviceAccounts.signBlob",
-    "iam.serviceAccounts.signJwt",
-    "iam.serviceAccounts.implicitDelegation",
-    # Role modification
-    "iam.roles.create",
-    "iam.roles.update",
-    # Org policy modification
-    "orgpolicy.policy.set",
-})
-
-# Permissions that enable destructive operations at scale
-DESTRUCTIVE_PERMISSIONS = frozenset({
-    # Project deletion
-    "resourcemanager.projects.delete",
-    # Bulk data deletion
-    "bigquery.datasets.delete",
-    "storage.buckets.delete",
-    "bigtable.instances.delete",
-    "spanner.databases.drop",
-    "firestore.databases.delete",
-    # Compute destruction
-    "compute.instances.delete",
-    "compute.disks.delete",
-    "container.clusters.delete",
-    # Secret/key destruction
-    "secretmanager.secrets.delete",
-    "cloudkms.cryptoKeys.destroy",
-    "cloudkms.cryptoKeyVersions.destroy",
-})
-
-# Permissions that enable data exfiltration
-EXFILTRATION_PERMISSIONS = frozenset({
-    # Export data to external destinations
-    "bigquery.tables.export",
-    # Read all data (when combined with network access)
-    "storage.objects.list",
-    "storage.objects.get",
-    # Access secrets
-    "secretmanager.versions.access",
-    # Access KMS keys (can decrypt data)
-    "cloudkms.cryptoKeyVersions.useToDecrypt",
-})
-
-# Roles too broad for any agent
 DENIED_ROLES = frozenset({
     "roles/owner",
     "roles/editor",
-    "roles/viewer",  # surprisingly broad — grants read on everything
+    "roles/viewer",
     "roles/iam.securityAdmin",
     "roles/iam.serviceAccountAdmin",
     "roles/resourcemanager.projectIamAdmin",
@@ -153,24 +85,33 @@ DENIED_ROLES = frozenset({
 })
 
 
+# ── Ring → Category mapping ───────────────────────────────────────────
+
+_RING_TO_CATEGORY = {
+    Ring.CRITICAL: Category.PRIVILEGE_ESCALATION,
+    Ring.SENSITIVE: Category.DATA_EXFILTRATION,
+    Ring.MUTATING: Category.DESTRUCTIVE_ACTION,
+    Ring.READ: Category.OVERPERMISSION,
+}
+
+_RING_REMEDIATION = {
+    Ring.CRITICAL: "Remove this permission. Agents must not modify IAM policies or create credentials.",
+    Ring.SENSITIVE: "Ensure this is necessary. Restrict to specific resources via IAM conditions.",
+    Ring.MUTATING: "Review whether this state change is needed.",
+    Ring.READ: "",
+}
+
+
 # ── Default policies ──────────────────────────────────────────────────
 
 
 def default_dev_guardrails() -> GuardrailPolicy:
-    """Default guardrails for dev environments.
-
-    Blocks privilege escalation and project deletion.
-    Allows most other operations for iteration speed.
-    """
+    """Dev: block Ring 0, warn nothing. Broad roles blocked."""
     return GuardrailPolicy(
-        denied_permissions=PRIVILEGE_ESCALATION_PERMISSIONS | frozenset({
-            "resourcemanager.projects.delete",
-        }),
-        denied_roles=frozenset({
-            "roles/owner",
-            "roles/editor",
-        }),
+        denied_roles=frozenset({"roles/owner", "roles/editor"}),
         max_permissions=100,
+        block_rings=frozenset({Ring.CRITICAL}),
+        warn_rings=frozenset(),
         require_agent_identity=False,
         allow_shared_sa=True,
         allow_impersonation=False,
@@ -179,16 +120,24 @@ def default_dev_guardrails() -> GuardrailPolicy:
 
 
 def default_prod_guardrails() -> GuardrailPolicy:
-    """Default guardrails for production environments.
-
-    Strict: blocks privilege escalation, destructive actions, and
-    requires AGENT_IDENTITY. Exfiltration permissions are flagged
-    as warnings (they may be legitimately needed).
-    """
+    """Prod: block Ring 0, warn Ring 1. Block high-impact destructive ops."""
     return GuardrailPolicy(
-        denied_permissions=PRIVILEGE_ESCALATION_PERMISSIONS | DESTRUCTIVE_PERMISSIONS,
         denied_roles=DENIED_ROLES,
+        denied_permission_patterns=frozenset({
+            # High-impact destructive ops — blocked even though Ring 2
+            "resourcemanager.projects.delete",
+            "resourcemanager.folders.delete",
+            "cloudkms.cryptoKeyVersions.destroy",
+            "secretmanager.versions.destroy",
+            "storage.buckets.delete",
+            "bigquery.datasets.delete",
+            "spanner.databases.drop",
+            "bigtable.instances.delete",
+            "container.clusters.delete",
+        }),
         max_permissions=50,
+        block_rings=frozenset({Ring.CRITICAL}),
+        warn_rings=frozenset({Ring.SENSITIVE}),
         require_agent_identity=True,
         allow_shared_sa=False,
         allow_impersonation=False,
@@ -206,38 +155,54 @@ def evaluate_guardrails(
     policy: GuardrailPolicy | None = None,
     environment: str = "prod",
 ) -> list[Violation]:
-    """Evaluate permissions against guardrails.
-
-    Args:
-        permissions: The IAM permissions the agent requests.
-        roles: Specific roles being granted (if known).
-        identity_type: 'agent_identity', 'service_account', etc.
-        policy: Custom guardrail policy. If None, uses default for environment.
-        environment: 'dev', 'staging', or 'prod'.
-
-    Returns:
-        List of violations, sorted by severity (block first).
-    """
+    """Evaluate permissions against guardrails."""
     if policy is None:
         policy = default_prod_guardrails() if environment == "prod" else default_dev_guardrails()
 
     violations: list[Violation] = []
 
-    # Check denied permissions
+    _check_permission_rings(permissions, policy, violations)
+    _check_denied_patterns(permissions, policy, violations)
+    _check_denied_roles(roles, policy, violations)
+    _check_permission_count(permissions, policy, violations)
+    _check_identity_constraints(identity_type, policy, violations)
+    _check_service_boundaries(permissions, policy, violations)
+
+    violations.sort(key=lambda v: {"block": 0, "warn": 1, "info": 2}[v.severity])
+    return violations
+
+
+def _check_permission_rings(
+    permissions: set[str], policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check each permission's ring against block/warn thresholds."""
     for perm in sorted(permissions):
-        if perm in policy.denied_permissions:
-            category = _categorize_permission(perm)
+        ring = classify(perm)
+
+        if ring in policy.block_rings:
             violations.append(Violation(
                 severity=Severity.BLOCK,
-                category=category,
-                rule="denied_permission",
-                message=f"Permission '{perm}' is not allowed for agents",
+                category=_RING_TO_CATEGORY[ring],
+                rule=f"ring_{ring.value}_blocked",
+                message=f"Permission '{perm}' is Ring {ring.value} ({ring.name}) — not allowed for agents",
                 permission=perm,
-                remediation=_remediation_for_category(category),
+                remediation=_RING_REMEDIATION[ring],
+            ))
+        elif ring in policy.warn_rings:
+            violations.append(Violation(
+                severity=Severity.WARN,
+                category=_RING_TO_CATEGORY[ring],
+                rule=f"ring_{ring.value}_warning",
+                message=f"Permission '{perm}' is Ring {ring.value} ({ring.name}) — review required",
+                permission=perm,
+                remediation=_RING_REMEDIATION[ring],
             ))
 
-    # Check denied permission patterns
-    import fnmatch
+
+def _check_denied_patterns(
+    permissions: set[str], policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check permissions against denied glob patterns."""
     for perm in sorted(permissions):
         for pattern in policy.denied_permission_patterns:
             if fnmatch.fnmatch(perm, pattern):
@@ -249,7 +214,11 @@ def evaluate_guardrails(
                     permission=perm,
                 ))
 
-    # Check denied roles
+
+def _check_denied_roles(
+    roles: list[str] | None, policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check roles against denied list."""
     for role in (roles or []):
         if role in policy.denied_roles:
             violations.append(Violation(
@@ -261,7 +230,11 @@ def evaluate_guardrails(
                 remediation="Use a predefined narrow role or custom role instead",
             ))
 
-    # Check permission count
+
+def _check_permission_count(
+    permissions: set[str], policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check total permission count against max."""
     if len(permissions) > policy.max_permissions:
         violations.append(Violation(
             severity=Severity.WARN,
@@ -271,95 +244,65 @@ def evaluate_guardrails(
             remediation="Review whether all permissions are necessary",
         ))
 
-    # Check identity constraints
-    if identity_type:
-        if policy.require_agent_identity and identity_type != "agent_identity":
-            violations.append(Violation(
-                severity=Severity.BLOCK,
-                category=Category.IDENTITY,
-                rule="require_agent_identity",
-                message=f"Agent uses '{identity_type}' but AGENT_IDENTITY is required",
-                remediation="Deploy with identity_type=AGENT_IDENTITY",
-            ))
 
-        if not policy.allow_shared_sa and identity_type == "service_account":
-            violations.append(Violation(
-                severity=Severity.BLOCK,
-                category=Category.IDENTITY,
-                rule="no_shared_sa",
-                message="Shared service accounts are not allowed",
-                remediation="Use AGENT_IDENTITY for per-agent isolation",
-            ))
+def _check_identity_constraints(
+    identity_type: str | None, policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check identity type against policy constraints."""
+    if not identity_type:
+        return
 
-        if not policy.allow_impersonation and identity_type == "impersonated":
-            violations.append(Violation(
-                severity=Severity.BLOCK,
-                category=Category.IDENTITY,
-                rule="no_impersonation",
-                message="SA impersonation is not allowed for agents",
-                remediation="Use AGENT_IDENTITY instead of impersonating another SA",
-            ))
-
-    # Check exfiltration risk (warn, don't block — may be legitimate)
-    exfil_perms = permissions & EXFILTRATION_PERMISSIONS
-    if exfil_perms:
+    if policy.require_agent_identity and identity_type != "agent_identity":
         violations.append(Violation(
-            severity=Severity.WARN,
-            category=Category.DATA_EXFILTRATION,
-            rule="exfiltration_risk",
-            message=f"Agent has {len(exfil_perms)} permissions that could enable data exfiltration: {', '.join(sorted(exfil_perms))}",
-            remediation="Ensure these are necessary and add resource-level restrictions",
+            severity=Severity.BLOCK,
+            category=Category.IDENTITY,
+            rule="require_agent_identity",
+            message=f"Agent uses '{identity_type}' but AGENT_IDENTITY is required",
+            remediation="Deploy with identity_type=AGENT_IDENTITY",
         ))
 
-    # Check denied services
-    if policy.denied_services:
-        for perm in sorted(permissions):
-            service = perm.split(".")[0] if "." in perm else ""
-            if service in policy.denied_services:
-                violations.append(Violation(
-                    severity=Severity.BLOCK,
-                    category=Category.RESOURCE_BOUNDARY,
-                    rule="denied_service",
-                    message=f"Service '{service}' is not allowed for agents",
-                    permission=perm,
-                ))
+    if not policy.allow_shared_sa and identity_type == "service_account":
+        violations.append(Violation(
+            severity=Severity.BLOCK,
+            category=Category.IDENTITY,
+            rule="no_shared_sa",
+            message="Shared service accounts are not allowed",
+            remediation="Use AGENT_IDENTITY for per-agent isolation",
+        ))
 
-    # Check allowed services (if specified)
-    if policy.allowed_services is not None:
-        for perm in sorted(permissions):
-            service = perm.split(".")[0] if "." in perm else ""
-            if service and service not in policy.allowed_services:
-                violations.append(Violation(
-                    severity=Severity.BLOCK,
-                    category=Category.RESOURCE_BOUNDARY,
-                    rule="service_not_allowed",
-                    message=f"Service '{service}' is not in the allowed list",
-                    permission=perm,
-                ))
-
-    # Sort: blocks first, then warns, then info
-    violations.sort(key=lambda v: {"block": 0, "warn": 1, "info": 2}[v.severity])
-    return violations
+    if not policy.allow_impersonation and identity_type == "impersonated":
+        violations.append(Violation(
+            severity=Severity.BLOCK,
+            category=Category.IDENTITY,
+            rule="no_impersonation",
+            message="SA impersonation is not allowed for agents",
+            remediation="Use AGENT_IDENTITY instead of impersonating another SA",
+        ))
 
 
-def _categorize_permission(perm: str) -> Category:
-    """Categorize a denied permission."""
-    if perm in PRIVILEGE_ESCALATION_PERMISSIONS:
-        return Category.PRIVILEGE_ESCALATION
-    if perm in DESTRUCTIVE_PERMISSIONS:
-        return Category.DESTRUCTIVE_ACTION
-    if perm in EXFILTRATION_PERMISSIONS:
-        return Category.DATA_EXFILTRATION
-    return Category.OVERPERMISSION
+def _check_service_boundaries(
+    permissions: set[str], policy: GuardrailPolicy, violations: list[Violation],
+) -> None:
+    """Check permissions against service allow/deny lists."""
+    for perm in sorted(permissions):
+        service = perm.split(".")[0] if "." in perm else ""
+        if not service:
+            continue
 
+        if service in policy.denied_services:
+            violations.append(Violation(
+                severity=Severity.BLOCK,
+                category=Category.RESOURCE_BOUNDARY,
+                rule="denied_service",
+                message=f"Service '{service}' is not allowed for agents",
+                permission=perm,
+            ))
 
-def _remediation_for_category(category: Category) -> str:
-    """Suggest remediation for a violation category."""
-    return {
-        Category.PRIVILEGE_ESCALATION: "Remove this permission. Agents must not be able to modify IAM policies or create credentials.",
-        Category.DESTRUCTIVE_ACTION: "Remove this permission. Use a separate admin workflow for destructive operations.",
-        Category.DATA_EXFILTRATION: "Restrict to specific resources via IAM conditions, or remove if not needed.",
-        Category.OVERPERMISSION: "Use a narrower role or custom role.",
-        Category.IDENTITY: "Use AGENT_IDENTITY for production deployments.",
-        Category.RESOURCE_BOUNDARY: "Restrict agent to approved services only.",
-    }.get(category, "Review and remediate.")
+        if policy.allowed_services is not None and service not in policy.allowed_services:
+            violations.append(Violation(
+                severity=Severity.BLOCK,
+                category=Category.RESOURCE_BOUNDARY,
+                rule="service_not_allowed",
+                message=f"Service '{service}' is not in the allowed list",
+                permission=perm,
+            ))
