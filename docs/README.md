@@ -22,6 +22,13 @@
 - **[Permission Manifest](permission-manifest.md)** — v1 and v2 format specification
 - **[CI Integration](ci-integration.md)** — GitHub Actions, Cloud Build recipes
 
+## Agents
+
+- **[Overview](agents/README.md)** — architecture, shared tools, three agents
+- **[IAM Policy Agent](agents/iam-agent.md)** — batch policy generation, Agent Engine support
+- **[IAM IDE Agent](agents/iam-ide-agent.md)** — interactive IDE assistant, single-file scanning
+- **[Cost Optimizer Agent](agents/cost-optimizer-agent.md)** — resource inventory, billing, deployment
+
 ## Extension
 
 - **[VS Code Extension](extension/vscode-extension.md)** — CodeLens, status bar, architecture
